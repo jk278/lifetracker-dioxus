@@ -152,6 +152,30 @@ impl MigrationManager {
             [],
         )?;
 
+        // 创建任务表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                category_id TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                priority TEXT NOT NULL DEFAULT 'medium',
+                estimated_duration_seconds INTEGER,
+                total_duration_seconds INTEGER NOT NULL DEFAULT 0,
+                tags TEXT NOT NULL DEFAULT '[]',
+                due_date DATETIME,
+                is_completed BOOLEAN NOT NULL DEFAULT 0,
+                completed_at DATETIME,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+            )
+            "#,
+            [],
+        )?;
+
         // 创建索引
         self.create_indexes(&tx)?;
 
@@ -206,6 +230,27 @@ impl MigrationManager {
             [],
         )?;
 
+        // 任务表索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_category_id ON tasks(category_id)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)",
+            [],
+        )?;
+
         debug!("数据库索引创建完成");
         Ok(())
     }
@@ -255,7 +300,7 @@ impl MigrationManager {
     pub fn reset_database(&self) -> Result<()> {
         warn!("重置数据库 - 这将删除所有数据！");
 
-        let tables = vec!["time_entries", "categories", "schema_version"];
+        let tables = vec!["time_entries", "categories", "tasks", "schema_version"];
 
         for table in tables {
             let sql = format!("DROP TABLE IF EXISTS {}", table);
@@ -501,7 +546,7 @@ mod tests {
         assert!(manager.run_migrations().is_ok());
 
         // 检查表是否创建
-        let tables = ["categories", "time_entries", "schema_version"];
+        let tables = ["categories", "time_entries", "tasks", "schema_version"];
 
         for table in &tables {
             let result = manager.connection.query_row(

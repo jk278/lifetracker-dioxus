@@ -1,15 +1,14 @@
 //! # TimeTracker - 个人时间追踪器
 //!
-//! 这是一个用Rust开发的时间追踪应用，提供CLI和GUI两种界面。
+//! 这是一个用Rust和Tauri开发的现代化时间追踪应用，提供Web界面。
 //! 主要功能包括任务计时、数据统计、分类管理等。
 
 // 公共模块声明
-pub mod cli; // 命令行界面模块
 pub mod config; // 配置管理
 pub mod core; // 核心业务逻辑
 pub mod errors; // 错误处理
-#[cfg(not(feature = "cli-only"))]
-pub mod gui; // 图形界面模块
+                // #[cfg(feature = "gui")]
+                // pub mod gui; // 图形界面模块（已弃用，使用 Tauri 替代）
 pub mod storage; // 数据存储层
 pub mod utils; // 工具函数
 
@@ -56,8 +55,6 @@ pub struct AppBuilder {
     config_path: Option<std::path::PathBuf>,
     database_path: Option<std::path::PathBuf>,
     log_level: Option<log::LevelFilter>,
-    enable_gui: bool,
-    enable_cli: bool,
 }
 
 impl AppBuilder {
@@ -67,8 +64,6 @@ impl AppBuilder {
             config_path: None,
             database_path: None,
             log_level: None,
-            enable_gui: true,
-            enable_cli: true,
         }
     }
 
@@ -87,18 +82,6 @@ impl AppBuilder {
     /// 设置日志级别
     pub fn with_log_level(mut self, level: log::LevelFilter) -> Self {
         self.log_level = Some(level);
-        self
-    }
-
-    /// 启用GUI模式
-    pub fn enable_gui(mut self, enabled: bool) -> Self {
-        self.enable_gui = enabled;
-        self
-    }
-
-    /// 启用CLI模式
-    pub fn enable_cli(mut self, enabled: bool) -> Self {
-        self.enable_cli = enabled;
         self
     }
 
@@ -145,8 +128,6 @@ impl AppBuilder {
             config_manager,
             database,
             error_handler,
-            enable_gui: self.enable_gui,
-            enable_cli: self.enable_cli,
         })
     }
 }
@@ -163,8 +144,6 @@ pub struct App {
     pub config_manager: ConfigManager,
     pub database: Database,
     pub error_handler: ErrorHandler,
-    pub enable_gui: bool,
-    pub enable_cli: bool,
 }
 
 impl App {
@@ -269,14 +248,9 @@ mod tests {
             .with_config_path(&config_path)
             .with_database_path(&db_path)
             .with_log_level(log::LevelFilter::Debug)
-            .enable_gui(false)
-            .enable_cli(true)
             .build();
 
         assert!(app.is_ok());
-        let app = app.unwrap();
-        assert!(!app.enable_gui);
-        assert!(app.enable_cli);
     }
 
     #[test]

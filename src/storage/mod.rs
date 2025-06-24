@@ -8,10 +8,12 @@
 pub mod database; // 数据库操作
 pub mod migrations;
 pub mod models; // 数据模型 // 数据库迁移
+pub mod task_models; // 任务模型
 
 // 重新导出主要类型
 pub use database::Database;
 pub use models::TimeEntry;
+pub use task_models::{TaskInsert, TaskModel, TaskUpdate};
 
 use crate::errors::AppError;
 use rusqlite::Connection;

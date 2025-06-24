@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TimeTracker - 时间追踪器</title>
+    <link rel="icon" type="image/png" href="/assets/icon.png" />
+    
+    <!-- 防止白色闪烁：隐藏内容 + 加载后显示 -->
+    <style>
+      /* 隐藏内容直到React应用准备好 */
+      body { 
+        visibility: hidden; 
+        opacity: 0; 
+        transition: opacity 0.2s ease-in-out;
+      }
+      
+      /* 兜底：如果JS被禁用，强制显示内容 */
+      noscript body { 
+        visibility: visible !important; 
+        opacity: 1 !important; 
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <!-- JavaScript被禁用时的提示 -->
+      <div style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h2>需要启用JavaScript</h2>
+        <p>TimeTracker需要JavaScript才能正常运行，请启用JavaScript后刷新页面。</p>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- React应用初始化完成后显示内容 -->
+    <script>
+      // 显示应用内容
+      function showApp() {
+        document.body.style.visibility = 'visible';
+        document.body.style.opacity = '1';
+      }
+      
+      // 使用MutationObserver监听DOM变化
+      if (window.MutationObserver) {
+        let hasShown = false;
+        
+        const observer = new MutationObserver(function(mutations) {
+          if (hasShown) return;
+          
+          for (let mutation of mutations) {
+            if (mutation.addedNodes.length > 0) {
+              const root = document.getElementById('root');
+              if (root && root.children.length > 0) {
+                hasShown = true;
+                showApp();
+                observer.disconnect();
+                return; // 立即退出整个回调函数
+              }
+            }
+          }
+        });
+        
+        observer.observe(document.getElementById('root'), {
+          childList: true,
+          subtree: true
+        });
+        
+        // 兜底：3秒后强制显示，避免无限等待
+        setTimeout(function() {
+          if (!hasShown) {
+            hasShown = true;
+            showApp();
+            observer.disconnect();
+          }
+        }, 3000);
+      } else {
+        // 兜底：如果不支持MutationObserver，延迟显示
+        setTimeout(showApp, 200);
+      }
+    </script>
+  </body>
+</html> 

@@ -61,7 +61,7 @@ dist-ssr/
 *.AppImage
 
 # IDE 和编辑器文件
-.vscode/
+# .vscode/ - 保留，包含项目开发环境配置
 .idea/
 *.swp
 *.swo

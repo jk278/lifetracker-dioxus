@@ -1,0 +1,9 @@
+{
+    "rust-analyzer.cargo.buildScripts.enable": true,
+    "rust-analyzer.procMacro.enable": true,
+    "rust-analyzer.server.extraEnv": {
+        "CARGO_TARGET_DIR": "target"
+    },
+    "rust-analyzer.check.command": "check",
+    "rust-analyzer.check.allTargets": false
+} 

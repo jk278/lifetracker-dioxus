@@ -1,23 +1,27 @@
 //! # TimeTracker 主程序
 //!
-//! 一个功能强大的时间跟踪和管理工具
-//! 支持CLI和GUI两种界面模式
+//! 一个现代化的时间跟踪和管理工具
+//! 使用现代Web界面(Tauri)构建
 
 // Windows 子系统配置：GUI应用不显示控制台窗口
 #![cfg_attr(
-    all(target_os = "windows", not(debug_assertions), feature = "gui"),
+    all(target_os = "windows", not(debug_assertions)),
     windows_subsystem = "windows"
 )]
 
-mod cli;
 mod config;
 mod core;
 mod errors;
-mod gui;
 mod storage;
 mod utils;
 
+#[cfg(feature = "tauri")]
+mod tauri_commands;
+
 use std::process;
+
+#[cfg(feature = "tauri")]
+use tauri::window::Color;
 
 /// 应用程序错误类型
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -40,23 +44,18 @@ async fn main() {
         process::exit(1);
     }
 
-    // 简单检查命令行参数
-    let args: Vec<String> = std::env::args().collect();
-
-    let result = if args.len() > 1
-        && (args.contains(&"--gui".to_string()) || args.contains(&"-g".to_string()))
-    {
-        // GUI模式：直接启动GUI
-        log::info!("启动GUI模式");
-        run_gui_mode().await
-    } else if args.len() == 1 {
-        // 没有参数，默认启动GUI
-        log::info!("默认启动GUI模式");
-        run_gui_mode().await
-    } else {
-        // CLI模式：使用clap解析参数
-        log::info!("启动CLI模式");
-        run_cli_mode().await
+    // 启动Tauri模式
+    let result = {
+        #[cfg(feature = "tauri")]
+        {
+            log::info!("启动Tauri模式");
+            run_tauri_mode().await
+        }
+        #[cfg(not(feature = "tauri"))]
+        {
+            eprintln!("Tauri功能未启用，当前配置无可用界面");
+            process::exit(1);
+        }
     };
 
     // 清理应用程序
@@ -77,8 +76,8 @@ fn init_logging() {
 
     let mut builder = Builder::from_default_env();
 
-    // 在GUI发布模式下，将日志写入文件
-    #[cfg(all(not(debug_assertions), feature = "gui"))]
+    // 在发布模式下，将日志写入文件
+    #[cfg(not(debug_assertions))]
     {
         use std::fs::OpenOptions;
 
@@ -98,15 +97,15 @@ fn init_logging() {
                 .target(Target::Pipe(Box::new(log_file)))
                 .filter_level(LevelFilter::Info);
         } else {
-            // 如果无法创建日志文件，使用内存目标（不输出）
+            // 如果无法创建日志文件，使用stderr
             builder
                 .target(Target::Stderr)
-                .filter_level(LevelFilter::Off);
+                .filter_level(LevelFilter::Warn);
         }
     }
 
-    // 在调试模式或CLI模式下，输出到控制台
-    #[cfg(any(debug_assertions, not(feature = "gui")))]
+    // 在调试模式下，输出到控制台
+    #[cfg(debug_assertions)]
     {
         builder
             .target(Target::Stdout)
@@ -130,19 +129,202 @@ fn init_logging() {
     log::info!("TimeTracker 启动");
 }
 
-/// 运行GUI模式
-async fn run_gui_mode() -> Result<()> {
-    // 使用GUI模块的run_gui函数
-    gui::run_gui(None)?;
+/// 运行Tauri模式
+#[cfg(feature = "tauri")]
+async fn run_tauri_mode() -> Result<()> {
+    use tauri::Manager;
+
+    // 创建Tauri应用
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            // 应用初始化
+            log::info!("Tauri应用初始化开始");
+
+            // 检测系统主题并设置正确的窗口背景色
+            let is_dark_theme =
+                crate::config::theme::ThemeConfig::get_initial_theme_class() == "dark";
+            let bg_color = if is_dark_theme {
+                Color(26, 26, 26, 255) // 暗色模式背景 #1a1a1a
+            } else {
+                Color(255, 255, 255, 255) // 亮色模式背景 #ffffff
+            };
+
+            if let Some(window) = app.get_webview_window("main") {
+                // 设置背景色避免启动闪烁
+                if let Err(e) = window.set_background_color(Some(bg_color)) {
+                    log::warn!("设置窗口背景色失败: {}", e);
+                }
+
+                // 显示窗口
+                if let Err(e) = window.show() {
+                    log::warn!("显示窗口失败: {}", e);
+                } else {
+                    log::info!("窗口已显示");
+                }
+            }
+
+            // 创建应用配置
+            let app_config = get_app_config();
+            log::info!("数据库路径: {}", app_config.database_path);
+
+            // 初始化存储管理器
+            let storage_config = crate::storage::DatabaseConfig {
+                database_path: app_config.database_path.clone(),
+                ..Default::default()
+            };
+
+            let storage_manager = match crate::storage::StorageManager::new(storage_config) {
+                Ok(mut sm) => {
+                    // 初始化数据库
+                    if let Err(e) = sm.initialize() {
+                        log::error!("数据库初始化失败: {}", e);
+                        return Err(Box::new(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            format!("数据库初始化失败: {}", e),
+                        )));
+                    }
+                    log::info!("数据库初始化成功");
+                    Some(sm)
+                }
+                Err(e) => {
+                    log::error!("存储管理器创建失败: {}", e);
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("存储管理器创建失败: {}", e),
+                    )));
+                }
+            };
+
+            // 创建计时器
+            let timer = crate::core::Timer::new();
+
+            // 创建应用状态
+            let app_state = tauri_commands::AppState {
+                storage: std::sync::Arc::new(std::sync::Mutex::new(storage_manager)),
+                timer: std::sync::Arc::new(std::sync::Mutex::new(timer)),
+                config: std::sync::Arc::new(std::sync::Mutex::new(
+                    crate::config::AppConfig::default(),
+                )),
+                current_task_id: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            };
+
+            // 注册应用状态
+            app.manage(app_state);
+
+            // 设置系统托盘
+            if let Err(e) = setup_system_tray(app) {
+                log::error!("设置系统托盘失败: {}", e);
+            }
+
+            log::info!("Tauri应用初始化完成");
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            tauri_commands::get_tasks,
+            tauri_commands::create_task,
+            tauri_commands::update_task,
+            tauri_commands::delete_task,
+            tauri_commands::start_timer,
+            tauri_commands::stop_timer,
+            tauri_commands::pause_timer,
+            tauri_commands::get_timer_status,
+            tauri_commands::get_today_time_entries,
+            tauri_commands::debug_get_time_entries,
+            tauri_commands::get_today_stats,
+            tauri_commands::get_categories,
+            tauri_commands::create_category,
+            tauri_commands::update_category,
+            tauri_commands::delete_category,
+            tauri_commands::get_statistics,
+            tauri_commands::export_data,
+            tauri_commands::import_data,
+            tauri_commands::get_config,
+            tauri_commands::update_config,
+        ])
+        .run(tauri::generate_context!())
+        .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
+            Box::new(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Tauri运行失败: {}", e),
+            ))
+        })?;
+
     Ok(())
 }
 
-/// 运行CLI模式
-async fn run_cli_mode() -> Result<()> {
-    // 使用CLI模块的run_cli函数
-    cli::run_cli()
-        .await
-        .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })
+/// 设置系统托盘
+#[cfg(feature = "tauri")]
+fn setup_system_tray(app: &tauri::App) -> Result<()> {
+    use tauri::{
+        menu::{Menu, MenuItem, PredefinedMenuItem},
+        tray::{TrayIcon, TrayIconBuilder, TrayIconEvent},
+        Manager,
+    };
+
+    // 创建托盘菜单
+    let start_item = MenuItem::new(app, "开始计时", true, None::<&str>)?;
+    let pause_item = MenuItem::new(app, "暂停计时", true, None::<&str>)?;
+    let stop_item = MenuItem::new(app, "停止计时", true, None::<&str>)?;
+    let show_item = MenuItem::new(app, "显示主窗口", true, None::<&str>)?;
+    let quit_item = MenuItem::new(app, "退出", true, None::<&str>)?;
+
+    let menu = Menu::with_items(
+        app,
+        &[
+            &show_item,
+            &PredefinedMenuItem::separator(app)?,
+            &start_item,
+            &pause_item,
+            &stop_item,
+            &PredefinedMenuItem::separator(app)?,
+            &quit_item,
+        ],
+    )?;
+
+    // 创建托盘图标
+    let tray = TrayIconBuilder::new()
+        .icon(app.default_window_icon().unwrap().clone())
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(move |app, event| match event.id.as_ref() {
+            "开始计时" => {
+                log::info!("从托盘开始计时");
+            }
+            "暂停计时" => {
+                log::info!("从托盘暂停计时");
+            }
+            "停止计时" => {
+                log::info!("从托盘停止计时");
+            }
+            "显示主窗口" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "退出" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { .. } = event {
+                // 单击托盘图标显示/隐藏窗口
+                if let Some(window) = tray.app_handle().get_webview_window("main") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+        })
+        .build(app)?;
+
+    Ok(())
 }
 
 /// 应用程序配置
@@ -275,13 +457,12 @@ fn handle_startup_error(message: &str) {
     #[cfg(debug_assertions)]
     eprintln!("{}", message);
 
-    // 在Windows GUI发布版本中，写入错误文件
+    // 在Windows发布版本中，写入错误文件
     #[cfg(all(target_os = "windows", not(debug_assertions)))]
     {
         if let Err(_) = std::fs::write("timetracker_error.log", message) {
-            // 如果无法写入文件，尝试显示消息框
-            #[cfg(feature = "gui")]
-            show_error_dialog("启动错误", message);
+            // 写入文件失败时记录日志
+            log::warn!("无法写入错误日志文件");
         }
     }
 }
@@ -293,18 +474,6 @@ fn handle_runtime_error(message: &str) {
     // 在调试模式下，输出到控制台
     #[cfg(debug_assertions)]
     eprintln!("{}", message);
-
-    // 在GUI模式下，尝试显示错误对话框
-    #[cfg(feature = "gui")]
-    show_error_dialog("运行时错误", message);
-}
-
-/// 显示错误对话框（仅在GUI模式下）
-#[cfg(feature = "gui")]
-fn show_error_dialog(title: &str, message: &str) {
-    // 这里可以实现一个简单的错误对话框
-    // 或者将错误传递给GUI系统处理
-    log::error!("GUI错误对话框: {} - {}", title, message);
 }
 
 #[cfg(test)]
