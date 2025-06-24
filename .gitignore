@@ -6,6 +6,28 @@
 # Cargo 锁文件（对于应用程序，通常包含；对于库，通常忽略）
 # Cargo.lock
 
+# 前端依赖和构建
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# 前端构建产物
+dist/
+dist-ssr/
+*.local
+.cache/
+.parcel-cache/
+.vite/
+
+# Tauri 构建产物
+/src-tauri/target/
+/gen/
+/WixTools/
+
 # 数据库文件
 *.db
 *.db-shm
@@ -36,6 +58,7 @@
 *.rpm
 *.dmg
 *.app
+*.AppImage
 
 # IDE 和编辑器文件
 .vscode/
@@ -86,6 +109,10 @@ flamegraph.svg
 wix/
 *.wixobj
 *.wixpdb
+
+# Tauri 特有文件
+*.tsbuildinfo
+.turbo/
 
 # 自动生成的文件
 /src/version.rs
