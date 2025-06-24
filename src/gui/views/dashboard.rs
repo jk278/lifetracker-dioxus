@@ -264,7 +264,12 @@ impl DashboardView {
                     ui.horizontal(|ui| match &timer_state {
                         TimerState::Stopped => {
                             if ui.button("开始").clicked() {
-                                action = Some("start");
+                                // 检查是否有当前任务名称，如果没有则打开快速开始对话框
+                                if self.current_task_name.trim().is_empty() {
+                                    action = Some("show_quick_start");
+                                } else {
+                                    action = Some("start");
+                                }
                             }
                         }
                         TimerState::Running { .. } => {
@@ -285,6 +290,7 @@ impl DashboardView {
                     // 在UI闭包外执行动作
                     match action {
                         Some("start") => self.start_new_task(state),
+                        Some("show_quick_start") => self.show_quick_start = true,
                         Some("pause") => self.pause_current_task(state),
                         Some("resume") => self.resume_current_task(state),
                         Some("stop") => self.stop_current_task(state),
@@ -475,11 +481,16 @@ impl DashboardView {
                 ui.vertical(|ui| {
                     // 任务名称
                     ui.label("任务名称:");
-                    ui.add(
+                    let task_name_response = ui.add(
                         egui::TextEdit::singleline(&mut self.current_task_name)
                             .hint_text("输入任务名称...")
                             .desired_width(300.0),
                     );
+
+                    // 自动聚焦到任务名称输入框
+                    if self.current_task_name.is_empty() {
+                        task_name_response.request_focus();
+                    }
 
                     ui.add_space(10.0);
 
@@ -496,25 +507,86 @@ impl DashboardView {
 
                     // 分类选择
                     ui.label("分类:");
+                    let selected_text = if let Some(category_id) = self.selected_category_id {
+                        // 尝试从状态中获取分类名称
+                        if let Ok(storage) = state.storage.lock() {
+                            if let Ok(categories) = storage.get_database().get_all_categories() {
+                                categories
+                                    .iter()
+                                    .find(|c| c.id == category_id)
+                                    .map(|c| c.name.clone())
+                                    .unwrap_or_else(|| "未知分类".to_string())
+                            } else {
+                                "无分类".to_string()
+                            }
+                        } else {
+                            "无分类".to_string()
+                        }
+                    } else {
+                        "选择分类".to_string()
+                    };
+
                     egui::ComboBox::from_label("")
-                        .selected_text("选择分类")
+                        .selected_text(selected_text)
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.selected_category_id, None, "无分类");
-                            // TODO: 加载分类列表
+
+                            // 加载分类列表
+                            if let Ok(storage) = state.storage.lock() {
+                                if let Ok(categories) = storage.get_database().get_all_categories()
+                                {
+                                    for category in categories {
+                                        ui.selectable_value(
+                                            &mut self.selected_category_id,
+                                            Some(category.id),
+                                            &category.name,
+                                        );
+                                    }
+                                }
+                            }
                         });
 
                     ui.add_space(20.0);
 
+                    // 检查是否可以开始任务
+                    let can_start = !self.current_task_name.trim().is_empty();
+
                     // 按钮
                     ui.horizontal(|ui| {
-                        if ui.button("开始计时").clicked() {
-                            self.start_new_task(state);
+                        ui.add_enabled_ui(can_start, |ui| {
+                            if ui.button("开始计时").clicked() {
+                                self.start_new_task(state);
+                            }
+                        });
+
+                        if !can_start {
+                            ui.label("请输入任务名称");
                         }
 
                         if ui.button("取消").clicked() {
                             self.show_quick_start = false;
+                            // 清空输入
+                            self.current_task_name.clear();
+                            self.current_task_description.clear();
+                            self.selected_category_id = None;
                         }
                     });
+
+                    // 快捷键提示
+                    ui.separator();
+                    ui.small("提示：按 Enter 开始计时，按 Esc 取消");
+
+                    // 处理快捷键
+                    if ui.input(|i| i.key_pressed(egui::Key::Enter)) && can_start {
+                        self.start_new_task(state);
+                    }
+
+                    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        self.show_quick_start = false;
+                        self.current_task_name.clear();
+                        self.current_task_description.clear();
+                        self.selected_category_id = None;
+                    }
                 });
             });
     }

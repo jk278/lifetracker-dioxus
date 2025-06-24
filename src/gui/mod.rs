@@ -106,11 +106,14 @@ pub fn run_gui(storage_path: Option<String>) -> Result<()> {
     // 创建应用核心
     let core = Arc::new(Mutex::new(AppCore::new()));
 
+    // 尝试加载保存的主题配置，如果失败则使用默认主题
+    let theme = Theme::try_load_theme_from_config();
+
     // 创建应用状态
     let app_state = AppState {
         core,
         storage,
-        theme: Theme::default(),
+        theme,
         show_debug: false,
         window_config: WindowConfig::default(),
     };

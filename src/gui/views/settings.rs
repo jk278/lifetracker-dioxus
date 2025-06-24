@@ -6,7 +6,7 @@ use super::{View, ViewConfig, ViewState};
 use crate::{
     config::AppConfig,
     gui::{
-        theme::{ColorType, Theme, ThemePreset},
+        theme::{ColorType, Theme, ThemeMode, ThemePreset},
         AppState,
     },
 };
@@ -123,8 +123,10 @@ impl SettingsView {
 
         // 保存主题配置
         state.theme = self.temp_theme.clone();
-        if let Err(e) = state.theme.save_to_file("theme.json") {
+        if let Err(e) = state.theme.save_to_config_dir() {
             log::warn!("保存主题配置失败: {}", e);
+            self.show_error(&format!("保存主题配置失败: {}", e));
+            return;
         }
 
         self.has_changes = false;
@@ -337,20 +339,58 @@ impl SettingsView {
                 // 主题选择
                 ui.label("主题:");
                 ui.horizontal(|ui| {
+                    let current_mode = self.temp_theme.get_theme_mode();
+
                     if ui
-                        .selectable_value(&mut self.temp_theme.dark_mode, false, "浅色")
+                        .selectable_value(&mut self.temp_theme.theme_mode, ThemeMode::Light, "浅色")
                         .clicked()
                     {
-                        self.has_changes = true;
+                        if current_mode != ThemeMode::Light {
+                            self.temp_theme.set_theme_mode(ThemeMode::Light);
+                            self.has_changes = true;
+                        }
                     }
+
                     if ui
-                        .selectable_value(&mut self.temp_theme.dark_mode, true, "深色")
+                        .selectable_value(&mut self.temp_theme.theme_mode, ThemeMode::Dark, "深色")
                         .clicked()
                     {
-                        self.has_changes = true;
+                        if current_mode != ThemeMode::Dark {
+                            self.temp_theme.set_theme_mode(ThemeMode::Dark);
+                            self.has_changes = true;
+                        }
+                    }
+
+                    if ui
+                        .selectable_value(
+                            &mut self.temp_theme.theme_mode,
+                            ThemeMode::System,
+                            "跟随系统",
+                        )
+                        .clicked()
+                    {
+                        if current_mode != ThemeMode::System {
+                            self.temp_theme.set_theme_mode(ThemeMode::System);
+                            self.has_changes = true;
+                        }
                     }
                 });
                 ui.end_row();
+
+                // 当前主题状态显示
+                if self.temp_theme.get_theme_mode() == ThemeMode::System {
+                    ui.label("当前状态:");
+                    let system_dark = Theme::detect_system_dark_mode();
+                    let status_text = if system_dark {
+                        "🌙 系统当前为深色模式"
+                    } else {
+                        "☀️ 系统当前为浅色模式"
+                    };
+                    ui.label(
+                        egui::RichText::new(status_text).color(ui.visuals().weak_text_color()),
+                    );
+                    ui.end_row();
+                }
 
                 // 预设主题
                 ui.label("预设主题:");
@@ -374,6 +414,24 @@ impl SettingsView {
                             self.has_changes = true;
                         }
                     });
+                ui.end_row();
+
+                // 配置文件路径显示
+                ui.label("配置文件:");
+                ui.horizontal(|ui| {
+                    let config_path = Theme::get_config_file_path();
+                    ui.label(
+                        egui::RichText::new(&config_path).color(ui.visuals().weak_text_color()),
+                    );
+                    if ui
+                        .small_button("📋")
+                        .on_hover_text("复制路径到剪贴板")
+                        .clicked()
+                    {
+                        ui.ctx().copy_text(config_path);
+                        self.show_success("配置文件路径已复制到剪贴板");
+                    }
+                });
                 ui.end_row();
 
                 // 主色调

@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 /// 应用程序主题
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Theme {
-    /// 是否为深色模式
+    /// 主题模式
+    pub theme_mode: ThemeMode,
+    /// 是否为深色模式（由theme_mode决定）
     pub dark_mode: bool,
     /// 主色调
     pub primary_color: ColorScheme,
@@ -93,6 +95,17 @@ pub enum EasingType {
     EaseInOut,
 }
 
+/// 主题模式
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub enum ThemeMode {
+    /// 浅色主题
+    Light,
+    /// 深色主题
+    Dark,
+    /// 跟随系统主题
+    System,
+}
+
 /// 预定义主题
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ThemePreset {
@@ -115,6 +128,7 @@ impl Theme {
     /// 创建浅色主题
     pub fn light_theme() -> Self {
         Self {
+            theme_mode: ThemeMode::Light,
             dark_mode: false,
             primary_color: ColorScheme {
                 primary: [70, 130, 180],    // 钢蓝色
@@ -152,6 +166,7 @@ impl Theme {
     /// 创建深色主题
     pub fn dark_theme() -> Self {
         let mut theme = Self::light_theme();
+        theme.theme_mode = ThemeMode::Dark;
         theme.dark_mode = true;
         theme.primary_color = ColorScheme {
             primary: [100, 149, 237],   // 矢车菊蓝
@@ -540,6 +555,42 @@ impl Theme {
         Ok(())
     }
 
+    /// 保存主题到用户配置目录
+    pub fn save_to_config_dir(&self) -> crate::Result<()> {
+        // 使用与数据库相同的应用数据目录策略
+        let app_dir =
+            crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
+
+        // 确保目录存在
+        let mut config_dir = app_dir.clone();
+        config_dir.push("config");
+        std::fs::create_dir_all(&config_dir)?;
+
+        // 保存主题文件
+        config_dir.push("theme.json");
+        let config_path = config_dir.to_string_lossy();
+        log::info!("保存主题配置到: {}", config_path);
+
+        let result = self.save_to_file(&config_path);
+        if result.is_ok() {
+            log::info!("主题配置保存成功");
+        } else {
+            log::error!("主题配置保存失败: {:?}", result);
+        }
+        result
+    }
+
+    /// 获取主题配置文件路径
+    pub fn get_config_file_path() -> String {
+        let app_dir =
+            crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
+
+        let mut config_path = app_dir;
+        config_path.push("config");
+        config_path.push("theme.json");
+        config_path.to_string_lossy().to_string()
+    }
+
     /// 从文件加载主题
     pub fn load_from_file(path: &str) -> crate::Result<Self> {
         let json = std::fs::read_to_string(path)?;
@@ -549,20 +600,206 @@ impl Theme {
 
     /// 尝试从配置目录加载主题文件
     pub fn try_load_theme_from_config() -> Self {
-        // 尝试从用户配置目录加载主题
-        if let Some(mut config_dir) = dirs::config_dir() {
-            config_dir.push("time_tracker");
-            config_dir.push("theme.json");
+        // 使用与数据库相同的应用数据目录策略
+        let app_dir =
+            crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
 
-            if config_dir.exists() {
-                if let Ok(theme) = Self::load_from_file(&config_dir.to_string_lossy()) {
+        let mut config_path = app_dir;
+        config_path.push("config");
+        config_path.push("theme.json");
+
+        let config_path_str = config_path.to_string_lossy();
+        log::info!("尝试从配置目录加载主题: {}", config_path_str);
+
+        if config_path.exists() {
+            match Self::load_from_file(&config_path_str) {
+                Ok(theme) => {
+                    log::info!("主题配置加载成功，模式: {:?}", theme.get_theme_mode());
                     return theme;
                 }
+                Err(e) => {
+                    log::warn!("主题配置加载失败: {}", e);
+                }
             }
+        } else {
+            log::info!("主题配置文件不存在: {}", config_path_str);
         }
 
         // 如果加载失败，返回默认主题
+        log::info!("使用默认主题配置");
         Self::default()
+    }
+
+    /// 检测系统是否为深色主题
+    pub fn detect_system_dark_mode() -> bool {
+        // 暂时使用简化的检测方法
+        // 在实际项目中，可以使用更复杂的系统API检测
+
+        #[cfg(target_os = "windows")]
+        {
+            // Windows: 检查系统主题设置
+            // 这里暂时返回false，实际实现需要调用Windows API
+            Self::detect_windows_dark_mode_simple()
+        }
+        #[cfg(target_os = "macos")]
+        {
+            Self::detect_macos_dark_mode()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            Self::detect_linux_dark_mode()
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+        {
+            false // 默认浅色主题
+        }
+    }
+
+    /// Windows系统主题检测（简化版）
+    #[cfg(target_os = "windows")]
+    fn detect_windows_dark_mode_simple() -> bool {
+        // 使用环境变量或其他方式检测
+        // 这是一个简化实现，可以根据需要扩展
+
+        // 检查Windows版本和主题设置
+        // 暂时返回false，后续可以实现完整的Windows API调用
+        if let Ok(output) = std::process::Command::new("reg")
+            .args(&[
+                "query",
+                "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                "/v",
+                "AppsUseLightTheme",
+            ])
+            .output()
+        {
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            // 如果AppsUseLightTheme为0，则表示使用深色主题
+            output_str.contains("0x0")
+        } else {
+            false
+        }
+    }
+
+    /// macOS系统主题检测
+    #[cfg(target_os = "macos")]
+    fn detect_macos_dark_mode() -> bool {
+        use std::process::Command;
+
+        match Command::new("defaults")
+            .args(&["read", "-g", "AppleInterfaceStyle"])
+            .output()
+        {
+            Ok(output) => {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                output_str.trim() == "Dark"
+            }
+            Err(_) => false,
+        }
+    }
+
+    /// Linux系统主题检测
+    #[cfg(target_os = "linux")]
+    fn detect_linux_dark_mode() -> bool {
+        use std::process::Command;
+
+        // 尝试检测GNOME桌面环境
+        if let Ok(output) = Command::new("gsettings")
+            .args(&["get", "org.gnome.desktop.interface", "gtk-theme"])
+            .output()
+        {
+            let theme_name = String::from_utf8_lossy(&output.stdout);
+            return theme_name.to_lowercase().contains("dark");
+        }
+
+        // 尝试检测KDE桌面环境
+        if let Ok(output) = Command::new("kreadconfig5")
+            .args(&[
+                "--file",
+                "kdeglobals",
+                "--group",
+                "General",
+                "--key",
+                "ColorScheme",
+            ])
+            .output()
+        {
+            let color_scheme = String::from_utf8_lossy(&output.stdout);
+            return color_scheme.to_lowercase().contains("dark");
+        }
+
+        // 检查环境变量
+        if let Ok(gtk_theme) = std::env::var("GTK_THEME") {
+            return gtk_theme.to_lowercase().contains("dark");
+        }
+
+        false
+    }
+
+    /// 创建跟随系统的主题
+    pub fn follow_system_theme() -> Self {
+        let is_dark = Self::detect_system_dark_mode();
+        let mut theme = if is_dark {
+            Self::dark_theme()
+        } else {
+            Self::light_theme()
+        };
+        theme.theme_mode = ThemeMode::System;
+        theme.dark_mode = is_dark;
+        theme
+    }
+
+    /// 更新主题以跟随系统
+    pub fn update_system_theme(&mut self) {
+        if self.theme_mode == ThemeMode::System {
+            let system_is_dark = Self::detect_system_dark_mode();
+            if self.dark_mode != system_is_dark {
+                self.dark_mode = system_is_dark;
+
+                // 根据系统主题调整颜色
+                if system_is_dark {
+                    self.adjust_colors_for_dark_mode();
+                } else {
+                    self.adjust_colors_for_light_mode();
+                }
+            }
+        }
+    }
+
+    /// 设置主题模式
+    pub fn set_theme_mode(&mut self, mode: ThemeMode) {
+        self.theme_mode = mode;
+        match mode {
+            ThemeMode::Light => {
+                self.dark_mode = false;
+                self.adjust_colors_for_light_mode();
+            }
+            ThemeMode::Dark => {
+                self.dark_mode = true;
+                self.adjust_colors_for_dark_mode();
+            }
+            ThemeMode::System => {
+                self.update_system_theme();
+            }
+        }
+    }
+
+    /// 获取当前主题模式
+    pub fn get_theme_mode(&self) -> ThemeMode {
+        self.theme_mode
+    }
+
+    /// 检查是否为系统主题模式
+    pub fn is_system_theme(&self) -> bool {
+        self.theme_mode == ThemeMode::System
+    }
+
+    /// 获取主题模式的显示名称
+    pub fn theme_mode_name(mode: ThemeMode) -> &'static str {
+        match mode {
+            ThemeMode::Light => "浅色",
+            ThemeMode::Dark => "深色",
+            ThemeMode::System => "跟随系统",
+        }
     }
 }
 
@@ -717,6 +954,12 @@ impl Default for ColorScheme {
     }
 }
 
+impl Default for ThemeMode {
+    fn default() -> Self {
+        ThemeMode::Light
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -770,5 +1013,38 @@ mod tests {
         assert_eq!(primary_color.r(), theme.primary_color.primary[0]);
         assert_eq!(primary_color.g(), theme.primary_color.primary[1]);
         assert_eq!(primary_color.b(), theme.primary_color.primary[2]);
+    }
+
+    #[test]
+    fn test_theme_mode() {
+        let mut theme = Theme::default();
+
+        // 测试默认主题模式
+        assert_eq!(theme.get_theme_mode(), ThemeMode::Light);
+        assert!(!theme.dark_mode);
+
+        // 测试设置深色模式
+        theme.set_theme_mode(ThemeMode::Dark);
+        assert_eq!(theme.get_theme_mode(), ThemeMode::Dark);
+        assert!(theme.dark_mode);
+
+        // 测试设置系统模式
+        theme.set_theme_mode(ThemeMode::System);
+        assert_eq!(theme.get_theme_mode(), ThemeMode::System);
+        assert!(theme.is_system_theme());
+    }
+
+    #[test]
+    fn test_system_theme_creation() {
+        let theme = Theme::follow_system_theme();
+        assert_eq!(theme.get_theme_mode(), ThemeMode::System);
+        assert!(theme.is_system_theme());
+    }
+
+    #[test]
+    fn test_theme_mode_names() {
+        assert_eq!(Theme::theme_mode_name(ThemeMode::Light), "浅色");
+        assert_eq!(Theme::theme_mode_name(ThemeMode::Dark), "深色");
+        assert_eq!(Theme::theme_mode_name(ThemeMode::System), "跟随系统");
     }
 }

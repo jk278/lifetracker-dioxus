@@ -98,6 +98,10 @@ tempfile = "3.0"
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
+# Windows特定依赖
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winreg", "winuser", "winnt", "minwindef", "winerror"] }
+
 [build-dependencies]
 # 跨平台打包工具（可选）
 

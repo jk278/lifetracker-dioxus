@@ -209,20 +209,28 @@ pub fn generate_random_string(length: usize) -> String {
 
 /// 获取应用数据目录
 pub fn get_app_data_dir() -> Result<std::path::PathBuf> {
-    // 在Windows上使用%APPDATA%，在Unix上使用$HOME/.local/share
-    #[cfg(target_os = "windows")]
-    {
-        let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
-        Ok(std::path::PathBuf::from(appdata).join("TimeTracker"))
-    }
+    // 检测是否为开发环境
+    let is_dev = cfg!(debug_assertions) || std::env::var("CARGO").is_ok();
 
-    #[cfg(not(target_os = "windows"))]
-    {
-        let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
-        Ok(std::path::PathBuf::from(home)
-            .join(".local")
-            .join("share")
-            .join("timetracker"))
+    if is_dev {
+        // 开发环境：使用项目内的data目录
+        Ok(std::path::PathBuf::from("./data"))
+    } else {
+        // 生产环境：使用系统标准目录
+        #[cfg(target_os = "windows")]
+        {
+            let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
+            Ok(std::path::PathBuf::from(appdata).join("TimeTracker"))
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
+            Ok(std::path::PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join("timetracker"))
+        }
     }
 }
 

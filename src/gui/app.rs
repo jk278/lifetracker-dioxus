@@ -281,12 +281,46 @@ impl TimeTrackerApp {
             // TODO: 实现计时器状态更新
         }
     }
+
+    /// 检查并更新系统主题（如果启用了跟随系统）
+    fn update_theme_if_needed(&mut self) {
+        // 只在跟随系统主题模式下进行检查
+        if self.state.theme.is_system_theme() {
+            // 检查是否需要更新（避免频繁检查，每秒最多检查一次）
+            if self.last_update.elapsed() >= Duration::from_secs(1) {
+                let old_dark_mode = self.state.theme.dark_mode;
+
+                // 更新主题以匹配系统设置
+                self.state.theme.update_system_theme();
+
+                // 如果主题发生了变化，显示通知
+                if old_dark_mode != self.state.theme.dark_mode {
+                    let theme_name = if self.state.theme.dark_mode {
+                        "深色"
+                    } else {
+                        "浅色"
+                    };
+
+                    self.add_notification(
+                        "主题已更新".to_string(),
+                        format!("已自动切换到{}主题", theme_name),
+                        NotificationLevel::Info,
+                    );
+                }
+
+                self.last_update = Instant::now();
+            }
+        }
+    }
 }
 
 impl eframe::App for TimeTrackerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // 更新应用程序状态
         self.update_state();
+
+        // 检查并更新系统主题（如果启用了跟随系统）
+        self.update_theme_if_needed();
 
         // 应用主题
         self.state.theme.apply(ctx);
@@ -403,33 +437,67 @@ impl TimeTrackerApp {
 
                 // 主题选择
                 ui.menu_button("主题", |ui| {
-                    if ui.button("默认主题").clicked() {
-                        self.state.theme = crate::gui::theme::Theme::from_preset(
-                            crate::gui::theme::ThemePreset::Default,
-                        );
-                        ui.close_menu();
-                    }
+                    use crate::gui::theme::ThemeMode;
 
                     if ui.button("浅色主题").clicked() {
-                        self.state.theme = crate::gui::theme::Theme::from_preset(
-                            crate::gui::theme::ThemePreset::Light,
-                        );
+                        self.state.theme.set_theme_mode(ThemeMode::Light);
                         ui.close_menu();
                     }
 
                     if ui.button("深色主题").clicked() {
-                        self.state.theme = crate::gui::theme::Theme::from_preset(
-                            crate::gui::theme::ThemePreset::Dark,
+                        self.state.theme.set_theme_mode(ThemeMode::Dark);
+                        ui.close_menu();
+                    }
+
+                    if ui.button("跟随系统").clicked() {
+                        self.state.theme.set_theme_mode(ThemeMode::System);
+                        self.add_notification(
+                            "主题模式".to_string(),
+                            "已启用跟随系统主题模式".to_string(),
+                            NotificationLevel::Info,
                         );
                         ui.close_menu();
                     }
 
-                    if ui.button("橙色主题").clicked() {
-                        self.state.theme = crate::gui::theme::Theme::from_preset(
-                            crate::gui::theme::ThemePreset::Orange,
-                        );
-                        ui.close_menu();
-                    }
+                    ui.separator();
+
+                    // 预设主题（仅在非系统模式下可用）
+                    ui.menu_button("预设主题", |ui| {
+                        if ui.button("默认").clicked() {
+                            self.state.theme = crate::gui::theme::Theme::from_preset(
+                                crate::gui::theme::ThemePreset::Default,
+                            );
+                            ui.close_menu();
+                        }
+
+                        if ui.button("蓝色").clicked() {
+                            self.state.theme = crate::gui::theme::Theme::from_preset(
+                                crate::gui::theme::ThemePreset::Blue,
+                            );
+                            ui.close_menu();
+                        }
+
+                        if ui.button("绿色").clicked() {
+                            self.state.theme = crate::gui::theme::Theme::from_preset(
+                                crate::gui::theme::ThemePreset::Green,
+                            );
+                            ui.close_menu();
+                        }
+
+                        if ui.button("紫色").clicked() {
+                            self.state.theme = crate::gui::theme::Theme::from_preset(
+                                crate::gui::theme::ThemePreset::Purple,
+                            );
+                            ui.close_menu();
+                        }
+
+                        if ui.button("橙色").clicked() {
+                            self.state.theme = crate::gui::theme::Theme::from_preset(
+                                crate::gui::theme::ThemePreset::Orange,
+                            );
+                            ui.close_menu();
+                        }
+                    });
 
                     ui.separator();
 
