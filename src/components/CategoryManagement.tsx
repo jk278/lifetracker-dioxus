@@ -14,6 +14,54 @@ interface CategoryManagementProps {
     onCategoriesUpdate: () => void;
 }
 
+// 图标渲染函数
+const renderCategoryIcon = (icon: string | null | undefined, color: string) => {
+    if (!icon) {
+        return <FolderOpen className="h-5 w-5" style={{ color }} />;
+    }
+
+    // 如果是emoji（单个字符且不是英文字母），直接显示
+    if (icon.length === 1 || icon.match(/[\u{1F300}-\u{1F9FF}]/u)) {
+        return <span style={{ color, fontSize: '20px' }}>{icon}</span>;
+    }
+
+    // 如果是2个字符的emoji（如复合emoji），直接显示
+    if (icon.length === 2 && icon.match(/[\u{1F300}-\u{1F9FF}]/u)) {
+        return <span style={{ color, fontSize: '20px' }}>{icon}</span>;
+    }
+
+    // Material Design 图标名称映射
+    const iconMap: { [key: string]: string } = {
+        'work': '💼',
+        'school': '📚',
+        'person': '👤',
+        'games': '🎮',
+        'fitness_center': '🏃',
+        'more_horiz': '📁',
+        'folder': '📁',
+        'business': '💼',
+        'study': '📚',
+        'learning': '📚',
+        'entertainment': '🎮',
+        'sports': '🏃',
+        'exercise': '🏃',
+        'personal': '👤',
+        'other': '📁',
+    };
+
+    const mappedIcon = iconMap[icon.toLowerCase()];
+    if (mappedIcon) {
+        return <span style={{ color, fontSize: '20px' }}>{mappedIcon}</span>;
+    }
+
+    // 如果都不匹配，尝试显示原始文本或默认图标
+    if (icon.length < 10) {
+        return <span style={{ color, fontSize: '16px' }}>{icon}</span>;
+    }
+
+    return <FolderOpen className="h-5 w-5" style={{ color }} />;
+};
+
 const CategoryManagement: React.FC<CategoryManagementProps> = ({ onCategoriesUpdate }) => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -166,11 +214,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({ onCategoriesUpd
                                             className="w-10 h-10 rounded-lg flex items-center justify-center"
                                             style={{ backgroundColor: category.color + '20' }}
                                         >
-                                            {category.icon ? (
-                                                <span style={{ color: category.color }}>{category.icon}</span>
-                                            ) : (
-                                                <FolderOpen className="h-5 w-5" style={{ color: category.color }} />
-                                            )}
+                                            {renderCategoryIcon(category.icon, category.color)}
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{category.name}</h3>
@@ -279,16 +323,34 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({ onCategoriesUpd
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     图标 (可选)
                                 </label>
-                                <input
-                                    type="text"
-                                    value={newCategory.icon}
-                                    onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                                    placeholder="📁 或者其他emoji..."
-                                />
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {['💼', '📚', '👤', '🎮', '🏃', '📁', '🎨', '💡', '🔧', '📊', '🛒', '🍔', '🏠', '🚗', '✈️', '🏥'].map((emoji) => (
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => setNewCategory({ ...newCategory, icon: emoji })}
+                                            className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center text-lg transition-colors ${newCategory.icon === emoji ? 'border-blue-500 bg-blue-50 dark:bg-blue-900' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                                                }`}
+                                        >
+                                            {emoji}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newCategory.icon}
+                                        onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+                                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                        placeholder="📁 或者其他emoji..."
+                                    />
+                                    <div className="w-10 h-10 border border-gray-300 dark:border-gray-600 rounded-md flex items-center justify-center bg-gray-50 dark:bg-gray-700">
+                                        {renderCategoryIcon(newCategory.icon, newCategory.color)}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

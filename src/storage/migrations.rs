@@ -7,7 +7,7 @@ use log::{debug, info, warn};
 use rusqlite::Connection;
 
 /// 数据库版本
-const CURRENT_DB_VERSION: i32 = 1;
+const CURRENT_DB_VERSION: i32 = 2;
 
 /// 迁移管理器
 ///
@@ -93,6 +93,7 @@ impl MigrationManager {
     fn run_migration_to_version(&self, version: i32) -> Result<()> {
         match version {
             1 => self.migration_v1(),
+            2 => self.migration_v2(),
             _ => {
                 warn!("未知的迁移版本: {}", version);
                 Err(AppError::InvalidInput(format!(
@@ -189,6 +190,38 @@ impl MigrationManager {
         Ok(())
     }
 
+    /// 迁移到版本2：更新分类图标为emoji
+    fn migration_v2(&self) -> Result<()> {
+        info!("运行迁移 v2: 更新分类图标");
+
+        // 图标映射：从旧的图标名称映射到新的emoji
+        let icon_mapping = vec![
+            ("work", "💼"),
+            ("school", "📚"),
+            ("person", "👤"),
+            ("games", "🎮"),
+            ("fitness_center", "🏃"),
+            ("more_horiz", "📁"),
+            ("folder", "📁"),
+        ];
+
+        // 开始事务
+        let tx = self.connection.unchecked_transaction()?;
+
+        for (old_icon, new_icon) in icon_mapping {
+            tx.execute(
+                "UPDATE categories SET icon = ?1 WHERE icon = ?2",
+                [new_icon, old_icon],
+            )?;
+        }
+
+        // 提交事务
+        tx.commit()?;
+
+        info!("迁移 v2 完成");
+        Ok(())
+    }
+
     /// 创建数据库索引
     fn create_indexes(&self, tx: &rusqlite::Transaction) -> Result<()> {
         debug!("创建数据库索引...");
@@ -260,12 +293,12 @@ impl MigrationManager {
         debug!("插入默认分类...");
 
         let default_categories = vec![
-            ("工作", "工作相关任务", "#FF5722", "work"),
-            ("学习", "学习和培训", "#2196F3", "school"),
-            ("个人", "个人事务", "#4CAF50", "person"),
-            ("娱乐", "休闲娱乐", "#9C27B0", "games"),
-            ("运动", "体育锻炼", "#FF9800", "fitness_center"),
-            ("其他", "其他未分类任务", "#607D8B", "more_horiz"),
+            ("工作", "工作相关任务", "#FF5722", "💼"),
+            ("学习", "学习和培训", "#2196F3", "📚"),
+            ("个人", "个人事务", "#4CAF50", "👤"),
+            ("娱乐", "休闲娱乐", "#9C27B0", "🎮"),
+            ("运动", "体育锻炼", "#FF9800", "🏃"),
+            ("其他", "其他未分类任务", "#607D8B", "📁"),
         ];
 
         for (i, (name, description, color, icon)) in default_categories.iter().enumerate() {

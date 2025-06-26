@@ -7,6 +7,7 @@ use super::task_models::*;
 use crate::errors::{AppError, Result};
 use chrono::{DateTime, Local, NaiveDate};
 use rusqlite::{params, Connection, Result as SqliteResult};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
@@ -853,6 +854,64 @@ impl Database {
 
         log::debug!("删除分类: {}", id);
         Ok(())
+    }
+
+    /// 获取分类任务数量统计
+    pub fn get_category_task_counts(&self) -> Result<std::collections::HashMap<Uuid, i64>> {
+        let sql = r#"
+            SELECT category_id, COUNT(*) as task_count
+            FROM tasks
+            WHERE category_id IS NOT NULL
+            GROUP BY category_id
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let mut counts = std::collections::HashMap::new();
+        let rows = stmt.query_map([], |row| {
+            let category_id_str: String = row.get("category_id")?;
+            let task_count: i64 = row.get("task_count")?;
+            Ok((category_id_str, task_count))
+        })?;
+
+        for row in rows {
+            let (category_id_str, task_count) = row?;
+            if let Ok(category_id) = Uuid::parse_str(&category_id_str) {
+                counts.insert(category_id, task_count);
+            }
+        }
+
+        Ok(counts)
+    }
+
+    /// 获取分类的总时长统计
+    pub fn get_category_duration_stats(&self) -> Result<std::collections::HashMap<Uuid, i64>> {
+        let sql = r#"
+            SELECT category_id, SUM(duration_seconds) as total_duration
+            FROM time_entries
+            WHERE category_id IS NOT NULL
+            GROUP BY category_id
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let mut durations = std::collections::HashMap::new();
+        let rows = stmt.query_map([], |row| {
+            let category_id_str: String = row.get("category_id")?;
+            let total_duration: i64 = row.get("total_duration")?;
+            Ok((category_id_str, total_duration))
+        })?;
+
+        for row in rows {
+            let (category_id_str, total_duration) = row?;
+            if let Ok(category_id) = Uuid::parse_str(&category_id_str) {
+                durations.insert(category_id, total_duration);
+            }
+        }
+
+        Ok(durations)
     }
 
     /// 获取最近的时间记录
