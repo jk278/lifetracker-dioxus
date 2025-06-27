@@ -9,6 +9,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 透明窗口样式 */
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 code {
@@ -50,31 +54,40 @@ code {
   }
 }
 
-/* ===================
-   自定义滚动条样式
-   =================== */
+/* ==================================
+   自定义滚动条样式 (闲时自动隐藏)
+   ================================== */
 
-/* WebKit 浏览器（Chrome、Edge、Safari 等） */
 ::-webkit-scrollbar {
-  width: 8px;   /* 垂直滚动条宽度 */
-  height: 8px;  /* 水平滚动条高度 */
+  width: 10px; /* 垂直滚动条宽度 */
+  height: 10px; /* 水平滚动条高度 */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; /* 轨道背景透明 */
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 4px;
-  background-color: rgba(0, 0, 0, 0.25); /* 浅色模式：灰色拇指 */
+  background-color: transparent; /* 拇指默认透明 */
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.4);
+/* 当滚动时 (由JS添加 .is-scrolling 类)，显示滚动条拇指 */
+.scroll-container.is-scrolling::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.35);
 }
 
-/* 暗色模式下的滚动条拇指颜色 */
-.dark ::-webkit-scrollbar-thumb {
+/* 暗色模式下，滚动时显示不同的颜色 */
+.dark .scroll-container.is-scrolling::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.25);
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
+/* 当鼠标悬停在可见的滚动条拇指上时，颜色加深，提供交互反馈 */
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.dark .scroll-container::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.4);
 }
 

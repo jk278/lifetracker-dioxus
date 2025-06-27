@@ -2,17 +2,15 @@ import { invoke } from "@tauri-apps/api/core";
 import {
 	BarChart3,
 	Calendar,
-	ChevronLeft,
-	ChevronRight,
 	Clock,
 	Folder,
 	Info,
+	Menu,
 	Pause,
 	Play,
 	Settings,
 	Square,
 } from "lucide-react";
-import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
 import CategoryManagement from "./components/CategoryManagement";
@@ -20,6 +18,8 @@ import Dashboard from "./components/Dashboard";
 import SettingsComponent from "./components/Settings";
 import Statistics from "./components/Statistics";
 import TaskManagement from "./components/TaskManagement";
+import TitleBar from "./components/TitleBar";
+import { useScrollbarHiding } from "./hooks/useScrollbarHiding";
 import { ThemeProvider } from "./hooks/useTheme";
 import type { Task, TimerStatus } from "./types";
 
@@ -45,15 +45,20 @@ function App() {
 	const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
 	// 侧边栏状态管理
-	const [sidebarWidth, setSidebarWidth] = useState<number>(256); // 256px 默认宽度
+	const DEFAULT_SIDEBAR_WIDTH = 220; // 展开状态默认宽度（较窄）
+	const [sidebarWidth, setSidebarWidth] = useState<number>(
+		DEFAULT_SIDEBAR_WIDTH,
+	);
 	const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-	const [isDragging, setIsDragging] = useState<boolean>(false);
 
 	// 悬浮按钮动画状态
 	const [isAnimating, setIsAnimating] = useState<boolean>(false);
 	const [delayedIconState, setDelayedIconState] = useState<
 		"stopped" | "running" | "paused"
 	>("stopped");
+
+	const navRef = useScrollbarHiding<HTMLElement>();
+	const mainContentRef = useScrollbarHiding<HTMLDivElement>();
 
 	const [todayStats, setTodayStats] = useState({
 		totalSeconds: 0,
@@ -237,7 +242,7 @@ function App() {
 
 	// 侧边栏拖拽处理
 	const minSidebarWidth = 60; // 最小宽度（折叠状态）
-	const maxSidebarWidth = 400; // 最大宽度
+	const maxSidebarWidth = 300; // 最大宽度
 	const minMainContentWidth = 300; // 主内容区最小宽度
 
 	// 计算最优侧边栏宽度
@@ -245,7 +250,7 @@ function App() {
 		const windowWidth = window.innerWidth;
 		const availableWidth = windowWidth - minMainContentWidth;
 		const optimalWidth = Math.min(
-			Math.max(256, availableWidth * 0.25),
+			Math.max(DEFAULT_SIDEBAR_WIDTH, availableWidth * 0.25),
 			maxSidebarWidth,
 		);
 		return Math.max(optimalWidth, minSidebarWidth);
@@ -254,7 +259,7 @@ function App() {
 	// 响应式调整
 	useEffect(() => {
 		const handleResize = () => {
-			if (!isDragging && !isCollapsed) {
+			if (!isCollapsed) {
 				const newWidth = getOptimalSidebarWidth();
 				setSidebarWidth(newWidth);
 			}
@@ -262,73 +267,7 @@ function App() {
 
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
-	}, [isDragging, isCollapsed, getOptimalSidebarWidth]);
-
-	// 鼠标拖拽处理
-	const handleMouseDown = (e: React.MouseEvent) => {
-		e.preventDefault();
-		setIsDragging(true);
-	};
-
-	const handleMouseMove = useCallback(
-		(e: MouseEvent) => {
-			if (!isDragging) return;
-
-			const newWidth = e.clientX;
-			const windowWidth = window.innerWidth;
-			const remainingWidth = windowWidth - newWidth;
-
-			// 确保主内容区和侧边栏都有足够的宽度
-			if (
-				newWidth >= minSidebarWidth &&
-				remainingWidth >= minMainContentWidth &&
-				newWidth <= maxSidebarWidth
-			) {
-				setSidebarWidth(newWidth);
-
-				// 如果拖拽到很小的宽度，自动折叠
-				if (newWidth <= minSidebarWidth + 20) {
-					setIsCollapsed(true);
-					setSidebarWidth(minSidebarWidth);
-				} else if (isCollapsed && newWidth > minSidebarWidth + 50) {
-					setIsCollapsed(false);
-				}
-			}
-		},
-		[isDragging, isCollapsed],
-	);
-
-	const handleMouseUp = useCallback(() => {
-		setIsDragging(false);
-	}, []);
-
-	const toggleSidebar = useCallback(() => {
-		if (isCollapsed) {
-			setIsCollapsed(false);
-			setSidebarWidth(getOptimalSidebarWidth());
-		} else {
-			setIsCollapsed(true);
-			setSidebarWidth(minSidebarWidth);
-		}
 	}, [isCollapsed, getOptimalSidebarWidth]);
-
-	const handleDoubleClick = useCallback(() => {
-		setSidebarWidth(getOptimalSidebarWidth());
-		setIsCollapsed(false);
-	}, [getOptimalSidebarWidth]);
-
-	// 拖拽事件监听
-	useEffect(() => {
-		if (isDragging) {
-			document.addEventListener("mousemove", handleMouseMove);
-			document.addEventListener("mouseup", handleMouseUp);
-
-			return () => {
-				document.removeEventListener("mousemove", handleMouseMove);
-				document.removeEventListener("mouseup", handleMouseUp);
-			};
-		}
-	}, [isDragging, handleMouseMove, handleMouseUp]);
 
 	// 创建任务功能已移到各个组件中
 
@@ -422,182 +361,167 @@ function App() {
 
 	return (
 		<ThemeProvider>
-			<div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 transition-colors flex overflow-hidden">
-				{/* 侧边栏 - 可调整宽度 */}
-				<div
-					className={`bg-white dark:bg-gray-800 shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 relative h-full flex flex-col ${
-						isDragging ? "" : "transition-all duration-200 ease-out"
-					}`}
-					style={{ width: `${sidebarWidth}px` }}
-				>
-					{/* 侧边栏头部 - 折叠/展开按钮 */}
-					<div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-						{!isCollapsed && (
-							<h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-								导航
-							</h2>
-						)}
-						<button
-							onClick={toggleSidebar}
-							className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-							title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
-						>
-							{isCollapsed ? (
-								<ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-							) : (
-								<ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-							)}
-						</button>
-					</div>
+			<div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col overflow-hidden">
+				{/* 自定义标题栏 */}
+				<TitleBar />
 
-					{/* 导航菜单 */}
-					<nav className="flex-1 overflow-y-auto">
-						<div className={`p-4 space-y-2 ${isCollapsed ? "px-2" : ""}`}>
-							{[
-								{ id: "dashboard", name: "仪表板", icon: BarChart3 },
-								{ id: "tasks", name: "任务管理", icon: Clock },
-								{ id: "categories", name: "分类管理", icon: Folder },
-								{ id: "statistics", name: "统计报告", icon: Calendar },
-								{ id: "settings", name: "设置", icon: Settings },
-								{ id: "about", name: "关于", icon: Info },
-							].map(({ id, name, icon: Icon }) => (
-								<button
-									key={id}
-									onClick={() => setActiveView(id as any)}
-									className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-all duration-200 ${
-										activeView === id
-											? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-											: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-									}`}
-									title={isCollapsed ? name : undefined}
-								>
-									<Icon className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
-									{!isCollapsed && <span className="truncate">{name}</span>}
-								</button>
-							))}
-						</div>
-					</nav>
-
-					{/* 拖拽调整手柄 */}
+				{/* 主要内容区域 */}
+				<div className="flex flex-1 overflow-hidden">
+					{/* 侧边栏 - 可调整宽度 */}
 					<div
-						className={`group absolute top-0 right-0 w-1 h-full cursor-col-resize transition-all duration-150 ${
-							isDragging
-								? "bg-blue-500 shadow-lg"
-								: "bg-transparent hover:bg-blue-400 hover:shadow-md"
-						}`}
-						onMouseDown={handleMouseDown}
-						onDoubleClick={handleDoubleClick}
-						title="拖拽调整宽度 | 双击重置"
+						className="bg-white dark:bg-gray-800 shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 relative h-full flex flex-col"
+						style={{ width: `${sidebarWidth}px` }}
 					>
-						{/* 扩大点击区域 */}
-						<div className="absolute inset-y-0 -right-2 w-5 h-full" />
-						{/* 视觉指示器 */}
-						<div
-							className={`absolute top-1/2 -translate-y-1/2 -right-0.5 w-2 h-8 rounded-full transition-all duration-150 ${
-								isDragging
-									? "bg-blue-600 opacity-100"
-									: "bg-gray-400 dark:bg-gray-500 opacity-0 group-hover:opacity-60"
-							}`}
-						/>
-					</div>
-				</div>
-
-				{/* 主内容区 - 可滚动 */}
-				<div
-					className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 relative"
-					style={{ minWidth: `${minMainContentWidth}px` }}
-				>
-					<div className="p-8">
-						{activeView === "dashboard" && (
-							<Dashboard
-								timerStatus={timerStatus}
-								tasks={tasks}
-								onStartTimer={startTimer}
-								onPauseTimer={pauseTimer}
-								onStopTimer={stopTimer}
-								selectedTaskId={selectedTaskId}
-								setSelectedTaskId={setSelectedTaskId}
-								onTasksUpdate={fetchTasks}
-								todayStats={todayStats}
-							/>
-						)}
-
-						{activeView === "tasks" && (
-							<TaskManagement tasks={tasks} onTasksUpdate={fetchTasks} />
-						)}
-
-						{activeView === "categories" && (
-							<CategoryManagement
-								onCategoriesUpdate={() => {
-									// 分类更新后可能需要刷新任务列表
-									fetchTasks();
+						{/* 折叠 / 展开控制按钮（与菜单项对齐） */}
+						<div className={isCollapsed ? "p-2 py-4" : "p-4"}>
+							<button
+								onClick={() => {
+									if (isCollapsed) {
+										setIsCollapsed(false);
+										setSidebarWidth(getOptimalSidebarWidth());
+									} else {
+										setIsCollapsed(true);
+										setSidebarWidth(minSidebarWidth);
+									}
 								}}
-							/>
-						)}
+								className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700`}
+								title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
+							>
+								<Menu className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
+								{!isCollapsed && <span className="truncate">菜单</span>}
+							</button>
+						</div>
 
-						{activeView === "statistics" && <Statistics />}
-
-						{activeView === "settings" && <SettingsComponent />}
-
-						{activeView === "about" && <About />}
+						{/* 导航菜单 */}
+						<nav
+							ref={navRef}
+							className="flex-1 overflow-y-auto scroll-container"
+						>
+							<div className={`p-4 space-y-2 ${isCollapsed ? "px-2" : ""}`}>
+								{[
+									{ id: "dashboard", name: "仪表板", icon: BarChart3 },
+									{ id: "tasks", name: "任务管理", icon: Clock },
+									{ id: "categories", name: "分类管理", icon: Folder },
+									{ id: "statistics", name: "统计报告", icon: Calendar },
+									{ id: "settings", name: "设置", icon: Settings },
+									{ id: "about", name: "关于", icon: Info },
+								].map(({ id, name, icon: Icon }) => (
+									<button
+										key={id}
+										onClick={() => setActiveView(id as any)}
+										className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
+											activeView === id
+												? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+												: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+										}`}
+										title={isCollapsed ? name : undefined}
+									>
+										<Icon className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
+										{!isCollapsed && <span className="truncate">{name}</span>}
+									</button>
+								))}
+							</div>
+						</nav>
 					</div>
 
-					{/* 悬浮按钮 - 右下角 */}
-					<div className="fixed bottom-6 right-6 z-50">
-						<div
-							className={`${getFloatingButtonStyle()} shadow-lg transition-all duration-300 ease-in-out flex items-center rounded-lg relative ${
-								isFloatingButtonExpanded
-									? "w-52 h-14" // 展开状态：长方形
-									: "w-14 h-14" // 收缩状态：正方形
-							}`}
-						>
-							{/* 左侧内容区域 - 从右侧逐渐展开，避免从边缘突然出现 */}
+					{/* 主内容区 - 可滚动 */}
+					<div
+						ref={mainContentRef}
+						className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 relative scroll-container"
+						style={{ minWidth: `${minMainContentWidth}px` }}
+					>
+						<div className="p-6">
+							{activeView === "dashboard" && (
+								<Dashboard
+									timerStatus={timerStatus}
+									tasks={tasks}
+									onStartTimer={startTimer}
+									onPauseTimer={pauseTimer}
+									onStopTimer={stopTimer}
+									selectedTaskId={selectedTaskId}
+									setSelectedTaskId={setSelectedTaskId}
+									onTasksUpdate={fetchTasks}
+									todayStats={todayStats}
+								/>
+							)}
+
+							{activeView === "tasks" && (
+								<TaskManagement tasks={tasks} onTasksUpdate={fetchTasks} />
+							)}
+
+							{activeView === "categories" && (
+								<CategoryManagement
+									onCategoriesUpdate={() => {
+										// 分类更新后可能需要刷新任务列表
+										fetchTasks();
+									}}
+								/>
+							)}
+
+							{activeView === "statistics" && <Statistics />}
+
+							{activeView === "settings" && <SettingsComponent />}
+
+							{activeView === "about" && <About />}
+						</div>
+
+						{/* 悬浮按钮 - 右下角 */}
+						<div className="fixed bottom-6 right-6 z-50">
 							<div
-								className={`flex items-center space-x-3 pl-4 transition-all duration-300 ease-in-out overflow-hidden ${
+								className={`${getFloatingButtonStyle()} shadow-lg transition-all duration-300 ease-in-out flex items-center rounded-lg relative ${
 									isFloatingButtonExpanded
-										? "w-40 opacity-100 translate-x-0" // 展开：显示内容，从右侧滑入
-										: "w-0 opacity-0 translate-x-4" // 收缩：隐藏内容，向右侧滑出
+										? "w-52 h-14" // 展开状态：长方形
+										: "w-14 h-14" // 收缩状态：正方形
 								}`}
 							>
-								{/* 固定宽度的时间显示区域 */}
-								<div className="text-left w-24 flex-shrink-0">
-									<div className="text-base font-mono font-bold text-white leading-tight">
-										{formatDuration(timerStatus.elapsed_seconds)}
+								{/* 左侧内容区域 - 从右侧逐渐展开，避免从边缘突然出现 */}
+								<div
+									className={`flex items-center space-x-3 pl-4 transition-all duration-300 ease-in-out overflow-hidden ${
+										isFloatingButtonExpanded
+											? "w-40 opacity-100 translate-x-0" // 展开：显示内容，从右侧滑入
+											: "w-0 opacity-0 translate-x-4" // 收缩：隐藏内容，向右侧滑出
+									}`}
+								>
+									{/* 固定宽度的时间显示区域 */}
+									<div className="text-left w-24 flex-shrink-0">
+										<div className="text-base font-mono font-bold text-white leading-tight">
+											{formatDuration(timerStatus.elapsed_seconds)}
+										</div>
+										<div className="text-xs text-white/80 leading-tight">
+											今日: {formatDuration(timerStatus.total_today_seconds)}
+										</div>
 									</div>
-									<div className="text-xs text-white/80 leading-tight">
-										今日: {formatDuration(timerStatus.total_today_seconds)}
-									</div>
+
+									{/* 停止按钮 */}
+									<button
+										onClick={(e) => {
+											e.stopPropagation(); // 阻止事件冒泡
+											stopTimer();
+										}}
+										className="p-1.5 bg-white/20 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
+										title="停止计时"
+									>
+										<Square className="h-4 w-4 text-white" />
+									</button>
 								</div>
 
-								{/* 停止按钮 */}
+								{/* 主控制按钮 - 绝对定位，始终在右侧固定位置 */}
 								<button
-									onClick={(e) => {
-										e.stopPropagation(); // 阻止事件冒泡
-										stopTimer();
-									}}
-									className="p-1.5 bg-white/20 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
-									title="停止计时"
+									onClick={handleFloatingButtonClick}
+									className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:bg-white/10"
+									title={
+										delayedIconState === "stopped"
+											? "开始计时"
+											: delayedIconState === "running"
+												? "暂停计时"
+												: "继续计时"
+									}
 								>
-									<Square className="h-4 w-4 text-white" />
+									<div className="transition-transform duration-200">
+										{getFloatingButtonIcon()}
+									</div>
 								</button>
 							</div>
-
-							{/* 主控制按钮 - 绝对定位，始终在右侧固定位置 */}
-							<button
-								onClick={handleFloatingButtonClick}
-								className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:bg-white/10"
-								title={
-									delayedIconState === "stopped"
-										? "开始计时"
-										: delayedIconState === "running"
-											? "暂停计时"
-											: "继续计时"
-								}
-							>
-								<div className="transition-transform duration-200">
-									{getFloatingButtonIcon()}
-								</div>
-							</button>
 						</div>
 					</div>
 				</div>
