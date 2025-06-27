@@ -142,19 +142,21 @@ async fn run_tauri_mode() -> Result<()> {
             // 应用初始化
             log::info!("Tauri应用初始化开始");
 
-            // 检测系统主题并设置正确的窗口背景色
+            // 检测系统主题并设置正确的窗口背景色（与Tailwind颜色完全一致）
             let is_dark_theme =
                 crate::config::theme::ThemeConfig::get_initial_theme_class() == "dark";
             let bg_color = if is_dark_theme {
-                Color(26, 26, 26, 255) // 暗色模式背景 #1a1a1a
+                Color(17, 24, 39, 255) // 暗色模式背景 #111827 (gray-900)
             } else {
-                Color(255, 255, 255, 255) // 亮色模式背景 #ffffff
+                Color(249, 250, 251, 255) // 亮色模式背景 #f9fafb (gray-50)
             };
 
             if let Some(window) = app.get_webview_window("main") {
-                // 设置背景色避免启动闪烁
+                // 设置背景色避免启动闪烁和拖拽残影
                 if let Err(e) = window.set_background_color(Some(bg_color)) {
                     log::warn!("设置窗口背景色失败: {}", e);
+                } else {
+                    log::info!("窗口背景色已设置为: {:?}", bg_color);
                 }
 
                 // 显示窗口
@@ -242,6 +244,7 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::import_data,
             tauri_commands::get_config,
             tauri_commands::update_config,
+            tauri_commands::set_window_theme,
         ])
         .run(tauri::generate_context!())
         .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {

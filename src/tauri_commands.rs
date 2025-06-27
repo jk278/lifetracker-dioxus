@@ -6,7 +6,7 @@ use crate::{config::AppConfig, core::Timer, storage::StorageManager};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_notification::NotificationExt;
 use uuid::Uuid;
 
@@ -1207,9 +1207,29 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 /// 更新应用配置
 #[tauri::command]
 pub async fn update_config(state: State<'_, AppState>, config: AppConfig) -> Result<bool, String> {
-    let mut config_guard = state.config.lock().map_err(|e| e.to_string())?;
-    *config_guard = config;
-
-    // TODO: 保存配置到文件
+    let mut app_config = state.config.lock().map_err(|e| e.to_string())?;
+    *app_config = config;
     Ok(true)
+}
+
+/// 设置窗口主题背景色
+#[tauri::command]
+pub async fn set_window_theme(app_handle: AppHandle, is_dark: bool) -> Result<(), String> {
+    use tauri::window::Color;
+
+    let bg_color = if is_dark {
+        Color(17, 24, 39, 255) // 暗色模式背景 #111827 (gray-900)
+    } else {
+        Color(249, 250, 251, 255) // 亮色模式背景 #f9fafb (gray-50)
+    };
+
+    if let Some(window) = app_handle.get_webview_window("main") {
+        window
+            .set_background_color(Some(bg_color))
+            .map_err(|e| format!("设置窗口背景色失败: {}", e))?;
+
+        log::info!("窗口背景色已更新为: {:?} (暗色模式: {})", bg_color, is_dark);
+    }
+
+    Ok(())
 }
