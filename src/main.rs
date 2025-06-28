@@ -220,6 +220,41 @@ async fn run_tauri_mode() -> Result<()> {
                 log::error!("设置系统托盘失败: {}", e);
             }
 
+            // 设置托盘菜单事件处理
+            app.on_menu_event(move |app, event| match event.id().as_ref() {
+                "start_timer" => {
+                    log::info!("从托盘开始计时");
+                    // TODO: 调用实际的开始计时命令
+                }
+                "pause_timer" => {
+                    log::info!("从托盘暂停计时");
+                    // TODO: 调用实际的暂停计时命令
+                }
+                "stop_timer" => {
+                    log::info!("从托盘停止计时");
+                    // TODO: 调用实际的停止计时命令
+                }
+                "show_window" => {
+                    log::info!("托盘菜单：显示主窗口");
+                    if let Some(window) = app.get_webview_window("main") {
+                        let is_visible = window.is_visible().unwrap_or(false);
+                        let is_minimized = window.is_minimized().unwrap_or(false);
+
+                        if !is_visible || is_minimized {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                        }
+
+                        let _ = window.set_focus();
+                    }
+                }
+                "quit" => {
+                    log::info!("托盘菜单：退出应用");
+                    app.exit(0);
+                }
+                _ => {}
+            });
+
             log::info!("Tauri应用初始化完成");
             Ok(())
         })
@@ -267,11 +302,11 @@ fn setup_system_tray(app: &tauri::App) -> Result<()> {
     };
 
     // 创建托盘菜单
-    let start_item = MenuItem::new(app, "开始计时", true, None::<&str>)?;
-    let pause_item = MenuItem::new(app, "暂停计时", true, None::<&str>)?;
-    let stop_item = MenuItem::new(app, "停止计时", true, None::<&str>)?;
-    let show_item = MenuItem::new(app, "显示主窗口", true, None::<&str>)?;
-    let quit_item = MenuItem::new(app, "退出", true, None::<&str>)?;
+    let start_item = MenuItem::with_id(app, "start_timer", "开始计时", true, None::<&str>)?;
+    let pause_item = MenuItem::with_id(app, "pause_timer", "暂停计时", true, None::<&str>)?;
+    let stop_item = MenuItem::with_id(app, "stop_timer", "停止计时", true, None::<&str>)?;
+    let show_item = MenuItem::with_id(app, "show_window", "显示主窗口", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
     let menu = Menu::with_items(
         app,
@@ -290,37 +325,25 @@ fn setup_system_tray(app: &tauri::App) -> Result<()> {
     let tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
-        .show_menu_on_left_click(false)
-        .on_menu_event(move |app, event| match event.id.as_ref() {
-            "开始计时" => {
-                log::info!("从托盘开始计时");
-            }
-            "暂停计时" => {
-                log::info!("从托盘暂停计时");
-            }
-            "停止计时" => {
-                log::info!("从托盘停止计时");
-            }
-            "显示主窗口" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
-            "退出" => {
-                app.exit(0);
-            }
-            _ => {}
-        })
-        .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::Click { .. } = event {
-                // 单击托盘图标显示/隐藏窗口
-                if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    if window.is_visible().unwrap_or(false) {
-                        let _ = window.hide();
-                    } else {
-                        let _ = window.show();
+        .show_menu_on_left_click(false) // 左键不自动弹菜单，由我们手动控制
+        .on_tray_icon_event(move |tray, event| {
+            if let TrayIconEvent::Click { button, .. } = event {
+                // 只处理左键点击，右键点击由菜单处理
+                if button == tauri::tray::MouseButton::Left {
+                    if let Some(window) = tray.app_handle().get_webview_window("main") {
+                        // 简化处理：直接显示并聚焦窗口
+                        let is_visible = window.is_visible().unwrap_or(false);
+                        let is_minimized = window.is_minimized().unwrap_or(false);
+
+                        if !is_visible || is_minimized {
+                            // 窗口隐藏或最小化：显示并聚焦
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                        }
+
+                        // 始终聚焦窗口
                         let _ = window.set_focus();
+                        log::info!("托盘左键点击：窗口已聚焦");
                     }
                 }
             }
