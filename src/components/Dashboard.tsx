@@ -69,6 +69,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 	const [showQuickStart, setShowQuickStart] = useState(false);
 	const [todayTimeEntries, setTodayTimeEntries] = useState<TimeEntry[]>([]);
 	const [showEfficiencyDetails, setShowEfficiencyDetails] = useState(false);
+	const [isTaskSelectorOpen, setIsTaskSelectorOpen] = useState(false);
+	const selectedTask = tasks.find((t) => t.id === selectedTaskId);
 
 	// 获取分类列表
 	const fetchCategories = useCallback(async () => {
@@ -160,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				<div className="flex space-x-2">
 					<button
 						onClick={() => setShowQuickStart(true)}
-						className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						className="flex items-center px-4 py-2 bg-theme-primary text-white rounded-lg bg-theme-primary-hover theme-transition"
 					>
 						<Plus className="h-4 w-4 mr-2" />
 						快速开始
@@ -169,97 +171,74 @@ const Dashboard: React.FC<DashboardProps> = ({
 			</div>
 
 			{/* 计时器控制区域 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center space-x-6">
-						{/* 当前计时器显示 */}
-						<div className="text-center">
-							<div className="text-4xl font-mono font-bold text-gray-900 dark:text-white mb-2">
-								{formatDuration(timerStatus.elapsed_seconds)}
-							</div>
-							<div className="text-sm text-gray-500 dark:text-gray-400">
-								{timerStatus.state === "running"
-									? "运行中"
-									: timerStatus.state === "paused"
-										? "已暂停"
-										: "未开始"}
-							</div>
-						</div>
-
-						{/* 任务选择 */}
-						<div className="flex-1 max-w-md">
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-								当前任务
-							</label>
-							<select
-								value={selectedTaskId}
-								onChange={(e) => setSelectedTaskId(e.target.value)}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-							>
-								<option value="">选择任务...</option>
-								{tasks.map((task) => (
-									<option key={task.id} value={task.id}>
-										{task.name}
-									</option>
-								))}
-							</select>
-						</div>
+			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6 flex flex-col items-center gap-6">
+				{/* Timer display */}
+				<div className="text-center">
+					<div className="text-6xl font-mono font-bold text-gray-900 dark:text-white">
+						{formatDuration(timerStatus.elapsed_seconds)}
 					</div>
+					<div className="text-lg text-gray-500 dark:text-gray-400 mt-1">
+						{timerStatus.state === "running"
+							? "运行中"
+							: timerStatus.state === "paused"
+								? "已暂停"
+								: "未开始"}
+					</div>
+				</div>
 
-					{/* 控制按钮 */}
-					<div className="flex items-center space-x-3">
-						{timerStatus.state === "stopped" ? (
+				{/* Task Selector Button */}
+				<button
+					onClick={() => setIsTaskSelectorOpen(true)}
+					className="w-full max-w-xs p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-center transition-colors hover:bg-gray-200 dark:hover:bg-gray-600"
+				>
+					<div className="text-sm text-gray-500 dark:text-gray-400">
+						当前任务
+					</div>
+					<div className="text-lg font-medium text-gray-900 dark:text-white truncate">
+						{selectedTask ? selectedTask.name : "选择一个任务"}
+					</div>
+				</button>
+
+				{/* Action Buttons */}
+				<div className="flex items-center space-x-4">
+					{timerStatus.state === "stopped" ? (
+						<button
+							onClick={() => selectedTaskId && onStartTimer(selectedTaskId)}
+							className="flex items-center justify-center w-20 h-20 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 disabled:opacity-50 transition-all transform hover:scale-105"
+							disabled={!selectedTaskId}
+							title="开始"
+						>
+							<Play className="h-8 w-8" />
+						</button>
+					) : (
+						<>
 							<button
-								onClick={() => selectedTaskId && onStartTimer(selectedTaskId)}
-								className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-								disabled={!selectedTaskId}
+								onClick={onPauseTimer}
+								className="flex items-center justify-center w-20 h-20 bg-yellow-600 text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all transform hover:scale-105"
+								title={timerStatus.state === "running" ? "暂停" : "继续"}
 							>
-								<Play className="h-5 w-5 mr-2" />
-								开始
+								{timerStatus.state === "running" ? (
+									<Pause className="h-8 w-8" />
+								) : (
+									<Play className="h-8 w-8" />
+								)}
 							</button>
-						) : timerStatus.state === "running" ? (
-							<div className="flex space-x-2">
-								<button
-									onClick={onPauseTimer}
-									className="flex items-center px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
-								>
-									<Pause className="h-5 w-5 mr-2" />
-									暂停
-								</button>
-								<button
-									onClick={onStopTimer}
-									className="flex items-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
-								>
-									<Square className="h-5 w-5 mr-2" />
-									停止
-								</button>
-							</div>
-						) : (
-							<div className="flex space-x-2">
-								<button
-									onClick={() => selectedTaskId && onStartTimer(selectedTaskId)}
-									className="flex items-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700"
-								>
-									<Play className="h-5 w-5 mr-2" />
-									继续
-								</button>
-								<button
-									onClick={onStopTimer}
-									className="flex items-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700"
-								>
-									<Square className="h-5 w-5 mr-2" />
-									停止
-								</button>
-							</div>
-						)}
-					</div>
+							<button
+								onClick={onStopTimer}
+								className="flex items-center justify-center w-16 h-16 bg-red-600 text-white rounded-full shadow-lg hover:bg-red-700 transition-all transform hover:scale-105"
+								title="停止"
+							>
+								<Square className="h-6 w-6" />
+							</button>
+						</>
+					)}
 				</div>
 			</div>
 
 			{/* 今日统计卡片 */}
 			<div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-6">
 				{/* 今日总时间 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -276,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				</div>
 
 				{/* 任务数量 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<Target className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -293,7 +272,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				</div>
 
 				{/* 平均时间 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
@@ -311,7 +290,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 				{/* 效率指标 */}
 				<div
-					className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6 cursor-pointer hover:shadow-xl dark:hover:shadow-gray-700/30 transition-shadow duration-200"
+					className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6 cursor-pointer hover:shadow-xl dark:hover:shadow-gray-700/30 transition-shadow duration-200"
 					onClick={() => setShowEfficiencyDetails(true)}
 				>
 					<div className="flex items-center">
@@ -334,10 +313,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 			</div>
 
 			{/* 今日工作记录 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 				<div className="flex items-center justify-between mb-4">
 					<h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-						<History className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+						<History className="h-5 w-5 mr-2 text-theme-primary" />
 						今日工作记录
 					</h3>
 					<span className="text-sm text-gray-500 dark:text-gray-400">
@@ -395,7 +374,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 快速开始对话框 */}
 			{showQuickStart && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+					<div className="surface-adaptive rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							创建新任务
 						</h3>
@@ -409,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 									type="text"
 									value={newTaskName}
 									onChange={(e) => setNewTaskName(e.target.value)}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 ring-theme-primary theme-transition"
 									placeholder="输入任务名称..."
 									autoFocus
 								/>
@@ -422,7 +401,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 								<textarea
 									value={newTaskDescription}
 									onChange={(e) => setNewTaskDescription(e.target.value)}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 ring-theme-primary theme-transition"
 									placeholder="输入任务描述..."
 									rows={3}
 								/>
@@ -435,7 +414,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 								<select
 									value={selectedCategoryId}
 									onChange={(e) => setSelectedCategoryId(e.target.value)}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 ring-theme-primary theme-transition"
 								>
 									<option value="">无分类</option>
 									{categories.map((category) => (
@@ -456,7 +435,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 							</button>
 							<button
 								onClick={createTask}
-								className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+								className="px-4 py-2 bg-theme-primary text-white rounded-md bg-theme-primary-hover disabled:opacity-50 theme-transition"
 								disabled={!newTaskName.trim()}
 							>
 								创建
@@ -469,7 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 效率评分详情弹窗 */}
 			{showEfficiencyDetails && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+					<div className="surface-adaptive rounded-lg p-6 w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
 						{/* 弹窗头部 */}
 						<div className="flex items-center justify-between mb-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -661,6 +640,46 @@ const Dashboard: React.FC<DashboardProps> = ({
 							>
 								关闭
 							</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{/* 任务选择模态框 */}
+			{isTaskSelectorOpen && (
+				<div
+					className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+					onClick={() => setIsTaskSelectorOpen(false)}
+				>
+					<div
+						className="surface-adaptive rounded-lg p-6 w-full max-w-md mx-4 shadow-xl"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+							选择任务
+						</h3>
+						<div className="space-y-2 max-h-80 overflow-y-auto">
+							{tasks.length > 0 ? (
+								tasks.map((task) => (
+									<button
+										key={task.id}
+										onClick={() => {
+											setSelectedTaskId(task.id);
+											setIsTaskSelectorOpen(false);
+										}}
+										className={`w-full text-left p-3 rounded-md transition-colors ${
+											selectedTaskId === task.id
+												? "bg-theme-primary text-white"
+												: "hover:bg-gray-100 dark:hover:bg-gray-700"
+										}`}
+									>
+										{task.name}
+									</button>
+								))
+							) : (
+								<p className="text-gray-500 dark:text-gray-400 text-center py-4">
+									没有可用的任务。
+								</p>
+							)}
 						</div>
 					</div>
 				</div>

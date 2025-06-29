@@ -310,12 +310,12 @@ function App() {
 	// 获取悬浮按钮的样式
 	const getFloatingButtonStyle = useCallback(() => {
 		if (timerStatus.state === "stopped") {
-			return "bg-blue-600 hover:bg-blue-700 text-white";
+			return "bg-theme-primary bg-theme-primary-hover text-white theme-transition";
 		}
 		if (timerStatus.state === "running") {
-			return "bg-red-600 hover:bg-red-700 text-white";
+			return "bg-red-600 hover:bg-red-700 text-white theme-transition";
 		}
-		return "bg-green-600 hover:bg-green-700 text-white";
+		return "bg-green-600 hover:bg-green-700 text-white theme-transition";
 	}, [timerStatus.state]);
 
 	// 判断是否应该显示为展开状态（长方形）
@@ -336,7 +336,7 @@ function App() {
 			resetOnPropsChange={true}
 		>
 			<ThemeProvider>
-				<div className="h-screen w-screen bg-gray-50 dark:bg-gray-900 transition-colors flex flex-col overflow-hidden performance-optimized">
+				<div className="h-screen w-screen bg-adaptive flex flex-col overflow-hidden performance-optimized">
 					{/* 自定义标题栏 */}
 					<TitleBar />
 
@@ -346,7 +346,7 @@ function App() {
 						<div
 							className={`${
 								isCollapsed ? "w-16" : "w-56"
-							} bg-white dark:bg-gray-800 shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col`}
+							} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col`}
 						>
 							{/* 折叠 / 展开控制按钮（与菜单项对齐） */}
 							<div className={isCollapsed ? "p-2 py-4" : "p-4"}>
@@ -377,9 +377,9 @@ function App() {
 										<button
 											key={id}
 											onClick={() => setActiveView(id as any)}
-											className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
+											className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 theme-transition ${
 												activeView === id
-													? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+													? "bg-theme-primary-light text-theme-primary-dark"
 													: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
 											}`}
 											title={isCollapsed ? name : undefined}
@@ -397,7 +397,7 @@ function App() {
 						{/* 主内容区 - 简化为直接使用 Tailwind 类 */}
 						<div
 							ref={mainContentRef}
-							className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 relative scroll-container"
+							className="flex-1 overflow-y-auto bg-adaptive relative scroll-container"
 						>
 							<div className="p-6">
 								<ErrorBoundary resetKeys={[activeView]}>

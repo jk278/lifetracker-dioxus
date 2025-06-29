@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useTheme } from "../hooks/useTheme";
+import { THEME_COLORS, type ThemeColor, useTheme } from "../hooks/useTheme";
 
 type SettingsProps = {};
 
@@ -31,7 +31,7 @@ interface AppConfig {
 }
 
 const Settings: React.FC<SettingsProps> = () => {
-	const { theme, setTheme } = useTheme();
+	const { theme, setTheme, themeColor, setThemeColor } = useTheme();
 	const [config, setConfig] = useState<AppConfig>({
 		theme: "system",
 		auto_save: true,
@@ -140,7 +140,7 @@ const Settings: React.FC<SettingsProps> = () => {
 				<button
 					onClick={saveConfig}
 					disabled={saving}
-					className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+					className="flex items-center px-4 py-2 bg-theme-primary text-white rounded-lg bg-theme-primary-hover disabled:opacity-50 theme-transition"
 				>
 					<Save className="h-4 w-4 mr-2" />
 					{saving ? "保存中..." : "保存设置"}
@@ -149,9 +149,9 @@ const Settings: React.FC<SettingsProps> = () => {
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* 界面设置 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center mb-4">
-						<Palette className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+						<Palette className="h-5 w-5 text-theme-primary mr-2" />
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
 							界面设置
 						</h3>
@@ -160,7 +160,7 @@ const Settings: React.FC<SettingsProps> = () => {
 					<div className="space-y-4">
 						<div>
 							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-								主题设置
+								明暗模式
 							</label>
 							<div className="grid grid-cols-3 gap-3">
 								{[
@@ -171,14 +171,41 @@ const Settings: React.FC<SettingsProps> = () => {
 									<button
 										key={value}
 										onClick={() => setTheme(value as any)}
-										className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${
+										className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
 											theme === value
-												? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+												? "border-theme-primary bg-theme-primary-light text-theme-primary-dark"
 												: "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500"
 										}`}
 									>
 										<Icon className="h-5 w-5 mb-1" />
 										<span className="text-sm font-medium">{label}</span>
+									</button>
+								))}
+							</div>
+						</div>
+
+						<div>
+							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+								主题色彩
+							</label>
+							<div className="grid grid-cols-3 gap-3">
+								{Object.entries(THEME_COLORS).map(([key, colorConfig]) => (
+									<button
+										key={key}
+										onClick={() => setThemeColor(key as ThemeColor)}
+										className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
+											themeColor === key
+												? "border-gray-400 dark:border-gray-300 bg-gray-50 dark:bg-gray-700"
+												: "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500"
+										}`}
+									>
+										<div
+											className="w-6 h-6 rounded-full mb-2 border-2 border-white dark:border-gray-800 shadow-sm"
+											style={{ backgroundColor: colorConfig.colors[500] }}
+										/>
+										<span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+											{colorConfig.name}
+										</span>
 									</button>
 								))}
 							</div>
@@ -203,7 +230,7 @@ const Settings: React.FC<SettingsProps> = () => {
 				</div>
 
 				{/* 通知设置 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center mb-4">
 						<Bell className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -246,7 +273,7 @@ const Settings: React.FC<SettingsProps> = () => {
 				</div>
 
 				{/* 计时设置 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center mb-4">
 						<SettingsIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -315,7 +342,7 @@ const Settings: React.FC<SettingsProps> = () => {
 				</div>
 
 				{/* 数据管理 */}
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center mb-4">
 						<Database className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2" />
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">

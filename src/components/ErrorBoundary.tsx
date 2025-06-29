@@ -145,7 +145,7 @@ export class ErrorBoundary extends Component<
 						<div className="flex space-x-3">
 							<button
 								onClick={this.handleRetry}
-								className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+								className="flex-1 flex items-center justify-center space-x-2 bg-theme-primary bg-theme-primary-hover text-white font-medium py-2 px-4 rounded-lg theme-transition"
 							>
 								<RefreshCw className="h-4 w-4" />
 								<span>重试</span>

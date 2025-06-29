@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 主题色CSS变量 */
+:root {
+  /* 默认蓝色主题 - 与 THEME_COLORS.blue 保持一致 */
+  --theme-primary: #2196f3;
+  --theme-primary-hover: #1976d2;
+  --theme-primary-active: #1565c0;
+  --theme-primary-light: #e3f2fd;
+  --theme-primary-lighter: #bbdefb;
+  --theme-primary-dark: #0d47a1;
+  
+  /* Material You 背景色变量 */
+  --theme-background: #fafcff;
+  --theme-surface: #f8fafe;
+}
+
 html {
   overflow: hidden;
 }
@@ -17,6 +32,8 @@ body {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  /* 使用主题背景色 */
+  background-color: var(--theme-background);
 }
 
 code {
@@ -29,7 +46,7 @@ code {
 }
 
 .button-primary {
-  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  @apply bg-theme-primary bg-theme-primary-hover text-white font-medium py-2 px-4 rounded-lg theme-transition;
 }
 
 .button-secondary {
@@ -38,11 +55,11 @@ code {
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 ring-theme-primary focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700;
+    @apply btn bg-theme-primary text-white bg-theme-primary-hover;
   }
 
   .btn-secondary {
@@ -55,6 +72,86 @@ code {
 
   .btn-success {
     @apply btn bg-green-600 text-white hover:bg-green-700;
+  }
+
+  /* 使用CSS变量的主题色类 */
+  .bg-theme-primary {
+    background-color: var(--theme-primary);
+  }
+
+  .bg-theme-primary-hover:hover {
+    background-color: var(--theme-primary-hover);
+  }
+
+  .bg-theme-primary-active:active {
+    background-color: var(--theme-primary-active);
+  }
+
+  .bg-theme-primary-light {
+    background-color: var(--theme-primary-light);
+  }
+
+  .bg-theme-primary-lighter {
+    background-color: var(--theme-primary-lighter);
+  }
+
+  .text-theme-primary {
+    color: var(--theme-primary);
+  }
+
+  .text-theme-primary-hover:hover {
+    color: var(--theme-primary-hover);
+  }
+
+  .text-theme-primary-dark {
+    color: var(--theme-primary-dark);
+  }
+
+  .border-theme-primary {
+    border-color: var(--theme-primary);
+  }
+
+  .ring-theme-primary {
+    --tw-ring-color: var(--theme-primary);
+  }
+
+  /* Material You 背景色类 */
+  .bg-theme-background {
+    background-color: var(--theme-background);
+  }
+
+  .bg-theme-surface {
+    background-color: var(--theme-surface);
+  }
+
+  /* 深色模式下的主题色调整 */
+  .dark .bg-theme-primary-light {
+    background-color: var(--theme-primary-dark);
+  }
+
+  .dark .bg-theme-primary-lighter {
+    background-color: var(--theme-primary-dark);
+    opacity: 0.3;
+  }
+
+  .dark .text-theme-primary-dark {
+    color: var(--theme-primary-lighter);
+  }
+
+  /* 过渡动画优化 */
+  .theme-transition {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* 全局背景色过渡 */
+  .bg-adaptive {
+    background-color: var(--theme-background);
+    transition: background-color 0.3s ease;
+  }
+
+  .surface-adaptive {
+    background-color: var(--theme-surface);
+    transition: background-color 0.3s ease;
   }
 }
 

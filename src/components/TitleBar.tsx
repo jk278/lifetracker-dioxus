@@ -76,7 +76,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "TimeTracker" }) => {
 	}, []);
 
 	return (
-		<div className="flex items-center justify-between h-8 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 select-none">
+		<div className="flex items-center justify-between h-8 surface-adaptive border-b border-gray-200 dark:border-gray-700 select-none">
 			{/* 左侧：应用图标和标题 - 可拖拽区域 */}
 			<div
 				data-tauri-drag-region="true"
