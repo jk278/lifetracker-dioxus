@@ -1,7 +1,11 @@
 {
 	"overrides": [
 		{
-			"includes": ["**/*.svelte", "**/*.astro", "**/*.vue"],
+			"includes": [
+				"**/*.svelte",
+				"**/*.astro",
+				"**/*.vue"
+			],
 			"linter": {
 				"rules": {
 					"style": {
@@ -17,15 +21,22 @@
 			}
 		},
 		{
-			"includes": ["**/*.tsx", "**/*.jsx"],
+			"includes": [
+				"**/*.tsx",
+				"**/*.jsx"
+			],
 			"linter": {
 				"rules": {
 					"a11y": {
 						"useButtonType": "off",
-						"noStaticElementInteractions": "off"
+						"noStaticElementInteractions": "off",
+						"noLabelWithoutControl": "off",
+						"useKeyWithClickEvents": "off",
+						"noAutofocus": "off"
 					},
 					"correctness": {
-						"noUnusedImports": "off"
+						"noUnusedImports": "off",
+						"useExhaustiveDependencies": "off"
 					}
 				}
 			}

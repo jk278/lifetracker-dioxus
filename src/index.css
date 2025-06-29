@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -59,17 +63,18 @@ code {
    ================================== */
 
 ::-webkit-scrollbar {
-  width: 10px; /* 垂直滚动条宽度 */
-  height: 10px; /* 水平滚动条高度 */
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent; /* 轨道背景透明 */
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   border-radius: 4px;
-  background-color: transparent; /* 拇指默认透明 */
+  background-color: transparent;
+  transition: background-color 200ms ease;
 }
 
 /* 当滚动时 (由JS添加 .is-scrolling 类)，显示滚动条拇指 */
@@ -82,7 +87,7 @@ code {
   background-color: rgba(255, 255, 255, 0.25);
 }
 
-/* 当鼠标悬停在可见的滚动条拇指上时，颜色加深，提供交互反馈 */
+/* 鼠标悬停在可见的滚动条拇指上时，颜色加深，提供交互反馈 */
 .scroll-container::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.5);
 }
@@ -91,4 +96,15 @@ code {
   background-color: rgba(255, 255, 255, 0.4);
 }
 
-/* 移除 Firefox 浏览器兼容样式，Tauri 内核使用 WebView2 / WebKit，无需额外规则 */ 
+/* 核心性能优化 - 这是解决脏帧问题的关键 */
+.performance-optimized {
+  contain: strict;
+}
+
+/* 为有运动敏感的用户禁用动画 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+} 

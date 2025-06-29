@@ -5,9 +5,7 @@ interface TitleBarProps {
 	title?: string;
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({
-	title = "TimeTracker - 时间追踪器",
-}) => {
+const TitleBar: React.FC<TitleBarProps> = ({ title = "TimeTracker" }) => {
 	const [isMaximized, setIsMaximized] = useState(false);
 
 	// 检查窗口是否最大化
