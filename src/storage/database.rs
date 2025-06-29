@@ -24,7 +24,14 @@ pub struct DatabaseConnection {
 impl DatabaseConnection {
     /// 创建新的数据库连接
     pub fn new<P: AsRef<Path>>(database_path: P) -> Result<Self> {
-        let conn = Connection::open(database_path)?;
+        // 确保数据库父目录存在，避免在发布模式下因目录缺失导致无法打开
+        if let Some(parent) = database_path.as_ref().parent() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                AppError::Storage(format!("无法创建数据库目录 {}: {}", parent.display(), e))
+            })?;
+        }
+
+        let conn = Connection::open(&database_path)?;
 
         Ok(Self {
             connection: Arc::new(Mutex::new(conn)),

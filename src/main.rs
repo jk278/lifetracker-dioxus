@@ -79,19 +79,22 @@ fn init_logging() {
     // 在发布模式下，将日志写入文件
     #[cfg(not(debug_assertions))]
     {
-        use std::fs::OpenOptions;
+        use std::fs::{self, OpenOptions};
 
-        // 创建日志目录
-        if let Err(_) = std::fs::create_dir_all("data/logs") {
-            // 如果无法创建目录，回退到当前目录
-        }
+        // 统一获取应用数据目录
+        let app_dir =
+            crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
+        let log_dir = app_dir.join("logs");
 
-        let log_file_path = "data/logs/timetracker.log";
+        // 确保日志目录存在
+        let _ = fs::create_dir_all(&log_dir);
+
+        let log_file_path = log_dir.join("timetracker.log");
 
         if let Ok(log_file) = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(log_file_path)
+            .open(&log_file_path)
         {
             builder
                 .target(Target::Pipe(Box::new(log_file)))
@@ -409,27 +412,17 @@ pub fn get_app_config() -> AppConfig {
 pub fn create_app_dirs() -> Result<()> {
     use std::fs;
 
-    // 在开发环境下，优先使用本地data目录
-    let is_dev = cfg!(debug_assertions) || std::env::var("CARGO").is_ok();
+    // 统一使用 utils::get_app_data_dir()，在开发环境下它仍会返回 ./data
+    let app_dir = crate::utils::get_app_data_dir()?;
 
-    let base_dirs = if is_dev {
-        // 开发环境：使用项目内的data目录，避免污染根目录
-        vec![
-            "data",
-            "data/config",
-            "data/logs",
-            "data/backups",
-            "data/exports",
-        ]
-    } else {
-        // 生产环境：使用标准目录结构
-        vec!["data", "config", "logs", "backups", "exports"]
-    };
+    // 需要创建的子目录
+    let sub_dirs = ["", "config", "logs", "backups", "exports"];
 
-    for dir in base_dirs {
-        if let Err(e) = fs::create_dir_all(dir) {
+    for sub in &sub_dirs {
+        let dir = app_dir.join(sub);
+        if let Err(e) = fs::create_dir_all(&dir) {
             if e.kind() != std::io::ErrorKind::AlreadyExists {
-                return Err(format!("创建目录 {} 失败: {}", dir, e).into());
+                return Err(format!("创建目录 {} 失败: {}", dir.display(), e).into());
             }
         }
     }
