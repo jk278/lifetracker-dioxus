@@ -60,7 +60,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 		[checkMaximized],
 	);
 
-	// 关闭窗口
+	// 关闭窗口（现在改为最小化到托盘，不直接退出应用）
 	const closeWindow = useCallback(async (e: React.MouseEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -68,10 +68,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 		try {
 			const { getCurrentWindow } = await import("@tauri-apps/api/window");
 			const currentWindow = getCurrentWindow();
-			await currentWindow.close();
-			console.log("窗口已关闭");
+			// 隐藏窗口到托盘
+			await currentWindow.hide();
+			console.log("窗口已隐藏到托盘");
 		} catch (error) {
-			console.error("关闭窗口失败:", error);
+			console.error("隐藏到托盘失败:", error);
 		}
 	}, []);
 
