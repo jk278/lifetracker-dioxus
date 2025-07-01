@@ -1,7 +1,7 @@
-//! # TimeTracker - 个人时间追踪器
+//! # LifeTracker - 综合生活追踪器
 //!
-//! 这是一个用Rust和Tauri开发的现代化时间追踪应用，提供Web界面。
-//! 主要功能包括任务计时、数据统计、分类管理等。
+//! 这是一个现代化的综合生活追踪应用，支持时间管理、财务记录、日记写作、习惯打卡等功能。
+//! 使用 Rust + Tauri 构建，提供跨平台的桌面应用体验。
 
 // 公共模块声明
 pub mod config; // 配置管理
@@ -110,7 +110,7 @@ impl AppBuilder {
         // 设置数据库路径
         let database_path = self
             .database_path
-            .unwrap_or_else(|| app_dir.join("timetracker.db"));
+            .unwrap_or_else(|| app_dir.join("lifetracker.db"));
 
         // 创建配置管理器
         let config_manager = ConfigManager::new(config_path)?;
@@ -189,11 +189,11 @@ pub fn get_app_directory() -> Result<std::path::PathBuf> {
     let app_dir = if cfg!(target_os = "windows") {
         dirs::config_dir()
             .ok_or_else(|| AppError::System("无法获取配置目录".to_string()))?
-            .join("TimeTracker")
+            .join("LifeTracker")
     } else {
         dirs::home_dir()
             .ok_or_else(|| AppError::System("无法获取用户目录".to_string()))?
-            .join(".timetracker")
+            .join(".lifetracker")
     };
 
     if !app_dir.exists() {

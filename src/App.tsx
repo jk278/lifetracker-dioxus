@@ -1,24 +1,20 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
-	BarChart3,
-	Calendar,
 	Clock,
-	Folder,
 	Info,
 	Menu,
 	Pause,
 	Play,
 	Settings,
 	Square,
+	Wallet,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
-import CategoryManagement from "./components/CategoryManagement";
-import Dashboard from "./components/Dashboard";
+import AccountingManagement from "./components/AccountingManagement";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import SettingsComponent from "./components/Settings";
-import Statistics from "./components/Statistics";
-import TaskManagement from "./components/TaskManagement";
+import TimingPage from "./components/TimingPage";
 import TitleBar from "./components/TitleBar";
 import { useScrollbarHiding } from "./hooks/useScrollbarHiding";
 import { ThemeProvider } from "./hooks/useTheme";
@@ -41,8 +37,8 @@ function App() {
 
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [activeView, setActiveView] = useState<
-		"dashboard" | "tasks" | "categories" | "statistics" | "settings" | "about"
-	>("dashboard");
+		"timing" | "settings" | "about" | "accounting"
+	>("timing");
 	const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
 	// 侧边栏状态管理 - 简化状态
@@ -367,27 +363,22 @@ function App() {
 							>
 								<div className={`p-4 space-y-2 ${isCollapsed ? "px-2" : ""}`}>
 									{[
-										{ id: "dashboard", name: "仪表板", icon: BarChart3 },
-										{ id: "tasks", name: "任务管理", icon: Clock },
-										{ id: "categories", name: "分类管理", icon: Folder },
-										{ id: "statistics", name: "统计报告", icon: Calendar },
+										{ id: "timing", name: "计时", icon: Clock },
+										{ id: "accounting", name: "记账", icon: Wallet },
 										{ id: "settings", name: "设置", icon: Settings },
 										{ id: "about", name: "关于", icon: Info },
 									].map(({ id, name, icon: Icon }) => (
 										<button
 											key={id}
 											onClick={() => setActiveView(id as any)}
-											className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 theme-transition ${
+											className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
 												activeView === id
-													? "bg-theme-primary-light text-theme-primary-dark"
-													: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-											}`}
-											title={isCollapsed ? name : undefined}
+													? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+													: "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300"
+											} ${isCollapsed ? "justify-center" : ""}`}
 										>
-											<Icon
-												className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`}
-											/>
-											{!isCollapsed && <span className="truncate">{name}</span>}
+											<Icon size={20} />
+											{!isCollapsed && <span>{name}</span>}
 										</button>
 									))}
 								</div>
@@ -401,8 +392,8 @@ function App() {
 						>
 							<div className="p-6">
 								<ErrorBoundary resetKeys={[activeView]}>
-									{activeView === "dashboard" && (
-										<Dashboard
+									{activeView === "timing" && (
+										<TimingPage
 											timerStatus={timerStatus}
 											tasks={tasks}
 											onStartTimer={startTimer}
@@ -412,90 +403,80 @@ function App() {
 											setSelectedTaskId={setSelectedTaskId}
 											onTasksUpdate={fetchTasks}
 											todayStats={todayStats}
+											onCategoriesUpdate={() => fetchTasks()}
 										/>
 									)}
-
-									{activeView === "tasks" && (
-										<TaskManagement tasks={tasks} onTasksUpdate={fetchTasks} />
-									)}
-
-									{activeView === "categories" && (
-										<CategoryManagement
-											onCategoriesUpdate={() => {
-												// 分类更新后可能需要刷新任务列表
-												fetchTasks();
-											}}
-										/>
-									)}
-
-									{activeView === "statistics" && <Statistics />}
 
 									{activeView === "settings" && <SettingsComponent />}
 
 									{activeView === "about" && <About />}
+
+									{activeView === "accounting" && <AccountingManagement />}
 								</ErrorBoundary>
 							</div>
 						</div>
 					</div>
 
-					{/* 悬浮按钮 - 简化动画类 */}
-					<div className="fixed bottom-6 right-6 z-50">
-						<div
-							className={`${getFloatingButtonStyle()} shadow-lg flex items-center rounded-lg relative transition-all duration-300 ease-out ${
-								isFloatingButtonExpanded
-									? "w-52 h-14" // 展开状态：长方形
-									: "w-14 h-14" // 收缩状态：正方形
-							}`}
-						>
-							{/* 左侧内容区域 - 简化过渡动画 */}
+					{/* 悬浮按钮 - 仅在仪表板(计时页面)显示 */}
+					{activeView === "timing" && (
+						<div className="fixed bottom-6 right-6 z-50">
 							<div
-								className={`flex items-center space-x-3 pl-4 overflow-hidden transition-all duration-300 ease-out ${
+								className={`${getFloatingButtonStyle()} shadow-lg flex items-center rounded-lg relative transition-all duration-300 ease-out ${
 									isFloatingButtonExpanded
-										? "w-40 opacity-100 translate-x-0" // 展开：显示内容，从右侧滑入
-										: "w-0 opacity-0 translate-x-4" // 收缩：隐藏内容，向右侧滑出
+										? "w-52 h-14" // 展开状态：长方形
+										: "w-14 h-14" // 收缩状态：正方形
 								}`}
 							>
-								{/* 固定宽度的时间显示区域 */}
-								<div className="text-left w-24 flex-shrink-0">
-									<div className="text-base font-mono font-bold text-white leading-tight">
-										{formatDuration(timerStatus.elapsed_seconds)}
+								{/* 左侧内容区域 - 简化过渡动画 */}
+								<div
+									className={`flex items-center space-x-3 pl-4 overflow-hidden transition-all duration-300 ease-out ${
+										isFloatingButtonExpanded
+											? "w-40 opacity-100 translate-x-0" // 展开：显示内容，从右侧滑入
+											: "w-0 opacity-0 translate-x-4" // 收缩：隐藏内容，向右侧滑出
+									}`}
+								>
+									{/* 固定宽度的时间显示区域 */}
+									<div className="text-left w-24 flex-shrink-0">
+										<div className="text-base font-mono font-bold text-white leading-tight">
+											{formatDuration(timerStatus.elapsed_seconds)}
+										</div>
+										<div className="text-xs text-white/80 leading-tight">
+											今日: {formatDuration(timerStatus.total_today_seconds)}
+										</div>
 									</div>
-									<div className="text-xs text-white/80 leading-tight">
-										今日: {formatDuration(timerStatus.total_today_seconds)}
-									</div>
+
+									{/* 停止按钮 */}
+									<button
+										onClick={(e) => {
+											e.stopPropagation(); // 阻止事件冒泡
+											stopTimer();
+										}}
+										className="p-1.5 bg-white/20 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
+										title="停止计时"
+									>
+										<Square className="h-4 w-4 text-white" />
+									</button>
 								</div>
 
-								{/* 停止按钮 */}
+								{/* 主控制按钮 - 绝对定位，始终在右侧固定位置 */}
 								<button
-									onClick={(e) => {
-										e.stopPropagation(); // 阻止事件冒泡
-										stopTimer();
-									}}
-									className="p-1.5 bg-white/20 hover:bg-white/30 rounded-md transition-colors flex-shrink-0"
-									title="停止计时"
+									onClick={handleFloatingButtonClick}
+									className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:bg-white/10"
+									title={
+										delayedIconState === "stopped"
+											? "开始计时"
+											: delayedIconState === "running"
+												? "暂停计时"
+												: "继续计时"
+									}
 								>
-									<Square className="h-4 w-4 text-white" />
+									<div className="transition-transform duration-200">
+										{getFloatingButtonIcon()}
+									</div>
 								</button>
 							</div>
-
-							{/* 主控制按钮 - 绝对定位，始终在右侧固定位置 */}
-							<button
-								onClick={handleFloatingButtonClick}
-								className="absolute right-2 w-10 h-10 flex items-center justify-center rounded-lg transition-all duration-200 hover:bg-white/10"
-								title={
-									delayedIconState === "stopped"
-										? "开始计时"
-										: delayedIconState === "running"
-											? "暂停计时"
-											: "继续计时"
-								}
-							>
-								<div className="transition-transform duration-200">
-									{getFloatingButtonIcon()}
-								</div>
-							</button>
 						</div>
-					</div>
+					)}
 				</div>
 			</ThemeProvider>
 		</ErrorBoundary>

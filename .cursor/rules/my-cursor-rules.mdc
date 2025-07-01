@@ -1,0 +1,348 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# LifeTracker - Cursor AI 开发规则
+
+## 项目概述
+
+LifeTracker 是一个使用 Tauri + React + TypeScript + Rust 构建的现代化综合生活追踪桌面应用。
+
+### 核心技术栈
+- **前端**: React 18 + TypeScript + Tailwind CSS + Vite
+- **后端**: Rust + Tauri + SQLite
+- **工具链**: Biome（代码格式化）+ pnpm（包管理）+ PowerShell（脚本）
+
+### 应用功能范围
+- **时间追踪**: 任务计时、分类管理、统计分析
+- **财务管理**: 收支记录、预算管理、财务报表
+- **日记功能**: 日常记录、心情追踪、富文本编辑
+- **习惯打卡**: 习惯追踪、连续记录、进度可视化
+- **数据统计**: 多维度分析、图表可视化、自定义报表
+
+## 架构设计
+
+### 项目结构
+```
+src/
+├── components/          # React 组件
+│   ├── Dashboard.tsx   # 主仪表板
+│   ├── TaskManagement.tsx
+│   ├── CategoryManagement.tsx
+│   ├── Statistics.tsx
+│   ├── Settings.tsx
+│   ├── About.tsx
+│   ├── TitleBar.tsx    # 自定义标题栏
+│   └── ErrorBoundary.tsx
+├── hooks/              # 自定义 React Hooks
+│   ├── useTheme.tsx    # 主题管理
+│   └── useScrollbarHiding.tsx
+├── types/              # TypeScript 类型定义
+│   └── index.ts        # 核心数据类型
+├── core/               # Rust 核心业务逻辑
+├── storage/            # 数据存储层
+├── config/             # 配置管理
+├── utils/              # 工具函数
+└── errors.rs           # 错误处理
+```
+
+### 数据流架构
+- **状态管理**: React useState/useCallback（未使用 Redux/Zustand）
+- **数据同步**: Tauri invoke 调用后端命令
+- **本地存储**: SQLite 数据库 + TOML 配置文件
+- **实时更新**: 定时器轮询机制
+
+## 代码规范
+
+### 通用规则
+- **语言使用**: 代码注释使用中文，日志使用英文
+- **优先级**: 可读性 > 简洁性 > 性能 > 技巧性
+- **错误处理**: 优先使用 Result<T,E> 模式
+
+### TypeScript/React 规范
+
+#### 组件设计
+```typescript
+// ✅ 正确：函数组件 + hooks
+function TaskManagement() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  
+  const fetchTasks = useCallback(async () => {
+    try {
+      const result = await invoke<Task[]>("get_tasks");
+      setTasks(result);
+    } catch (error) {
+      console.error("获取任务失败:", error);
+    }
+  }, []);
+  
+  return <div>...</div>;
+}
+
+// ❌ 避免：类组件（除非必要）
+class TaskComponent extends React.Component { ... }
+```
+
+#### 类型定义
+```typescript
+// ✅ 正确：明确的接口定义
+interface Task {
+  id: string;
+  name: string;
+  duration_seconds: number;
+  is_active: boolean;
+  // 所有字段都有明确类型
+}
+
+// ❌ 避免：any 类型
+interface BadTask {
+  id: any;
+  data: any;
+}
+```
+
+#### 状态管理
+```typescript
+// ✅ 正确：使用 useCallback 优化性能
+const handleStart = useCallback(async (taskId: string) => {
+  try {
+    await invoke("start_timer", { taskId });
+    await fetchTimerStatus();
+  } catch (error) {
+    console.error("启动计时器失败:", error);
+  }
+}, [fetchTimerStatus]);
+
+// ✅ 正确：合理的状态结构
+const [timerStatus, setTimerStatus] = useState<TimerStatus>({
+  state: "stopped",
+  elapsed_seconds: 0,
+  total_today_seconds: 0,
+});
+```
+
+#### 样式规范
+```tsx
+// ✅ 正确：Tailwind CSS 类名组织
+<div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+    任务名称
+  </span>
+</div>
+
+// ✅ 正确：响应式设计
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+```
+
+### Rust 后端规范
+
+#### 错误处理
+```rust
+// ✅ 正确：Result 类型 + 自定义错误
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("数据库错误: {0}")]
+    Database(#[from] rusqlite::Error),
+    
+    #[error("配置错误: {0}")]
+    Config(String),
+}
+
+type Result<T> = std::result::Result<T, AppError>;
+
+// ✅ 正确：错误传播
+pub fn get_tasks() -> Result<Vec<Task>> {
+    let conn = self.database.connection()?;
+    let tasks = conn.prepare("SELECT * FROM tasks")?
+        .query_map([], |row| {
+            Ok(Task {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                // ...
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(tasks)
+}
+```
+
+#### 数据库操作
+```rust
+// ✅ 正确：参数化查询防止 SQL 注入
+conn.execute(
+    "INSERT INTO tasks (id, name, category_id) VALUES (?1, ?2, ?3)",
+    params![task.id, task.name, task.category_id],
+)?;
+
+// ❌ 避免：字符串拼接
+let sql = format!("SELECT * FROM tasks WHERE name = '{}'", name);
+```
+
+#### Tauri 命令
+```rust
+// ✅ 正确：异步命令 + 错误处理
+#[tauri::command]
+pub async fn start_timer(task_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    state.timer.start(&task_id)
+        .await
+        .map_err(|e| format!("启动计时器失败: {}", e))
+}
+
+// ✅ 正确：状态管理
+#[tauri::command]
+pub async fn get_timer_status(state: State<'_, AppState>) -> Result<TimerStatus, String> {
+    Ok(state.timer.get_status())
+}
+```
+
+## 开发工作流
+
+### 代码提交规范
+```bash
+# 功能开发
+feat: 添加任务导出功能
+
+# 问题修复  
+fix: 修复计时器暂停后无法继续的问题
+
+# 性能优化
+perf: 优化任务列表渲染性能
+
+# 文档更新
+docs: 更新 API 文档
+```
+
+### 测试策略
+- **单元测试**: Rust 核心逻辑使用 `#[cfg(test)]`
+- **集成测试**: Tauri 命令端到端测试
+- **手动测试**: UI 交互和跨平台兼容性
+
+### 构建部署
+```bash
+# 开发环境
+pnpm tauri:dev
+
+# 生产构建
+pnpm tauri:build
+
+# 代码检查
+pnpm biome check --apply
+```
+
+## 性能优化
+
+### React 性能
+- 使用 `useCallback` 避免不必要的重渲染
+- 合理拆分组件，避免巨型组件
+- 使用 `useMemo` 缓存复杂计算
+- 适当的组件懒加载
+
+### Rust 性能
+- 数据库连接池管理
+- 异步操作避免阻塞 UI
+- 适当的内存缓存策略
+
+## 安全考虑
+
+### 数据安全
+- 所有数据库查询使用参数化
+- 用户输入验证和清理
+- 敏感数据加密存储
+
+### 应用安全
+- Tauri CSP 策略配置
+- 最小权限原则
+- 安全的文件操作
+
+## UI/UX 设计原则
+
+### 主题支持
+- 支持亮色/暗色主题切换
+- 使用 CSS 变量和 Tailwind dark: 前缀
+- 保持主题状态持久化
+
+### 响应式设计
+- 移动端友好（虽然是桌面应用）
+- 自适应窗口大小
+- 合理的最小窗口尺寸
+
+### 交互反馈
+- 加载状态指示
+- 操作成功/失败提示
+- 平滑的动画过渡
+
+## 具体功能模块
+
+### 时间追踪核心
+- 精确的时间计算（基于系统时间）
+- 暂停/恢复状态管理
+- 实时状态同步
+
+### 任务管理
+- CRUD 操作
+- 分类关联
+- 标签系统
+
+### 财务管理
+- 收支记录和分类
+- 预算设置和监控
+- 财务统计和分析
+- 支付方式管理
+
+### 日记功能
+- 日常记录写作
+- 心情和情绪追踪
+- 富文本编辑器
+- 搜索和标签系统
+
+### 习惯追踪
+- 习惯目标设定
+- 每日打卡记录
+- 连续天数统计
+- 进度可视化
+
+### 数据统计
+- 多维度数据分析
+- 图表可视化
+- 导出功能
+
+### 数据导入导出
+- CSV 格式支持
+- 数据完整性验证
+- 增量导入
+
+## 故障排除
+
+### 常见问题
+1. **数据库锁定**: 检查连接池和事务管理
+2. **前后端通信**: 检查 Tauri 命令注册
+3. **构建失败**: 检查 Rust 工具链版本
+4. **样式问题**: 检查 Tailwind 配置和构建
+
+### 调试工具
+- Rust: `log` + `env_logger`
+- React: 浏览器开发者工具
+- Tauri: 内置调试窗口
+
+## 扩展开发
+
+### 添加新功能
+1. 定义数据模型（Rust 结构体 + TypeScript 接口）
+2. 实现后端逻辑和 Tauri 命令
+3. 开发前端组件和状态管理
+4. 添加相应的测试用例
+
+### 第三方集成
+- 遵循最小依赖原则
+- 评估性能和安全影响
+- 保持向后兼容性
+
+---
+
+**重要提醒**: 
+- 始终保持代码的可读性和可维护性
+- 遵循现有的架构模式和代码风格
+- 重大变更前先讨论架构影响
+- 保持向后兼容性，避免破坏性更改
+- LifeTracker 是一个综合性生活追踪应用，不仅限于时间管理 

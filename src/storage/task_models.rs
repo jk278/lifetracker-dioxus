@@ -77,7 +77,7 @@ pub struct TaskInsert {
 /// 任务更新模型
 ///
 /// 用于更新现有的任务
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TaskUpdate {
     /// 任务名称（可选）
     pub name: Option<String>,

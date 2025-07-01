@@ -2,11 +2,13 @@
 //!
 //! 提供SQLite数据库的连接管理和基本操作
 
+use super::accounting_models::*;
 use super::models::*;
 use super::task_models::*;
 use crate::errors::{AppError, Result};
 use chrono::{DateTime, Local, NaiveDate};
 use rusqlite::{params, Connection, Result as SqliteResult};
+use serde_json;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -1020,6 +1022,732 @@ impl Database {
         }
 
         Ok(result)
+    }
+
+    // ==================== 账户操作 ====================
+
+    /// 插入账户
+    pub fn insert_account(&self, account: &AccountInsert) -> Result<i64> {
+        let sql = r#"
+            INSERT INTO accounts (
+                id, name, account_type, currency, balance, initial_balance,
+                description, is_active, is_default, created_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+        "#;
+
+        self.connection.execute(
+            sql,
+            &[
+                &account.id.to_string(),
+                &account.name,
+                &format!("{:?}", account.account_type).to_lowercase(),
+                &account.currency,
+                &account.balance,
+                &account.initial_balance,
+                &account.description,
+                &account.is_active,
+                &account.is_default,
+                &account.created_at.to_rfc3339(),
+            ],
+        )?;
+
+        let row_id = self
+            .connection
+            .query_row("SELECT last_insert_rowid()", &[], |row| {
+                row.get::<_, i64>(0)
+            })?;
+
+        log::debug!("插入账户: {}", account.id);
+        Ok(row_id)
+    }
+
+    /// 获取所有账户
+    pub fn get_all_accounts(&self) -> Result<Vec<crate::storage::Account>> {
+        let sql = r#"
+            SELECT id, name, account_type, currency, balance, initial_balance,
+                   description, is_active, is_default, created_at, updated_at
+            FROM accounts
+            WHERE is_active = true
+            ORDER BY is_default DESC, name ASC
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let mut rows = stmt.query([])?;
+        let mut accounts = Vec::new();
+        while let Some(row) = rows.next()? {
+            let id_str: String = row.get(0)?;
+            let account_type_str: String = row.get(2)?;
+            let created_str: String = row.get(9)?;
+
+            let updated_opt: Option<String> = row.get(10)?;
+
+            let account = crate::storage::Account {
+                id: Self::uuid_from_str(id_str)?,
+                name: row.get(1)?,
+                account_type: Self::parse_account_type_sql(&account_type_str)?,
+                currency: row.get(3)?,
+                balance: row.get(4)?,
+                initial_balance: row.get(5)?,
+                description: row.get(6)?,
+                is_active: row.get(7)?,
+                is_default: row.get(8)?,
+                created_at: Self::datetime_from_str(created_str)?,
+                updated_at: match updated_opt {
+                    Some(s) => Some(Self::datetime_from_str(s)?),
+                    None => None,
+                },
+            };
+            accounts.push(account);
+        }
+
+        Ok(accounts)
+    }
+
+    /// 将文本解析为 Uuid 并转换为 rusqlite 错误类型
+    fn uuid_from_str(text: String) -> std::result::Result<Uuid, rusqlite::Error> {
+        Uuid::parse_str(&text).map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })
+    }
+
+    /// 将 RFC3339 文本解析为 DateTime<Local>
+    fn datetime_from_str(text: String) -> std::result::Result<DateTime<Local>, rusqlite::Error> {
+        DateTime::parse_from_rfc3339(&text)
+            .map(|dt| dt.with_timezone(&Local))
+            .map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })
+    }
+
+    fn parse_account_type_sql(
+        type_str: &str,
+    ) -> std::result::Result<crate::storage::AccountType, rusqlite::Error> {
+        match type_str {
+            "cash" => Ok(crate::storage::AccountType::Cash),
+            "bank" => Ok(crate::storage::AccountType::Bank),
+            "creditcard" => Ok(crate::storage::AccountType::CreditCard),
+            "investment" => Ok(crate::storage::AccountType::Investment),
+            "other" => Ok(crate::storage::AccountType::Other),
+            _ => Err(rusqlite::Error::InvalidQuery),
+        }
+    }
+
+    /// 根据ID获取账户
+    pub fn get_account_by_id(&self, id: Uuid) -> Result<Option<crate::storage::Account>> {
+        let sql = r#"
+            SELECT id, name, account_type, currency, balance, initial_balance,
+                   description, is_active, is_default, created_at, updated_at
+            FROM accounts WHERE id = ?1
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+        let mut rows = stmt.query([id.to_string()])?;
+        if let Some(row) = rows.next()? {
+            let id_str: String = row.get(0)?;
+            let account_type_str: String = row.get(2)?;
+            let created_str: String = row.get(9)?;
+            let updated_opt: Option<String> = row.get(10)?;
+
+            let account = crate::storage::Account {
+                id: Self::uuid_from_str(id_str)?,
+                name: row.get(1)?,
+                account_type: Self::parse_account_type_sql(&account_type_str)?,
+                currency: row.get(3)?,
+                balance: row.get(4)?,
+                initial_balance: row.get(5)?,
+                description: row.get(6)?,
+                is_active: row.get(7)?,
+                is_default: row.get(8)?,
+                created_at: Self::datetime_from_str(created_str)?,
+                updated_at: match updated_opt {
+                    Some(s) => Some(Self::datetime_from_str(s)?),
+                    None => None,
+                },
+            };
+            Ok(Some(account))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// 更新账户
+    pub fn update_account(&self, id: Uuid, account: &crate::storage::AccountUpdate) -> Result<()> {
+        let mut sql_parts = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(name) = &account.name {
+            sql_parts.push("name = ?");
+            params.push(Box::new(name.clone()));
+        }
+
+        if let Some(account_type) = &account.account_type {
+            sql_parts.push("account_type = ?");
+            params.push(Box::new(format!("{:?}", account_type).to_lowercase()));
+        }
+
+        if let Some(currency) = &account.currency {
+            sql_parts.push("currency = ?");
+            params.push(Box::new(currency.clone()));
+        }
+
+        if let Some(description) = &account.description {
+            sql_parts.push("description = ?");
+            params.push(Box::new(description.clone()));
+        }
+
+        if let Some(is_active) = &account.is_active {
+            sql_parts.push("is_active = ?");
+            params.push(Box::new(*is_active));
+        }
+
+        if let Some(is_default) = &account.is_default {
+            sql_parts.push("is_default = ?");
+            params.push(Box::new(*is_default));
+        }
+
+        if sql_parts.is_empty() {
+            return Ok(());
+        }
+
+        sql_parts.push("updated_at = ?");
+        params.push(Box::new(Local::now().to_rfc3339()));
+
+        let sql = format!("UPDATE accounts SET {} WHERE id = ?", sql_parts.join(", "));
+        params.push(Box::new(id.to_string()));
+
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        self.connection.execute(&sql, &param_refs)?;
+
+        log::debug!("更新账户: {}", id);
+        Ok(())
+    }
+
+    /// 删除账户（软删除）
+    pub fn delete_account(&self, id: Uuid) -> Result<()> {
+        let sql = "UPDATE accounts SET is_active = false, updated_at = ?1 WHERE id = ?2";
+        self.connection
+            .execute(sql, &[&Local::now().to_rfc3339(), &id.to_string()])?;
+        log::debug!("删除账户: {}", id);
+        Ok(())
+    }
+
+    /// 更新账户余额
+    pub fn update_account_balance(&self, id: Uuid, new_balance: f64) -> Result<()> {
+        let sql = "UPDATE accounts SET balance = ?1, updated_at = ?2 WHERE id = ?3";
+        self.connection.execute(
+            sql,
+            &[&new_balance, &Local::now().to_rfc3339(), &id.to_string()],
+        )?;
+        log::debug!("更新账户余额: {} = {}", id, new_balance);
+        Ok(())
+    }
+
+    // ==================== 交易操作 ====================
+
+    /// 插入交易
+    pub fn insert_transaction(
+        &self,
+        transaction: &crate::storage::TransactionInsert,
+    ) -> Result<i64> {
+        let sql = r#"
+            INSERT INTO transactions (
+                id, transaction_type, amount, currency, description, account_id,
+                category_id, to_account_id, status, transaction_date, tags,
+                receipt_path, created_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+        "#;
+
+        let tags_json = serde_json::to_string(&transaction.tags)?;
+
+        self.connection.execute(
+            sql,
+            &[
+                &transaction.id.to_string(),
+                &format!("{:?}", transaction.transaction_type).to_lowercase(),
+                &transaction.amount,
+                &transaction.currency,
+                &transaction.description,
+                &transaction.account_id.to_string(),
+                &transaction.category_id.map(|id| id.to_string()),
+                &transaction.to_account_id.map(|id| id.to_string()),
+                &format!("{:?}", transaction.status).to_lowercase(),
+                &transaction.transaction_date.format("%Y-%m-%d").to_string(),
+                &tags_json,
+                &transaction.receipt_path,
+                &transaction.created_at.to_rfc3339(),
+            ],
+        )?;
+
+        let row_id = self
+            .connection
+            .query_row("SELECT last_insert_rowid()", &[], |row| {
+                row.get::<_, i64>(0)
+            })?;
+
+        log::debug!("插入交易: {}", transaction.id);
+        Ok(row_id)
+    }
+
+    /// 获取所有交易
+    pub fn get_all_transactions(&self) -> Result<Vec<crate::storage::Transaction>> {
+        let sql = r#"
+            SELECT t.id, t.transaction_type, t.amount, t.currency, t.description,
+                   t.account_id, t.category_id, t.to_account_id, t.status,
+                   t.transaction_date, t.tags, t.receipt_path, t.created_at, t.updated_at
+            FROM transactions t
+            ORDER BY t.transaction_date DESC, t.created_at DESC
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let transaction_iter = stmt.query_map([], |row| {
+            let tags_json: String = row.get(10)?;
+            let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    10,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?;
+
+            Ok(crate::storage::Transaction {
+                id: Self::uuid_from_str(row.get::<_, String>(0)?)?,
+                transaction_type: Self::parse_transaction_type_sql(&row.get::<_, String>(1)?)?,
+                amount: row.get(2)?,
+                currency: row.get(3)?,
+                description: row.get(4)?,
+                account_id: Self::uuid_from_str(row.get::<_, String>(5)?)?,
+                category_id: row
+                    .get::<_, Option<String>>(6)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                to_account_id: row
+                    .get::<_, Option<String>>(7)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                status: Self::parse_transaction_status_sql(&row.get::<_, String>(8)?)?,
+                transaction_date: Self::naive_date_from_str(row.get::<_, String>(9)?)?,
+                tags,
+                receipt_path: row.get(11)?,
+                created_at: Self::datetime_from_str(row.get::<_, String>(12)?)?,
+                updated_at: row
+                    .get::<_, Option<String>>(13)?
+                    .map(|s| Self::datetime_from_str(s))
+                    .transpose()?
+                    .map(|dt| dt.with_timezone(&Local)),
+            })
+        })?;
+
+        let mut transactions = Vec::new();
+        for transaction in transaction_iter {
+            transactions.push(transaction?);
+        }
+
+        Ok(transactions)
+    }
+
+    /// 根据日期范围获取交易
+    pub fn get_transactions_by_date_range(
+        &self,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<Vec<crate::storage::Transaction>> {
+        let sql = r#"
+            SELECT t.id, t.transaction_type, t.amount, t.currency, t.description,
+                   t.account_id, t.category_id, t.to_account_id, t.status,
+                   t.transaction_date, t.tags, t.receipt_path, t.created_at, t.updated_at
+            FROM transactions t
+            WHERE t.transaction_date >= ?1 AND t.transaction_date <= ?2
+            ORDER BY t.transaction_date DESC, t.created_at DESC
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let transaction_iter = stmt.query_map(
+            params![
+                start_date.format("%Y-%m-%d").to_string(),
+                end_date.format("%Y-%m-%d").to_string()
+            ],
+            |row| {
+                let tags_json: String = row.get(10)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        10,
+                        rusqlite::types::Type::Text,
+                        Box::new(e),
+                    )
+                })?;
+
+                Ok(crate::storage::Transaction {
+                    id: Self::uuid_from_str(row.get::<_, String>(0)?)?,
+                    transaction_type: Self::parse_transaction_type_sql(&row.get::<_, String>(1)?)?,
+                    amount: row.get(2)?,
+                    currency: row.get(3)?,
+                    description: row.get(4)?,
+                    account_id: Self::uuid_from_str(row.get::<_, String>(5)?)?,
+                    category_id: row
+                        .get::<_, Option<String>>(6)?
+                        .map(|s| Self::uuid_from_str(s))
+                        .transpose()?,
+                    to_account_id: row
+                        .get::<_, Option<String>>(7)?
+                        .map(|s| Self::uuid_from_str(s))
+                        .transpose()?,
+                    status: Self::parse_transaction_status_sql(&row.get::<_, String>(8)?)?,
+                    transaction_date: Self::naive_date_from_str(row.get::<_, String>(9)?)?,
+                    tags,
+                    receipt_path: row.get(11)?,
+                    created_at: Self::datetime_from_str(row.get::<_, String>(12)?)?,
+                    updated_at: row
+                        .get::<_, Option<String>>(13)?
+                        .map(|s| Self::datetime_from_str(s))
+                        .transpose()?
+                        .map(|dt| dt.with_timezone(&Local)),
+                })
+            },
+        )?;
+
+        let mut transactions = Vec::new();
+        for transaction in transaction_iter {
+            transactions.push(transaction?);
+        }
+
+        Ok(transactions)
+    }
+
+    /// 根据账户ID获取交易
+    pub fn get_transactions_by_account(
+        &self,
+        account_id: Uuid,
+    ) -> Result<Vec<crate::storage::Transaction>> {
+        let sql = r#"
+            SELECT t.id, t.transaction_type, t.amount, t.currency, t.description,
+                   t.account_id, t.category_id, t.to_account_id, t.status,
+                   t.transaction_date, t.tags, t.receipt_path, t.created_at, t.updated_at
+            FROM transactions t
+            WHERE t.account_id = ?1 OR t.to_account_id = ?1
+            ORDER BY t.transaction_date DESC, t.created_at DESC
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let transaction_iter = stmt.query_map(params![account_id.to_string()], |row| {
+            let tags_json: String = row.get(10)?;
+            let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    10,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?;
+
+            Ok(crate::storage::Transaction {
+                id: Self::uuid_from_str(row.get::<_, String>(0)?)?,
+                transaction_type: Self::parse_transaction_type_sql(&row.get::<_, String>(1)?)?,
+                amount: row.get(2)?,
+                currency: row.get(3)?,
+                description: row.get(4)?,
+                account_id: Self::uuid_from_str(row.get::<_, String>(5)?)?,
+                category_id: row
+                    .get::<_, Option<String>>(6)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                to_account_id: row
+                    .get::<_, Option<String>>(7)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                status: Self::parse_transaction_status_sql(&row.get::<_, String>(8)?)?,
+                transaction_date: Self::naive_date_from_str(row.get::<_, String>(9)?)?,
+                tags,
+                receipt_path: row.get(11)?,
+                created_at: Self::datetime_from_str(row.get::<_, String>(12)?)?,
+                updated_at: row
+                    .get::<_, Option<String>>(13)?
+                    .map(|s| Self::datetime_from_str(s))
+                    .transpose()?
+                    .map(|dt| dt.with_timezone(&Local)),
+            })
+        })?;
+
+        let mut transactions = Vec::new();
+        for transaction in transaction_iter {
+            transactions.push(transaction?);
+        }
+
+        Ok(transactions)
+    }
+
+    /// 更新交易
+    pub fn update_transaction(
+        &self,
+        id: Uuid,
+        transaction: &crate::storage::TransactionUpdate,
+    ) -> Result<()> {
+        let mut sql_parts = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(transaction_type) = &transaction.transaction_type {
+            sql_parts.push("transaction_type = ?");
+            params.push(Box::new(format!("{:?}", transaction_type).to_lowercase()));
+        }
+
+        if let Some(amount) = &transaction.amount {
+            sql_parts.push("amount = ?");
+            params.push(Box::new(*amount));
+        }
+
+        if let Some(currency) = &transaction.currency {
+            sql_parts.push("currency = ?");
+            params.push(Box::new(currency.clone()));
+        }
+
+        if let Some(description) = &transaction.description {
+            sql_parts.push("description = ?");
+            params.push(Box::new(description.clone()));
+        }
+
+        if let Some(account_id) = &transaction.account_id {
+            sql_parts.push("account_id = ?");
+            params.push(Box::new(account_id.to_string()));
+        }
+
+        if let Some(category_id) = &transaction.category_id {
+            sql_parts.push("category_id = ?");
+            params.push(Box::new(category_id.map(|id| id.to_string())));
+        }
+
+        if let Some(to_account_id) = &transaction.to_account_id {
+            sql_parts.push("to_account_id = ?");
+            params.push(Box::new(to_account_id.map(|id| id.to_string())));
+        }
+
+        if let Some(status) = &transaction.status {
+            sql_parts.push("status = ?");
+            params.push(Box::new(format!("{:?}", status).to_lowercase()));
+        }
+
+        if let Some(transaction_date) = &transaction.transaction_date {
+            sql_parts.push("transaction_date = ?");
+            params.push(Box::new(transaction_date.format("%Y-%m-%d").to_string()));
+        }
+
+        if let Some(tags) = &transaction.tags {
+            sql_parts.push("tags = ?");
+            let tags_json = serde_json::to_string(tags)?;
+            params.push(Box::new(tags_json));
+        }
+
+        if let Some(receipt_path) = &transaction.receipt_path {
+            sql_parts.push("receipt_path = ?");
+            params.push(Box::new(receipt_path.clone()));
+        }
+
+        if sql_parts.is_empty() {
+            return Ok(());
+        }
+
+        sql_parts.push("updated_at = ?");
+        params.push(Box::new(Local::now().to_rfc3339()));
+
+        let sql = format!(
+            "UPDATE transactions SET {} WHERE id = ?",
+            sql_parts.join(", ")
+        );
+        params.push(Box::new(id.to_string()));
+
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        self.connection.execute(&sql, &param_refs)?;
+
+        log::debug!("更新交易: {}", id);
+        Ok(())
+    }
+
+    /// 删除交易
+    pub fn delete_transaction(&self, id: Uuid) -> Result<()> {
+        let sql = "DELETE FROM transactions WHERE id = ?1";
+        self.connection.execute(sql, &[&id.to_string()])?;
+        log::debug!("删除交易: {}", id);
+        Ok(())
+    }
+
+    // ==================== 辅助方法 ====================
+
+    /// 解析账户类型
+    fn parse_account_type(&self, type_str: &str) -> Result<crate::storage::AccountType> {
+        match type_str {
+            "cash" => Ok(crate::storage::AccountType::Cash),
+            "bank" => Ok(crate::storage::AccountType::Bank),
+            "creditcard" => Ok(crate::storage::AccountType::CreditCard),
+            "investment" => Ok(crate::storage::AccountType::Investment),
+            "other" => Ok(crate::storage::AccountType::Other),
+            _ => Err(AppError::Storage(format!("未知的账户类型: {}", type_str))),
+        }
+    }
+
+    /// 解析交易类型
+    fn parse_transaction_type(&self, type_str: &str) -> Result<crate::storage::TransactionType> {
+        match type_str {
+            "income" => Ok(crate::storage::TransactionType::Income),
+            "expense" => Ok(crate::storage::TransactionType::Expense),
+            "transfer" => Ok(crate::storage::TransactionType::Transfer),
+            _ => Err(AppError::Storage(format!("未知的交易类型: {}", type_str))),
+        }
+    }
+
+    /// 解析交易状态
+    fn parse_transaction_status(
+        &self,
+        status_str: &str,
+    ) -> Result<crate::storage::TransactionStatus> {
+        match status_str {
+            "pending" => Ok(crate::storage::TransactionStatus::Pending),
+            "completed" => Ok(crate::storage::TransactionStatus::Completed),
+            "cancelled" => Ok(crate::storage::TransactionStatus::Cancelled),
+            _ => Err(AppError::Storage(format!("未知的交易状态: {}", status_str))),
+        }
+    }
+
+    /// 解析预算周期
+    fn parse_budget_period(&self, period_str: &str) -> Result<crate::storage::BudgetPeriod> {
+        match period_str {
+            "daily" => Ok(crate::storage::BudgetPeriod::Daily),
+            "weekly" => Ok(crate::storage::BudgetPeriod::Weekly),
+            "monthly" => Ok(crate::storage::BudgetPeriod::Monthly),
+            "yearly" => Ok(crate::storage::BudgetPeriod::Yearly),
+            _ => Err(AppError::Storage(format!("未知的预算周期: {}", period_str))),
+        }
+    }
+
+    // ==================== 统计查询 ====================
+
+    /// 获取账户余额统计
+    pub fn get_account_balance_summary(&self) -> Result<HashMap<String, f64>> {
+        let sql = r#"
+            SELECT currency, SUM(balance) as total_balance
+            FROM accounts
+            WHERE is_active = true
+            GROUP BY currency
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let balance_iter = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+        })?;
+
+        let mut balances = HashMap::new();
+        for balance in balance_iter {
+            let (currency, total) = balance?;
+            balances.insert(currency, total);
+        }
+
+        Ok(balances)
+    }
+
+    /// 获取交易统计
+    pub fn get_transaction_statistics(
+        &self,
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<crate::storage::FinancialStats> {
+        let sql = r#"
+            SELECT 
+                transaction_type,
+                SUM(amount) as total_amount,
+                COUNT(*) as transaction_count
+            FROM transactions
+            WHERE transaction_date >= ?1 AND transaction_date <= ?2
+            GROUP BY transaction_type
+        "#;
+
+        let conn = self.connection.connection.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let stats_iter = stmt.query_map(
+            params![
+                start_date.format("%Y-%m-%d").to_string(),
+                end_date.format("%Y-%m-%d").to_string()
+            ],
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, f64>(1)?,
+                    row.get::<_, i64>(2)?,
+                ))
+            },
+        )?;
+
+        let mut total_income = 0.0;
+        let mut total_expense = 0.0;
+        let mut transaction_count = 0;
+
+        for stat in stats_iter {
+            let (transaction_type, amount, count) = stat?;
+            transaction_count += count;
+
+            match transaction_type.as_str() {
+                "income" => total_income += amount,
+                "expense" => total_expense += amount,
+                "transfer" => {} // 转账不计入收支统计
+                _ => {}
+            }
+        }
+
+        let net_income = total_income - total_expense;
+        let account_balance = self.get_account_balance_summary()?.values().sum();
+
+        Ok(crate::storage::FinancialStats {
+            total_income,
+            total_expense,
+            net_income,
+            account_balance,
+            transaction_count,
+            period_start: start_date,
+            period_end: end_date,
+            currency: "CNY".to_string(), // 默认货币，后续可配置
+        })
+    }
+
+    /// 将 YYYY-MM-DD 文本解析为 NaiveDate
+    fn naive_date_from_str(text: String) -> std::result::Result<NaiveDate, rusqlite::Error> {
+        NaiveDate::parse_from_str(&text, "%Y-%m-%d").map_err(|e| {
+            rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
+        })
+    }
+
+    /// 将交易类型字符串解析为枚举（用于 SQL 结果集）
+    fn parse_transaction_type_sql(
+        type_str: &str,
+    ) -> std::result::Result<crate::storage::TransactionType, rusqlite::Error> {
+        match type_str {
+            "income" => Ok(crate::storage::TransactionType::Income),
+            "expense" => Ok(crate::storage::TransactionType::Expense),
+            "transfer" => Ok(crate::storage::TransactionType::Transfer),
+            _ => Err(rusqlite::Error::InvalidQuery),
+        }
+    }
+
+    /// 将交易状态字符串解析为枚举（用于 SQL 结果集）
+    fn parse_transaction_status_sql(
+        status_str: &str,
+    ) -> std::result::Result<crate::storage::TransactionStatus, rusqlite::Error> {
+        match status_str {
+            "pending" => Ok(crate::storage::TransactionStatus::Pending),
+            "completed" => Ok(crate::storage::TransactionStatus::Completed),
+            "cancelled" => Ok(crate::storage::TransactionStatus::Cancelled),
+            _ => Err(rusqlite::Error::InvalidQuery),
+        }
     }
 }
 

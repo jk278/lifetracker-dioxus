@@ -1,13 +1,13 @@
 [package]
-name = "time_tracker"
+name = "life_tracker"
 version = "0.1.0"
 edition = "2021"
-authors = ["Time Tracker Team"]
-description = "A comprehensive time tracking and task management application"
+authors = ["LifeTracker Team"]
+description = "A comprehensive life tracking and management application"
 license = "MIT"
-repository = "https://github.com/user/time_tracker"
+repository = "https://github.com/user/life_tracker"
 readme = "README.md"
-keywords = ["time", "tracker", "productivity", "rust", "gui"]
+keywords = ["life", "tracker", "productivity", "finance", "diary", "rust", "gui"]
 categories = ["command-line-utilities", "gui"]
 build = "build.rs"
 
@@ -15,10 +15,10 @@ build = "build.rs"
 [package.metadata]
 # Windows 特定配置
 [package.metadata.winres]
-OriginalFilename = "time_tracker.exe"
-LegalCopyright = "Copyright (c) 2025 Time Tracker Team"
-ProductName = "TimeTracker"
-FileDescription = "现代化时间跟踪工具"
+OriginalFilename = "life_tracker.exe"
+LegalCopyright = "Copyright (c) 2025 LifeTracker Team"
+ProductName = "LifeTracker"
+FileDescription = "综合性生活追踪工具"
 
 
 
@@ -83,7 +83,7 @@ default = ["tauri"]
 tauri = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-plugin-notification"]
 
 [[bin]]
-name = "time_tracker"
+name = "life_tracker"
 path = "src/main.rs"
 
 [profile.release]

@@ -1,7 +1,7 @@
 {
-  "name": "time-tracker",
+  "name": "life-tracker",
   "version": "0.1.0",
-  "description": "现代化的时间跟踪和管理工具",
+  "description": "综合性的生活追踪和管理工具",
   "type": "module",
   "scripts": {
     "dev": "vite",

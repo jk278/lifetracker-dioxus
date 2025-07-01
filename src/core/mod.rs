@@ -5,13 +5,16 @@
 //! - 任务管理
 //! - 分类管理
 //! - 数据分析
+//! - 记账功能
 
+pub mod accounting; // 记账功能核心逻辑
 pub mod analytics;
 pub mod category; // 分类管理
 pub mod task; // 任务管理
 pub mod timer; // 计时器核心逻辑 // 数据分析和统计
 
 // 重新导出主要类型
+pub use accounting::{AccountingManager, BudgetStatus, BudgetWarning, WarningSeverity};
 pub use analytics::{Analytics, AnalyticsReport};
 pub use category::{Category, CategoryColor, CategoryIcon, CategoryManager};
 pub use task::{Priority, Task, TaskManager, TaskStatus};

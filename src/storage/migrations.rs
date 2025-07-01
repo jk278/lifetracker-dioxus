@@ -3,11 +3,13 @@
 //! 管理数据库表结构的创建、更新和版本控制
 
 use crate::errors::{AppError, Result};
+use chrono::Local;
 use log::{debug, info, warn};
 use rusqlite::Connection;
+use uuid::Uuid;
 
 /// 数据库版本
-const CURRENT_DB_VERSION: i32 = 2;
+const CURRENT_DB_VERSION: i32 = 3;
 
 /// 迁移管理器
 ///
@@ -94,6 +96,7 @@ impl MigrationManager {
         match version {
             1 => self.migration_v1(),
             2 => self.migration_v2(),
+            3 => self.migration_v3(),
             _ => {
                 warn!("未知的迁移版本: {}", version);
                 Err(AppError::InvalidInput(format!(
@@ -198,16 +201,25 @@ impl MigrationManager {
         let icon_mapping = vec![
             ("work", "💼"),
             ("school", "📚"),
-            ("person", "👤"),
-            ("games", "🎮"),
-            ("fitness_center", "🏃"),
-            ("more_horiz", "📁"),
-            ("folder", "📁"),
+            ("exercise", "🏃"),
+            ("reading", "📖"),
+            ("hobby", "🎨"),
+            ("meeting", "🤝"),
+            ("project", "📊"),
+            ("personal", "👤"),
+            ("family", "👨‍👩‍👧‍👦"),
+            ("health", "⚕"),
+            ("shopping", "🛒"),
+            ("travel", "✈"),
+            ("food", "🍽"),
+            ("entertainment", "🎬"),
+            ("other", "📝"),
         ];
 
         // 开始事务
         let tx = self.connection.unchecked_transaction()?;
 
+        // 更新已存在的分类图标
         for (old_icon, new_icon) in icon_mapping {
             tx.execute(
                 "UPDATE categories SET icon = ?1 WHERE icon = ?2",
@@ -219,6 +231,115 @@ impl MigrationManager {
         tx.commit()?;
 
         info!("迁移 v2 完成");
+        Ok(())
+    }
+
+    /// 迁移到版本3：添加记账功能表
+    fn migration_v3(&self) -> Result<()> {
+        info!("运行迁移 v3: 添加记账功能表");
+
+        // 开始事务
+        let tx = self.connection.unchecked_transaction()?;
+
+        // 创建账户表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS accounts (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                account_type TEXT NOT NULL CHECK(account_type IN ('cash', 'bank', 'creditcard', 'investment', 'other')),
+                currency TEXT NOT NULL DEFAULT 'CNY',
+                balance REAL NOT NULL DEFAULT 0.0,
+                initial_balance REAL NOT NULL DEFAULT 0.0,
+                description TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                is_default BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建交易分类表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS transaction_categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                transaction_type TEXT NOT NULL CHECK(transaction_type IN ('income', 'expense', 'transfer')),
+                color TEXT NOT NULL DEFAULT '#2196F3',
+                icon TEXT,
+                description TEXT,
+                parent_id TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY (parent_id) REFERENCES transaction_categories(id) ON DELETE SET NULL
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建交易表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS transactions (
+                id TEXT PRIMARY KEY,
+                transaction_type TEXT NOT NULL CHECK(transaction_type IN ('income', 'expense', 'transfer')),
+                amount REAL NOT NULL CHECK(amount > 0),
+                currency TEXT NOT NULL DEFAULT 'CNY',
+                description TEXT NOT NULL,
+                account_id TEXT NOT NULL,
+                category_id TEXT,
+                to_account_id TEXT,
+                status TEXT NOT NULL DEFAULT 'completed' CHECK(status IN ('pending', 'completed', 'cancelled')),
+                transaction_date DATE NOT NULL,
+                tags TEXT NOT NULL DEFAULT '[]',
+                receipt_path TEXT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                FOREIGN KEY (category_id) REFERENCES transaction_categories(id) ON DELETE SET NULL,
+                FOREIGN KEY (to_account_id) REFERENCES accounts(id) ON DELETE SET NULL
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建预算表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS budgets (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                category_id TEXT NOT NULL,
+                amount REAL NOT NULL CHECK(amount > 0),
+                currency TEXT NOT NULL DEFAULT 'CNY',
+                period TEXT NOT NULL CHECK(period IN ('daily', 'weekly', 'monthly', 'yearly')),
+                start_date DATE NOT NULL,
+                end_date DATE,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                description TEXT,
+                created_at DATETIME NOT NULL,
+                updated_at DATETIME,
+                FOREIGN KEY (category_id) REFERENCES transaction_categories(id) ON DELETE CASCADE
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建记账相关索引
+        self.create_accounting_indexes(&tx)?;
+
+        // 插入默认账户和分类
+        self.insert_default_accounting_data(&tx)?;
+
+        // 提交事务
+        tx.commit()?;
+
+        info!("迁移 v3 完成");
         Ok(())
     }
 
@@ -324,6 +445,202 @@ impl MigrationManager {
         }
 
         debug!("默认分类插入完成");
+        Ok(())
+    }
+
+    /// 创建记账功能相关索引
+    fn create_accounting_indexes(&self, tx: &rusqlite::Transaction) -> Result<()> {
+        info!("创建记账功能索引");
+
+        // 账户索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_accounts_type ON accounts(account_type)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_accounts_active ON accounts(is_active)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_accounts_default ON accounts(is_default)",
+            [],
+        )?;
+
+        // 交易索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(transaction_date)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(transaction_type)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transactions_amount ON transactions(amount)",
+            [],
+        )?;
+
+        // 交易分类索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transaction_categories_type ON transaction_categories(transaction_type)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transaction_categories_active ON transaction_categories(is_active)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_transaction_categories_parent ON transaction_categories(parent_id)",
+            [],
+        )?;
+
+        // 预算索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category_id)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budgets_period ON budgets(period)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budgets_date_range ON budgets(start_date, end_date)",
+            [],
+        )?;
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_budgets_active ON budgets(is_active)",
+            [],
+        )?;
+
+        debug!("记账功能索引创建完成");
+        Ok(())
+    }
+
+    /// 插入默认记账数据
+    fn insert_default_accounting_data(&self, tx: &rusqlite::Transaction) -> Result<()> {
+        info!("插入默认记账数据");
+
+        // 插入默认账户
+        let default_accounts = vec![
+            ("现金", "cash", "CNY", "💵"),
+            ("银行卡", "bank", "CNY", "🏦"),
+            ("信用卡", "creditcard", "CNY", "💳"),
+        ];
+
+        for (name, account_type, currency, _icon) in default_accounts {
+            let account_id = uuid::Uuid::new_v4().to_string();
+            let now = chrono::Local::now().to_rfc3339();
+
+            let name_str = name.to_string();
+            let account_type_str = account_type.to_string();
+            let currency_str = currency.to_string();
+
+            tx.execute(
+                r#"
+                INSERT OR IGNORE INTO accounts (
+                    id, name, account_type, currency, balance, initial_balance,
+                    is_active, is_default, created_at
+                ) VALUES (?1, ?2, ?3, ?4, 0.0, 0.0, 1, 0, ?5)
+                "#,
+                &[
+                    &account_id,
+                    &name_str,
+                    &account_type_str,
+                    &currency_str,
+                    &now,
+                ],
+            )?;
+        }
+
+        // 设置第一个账户为默认账户
+        tx.execute(
+            "UPDATE accounts SET is_default = 1 WHERE id = (SELECT id FROM accounts WHERE account_type = 'cash' LIMIT 1)",
+            [],
+        )?;
+
+        // 插入默认收入分类
+        let income_categories = vec![
+            ("工资", "💰"),
+            ("奖金", "🎁"),
+            ("投资收益", "📈"),
+            ("兼职收入", "💼"),
+            ("其他收入", "💵"),
+        ];
+
+        for (name, icon) in income_categories {
+            let category_id = uuid::Uuid::new_v4().to_string();
+            let now = chrono::Local::now().to_rfc3339();
+
+            let name_str = name.to_string();
+            let icon_str = icon.to_string();
+
+            tx.execute(
+                r#"
+                INSERT OR IGNORE INTO transaction_categories (
+                    id, name, transaction_type, color, icon, is_active, created_at
+                ) VALUES (?1, ?2, 'income', '#4CAF50', ?3, 1, ?4)
+                "#,
+                &[&category_id, &name_str, &icon_str, &now],
+            )?;
+        }
+
+        // 插入默认支出分类
+        let expense_categories = vec![
+            ("餐饮", "🍽"),
+            ("交通", "🚗"),
+            ("购物", "🛒"),
+            ("娱乐", "🎬"),
+            ("住房", "🏠"),
+            ("医疗", "⚕"),
+            ("教育", "📚"),
+            ("旅行", "✈"),
+            ("通讯", "📱"),
+            ("其他支出", "📝"),
+        ];
+
+        for (name, icon) in expense_categories {
+            let category_id = uuid::Uuid::new_v4().to_string();
+            let now = chrono::Local::now().to_rfc3339();
+
+            let name_str = name.to_string();
+            let icon_str = icon.to_string();
+
+            tx.execute(
+                r#"
+                INSERT OR IGNORE INTO transaction_categories (
+                    id, name, transaction_type, color, icon, is_active, created_at
+                ) VALUES (?1, ?2, 'expense', '#F44336', ?3, 1, ?4)
+                "#,
+                &[&category_id, &name_str, &icon_str, &now],
+            )?;
+        }
+
+        // 插入转账分类
+        let transfer_category_id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Local::now().to_rfc3339();
+
+        tx.execute(
+            r#"
+            INSERT OR IGNORE INTO transaction_categories (
+                id, name, transaction_type, color, icon, is_active, created_at
+            ) VALUES (?1, '账户转账', 'transfer', '#2196F3', '🔄', 1, ?2)
+            "#,
+            &[&transfer_category_id, &now],
+        )?;
+
+        debug!("默认记账数据插入完成");
         Ok(())
     }
 

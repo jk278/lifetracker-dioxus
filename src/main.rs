@@ -1,7 +1,20 @@
-//! # TimeTracker 主程序
+//! # LifeTracker 主程序
 //!
-//! 一个现代化的时间跟踪和管理工具
-//! 使用现代Web界面(Tauri)构建
+//! LifeTracker 是一个综合性的生活追踪和管理工具，支持时间追踪、财务记录、
+//! 日记写作、习惯打卡等功能。
+//!
+//! ## 主要功能
+//! - 时间追踪和任务管理
+//! - 财务记录和统计
+//! - 日记写作功能
+//! - 习惯追踪和打卡
+//! - 数据统计和可视化
+//! - 数据导入导出
+//!
+//! ## 架构
+//! - 前端：React + TypeScript + Tailwind CSS
+//! - 后端：Rust + Tauri + SQLite
+//! - 跨平台：Windows/macOS/Linux
 
 // Windows 子系统配置：GUI应用不显示控制台窗口
 #![cfg_attr(
@@ -70,66 +83,14 @@ async fn main() {
 
 /// 初始化日志系统
 fn init_logging() {
-    use env_logger::{Builder, Target};
+    use env_logger::{Builder, Env};
     use log::LevelFilter;
-    use std::io::Write;
 
-    let mut builder = Builder::from_default_env();
+    let env = Env::default()
+        .filter_or("RUST_LOG", "info") // 将默认日志级别恢复为 info
+        .write_style_or("RUST_LOG_STYLE", "always");
 
-    // 在发布模式下，将日志写入文件
-    #[cfg(not(debug_assertions))]
-    {
-        use std::fs::{self, OpenOptions};
-
-        // 统一获取应用数据目录
-        let app_dir =
-            crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
-        let log_dir = app_dir.join("logs");
-
-        // 确保日志目录存在
-        let _ = fs::create_dir_all(&log_dir);
-
-        let log_file_path = log_dir.join("timetracker.log");
-
-        if let Ok(log_file) = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_file_path)
-        {
-            builder
-                .target(Target::Pipe(Box::new(log_file)))
-                .filter_level(LevelFilter::Info);
-        } else {
-            // 如果无法创建日志文件，使用stderr
-            builder
-                .target(Target::Stderr)
-                .filter_level(LevelFilter::Warn);
-        }
-    }
-
-    // 在调试模式下，输出到控制台
-    #[cfg(debug_assertions)]
-    {
-        builder
-            .target(Target::Stdout)
-            .filter_level(LevelFilter::Info);
-    }
-
-    builder
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "[{}] [{}] [{}:{}] {}",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
-                record.args()
-            )
-        })
-        .init();
-
-    log::info!("TimeTracker 启动");
+    Builder::from_env(env).format_timestamp_micros().init();
 }
 
 /// 运行Tauri模式
@@ -207,7 +168,7 @@ async fn run_tauri_mode() -> Result<()> {
 
             // 创建应用状态
             let app_state = tauri_commands::AppState {
-                storage: std::sync::Arc::new(std::sync::Mutex::new(storage_manager)),
+                storage: std::sync::Arc::new(tokio::sync::Mutex::new(storage_manager)),
                 timer: std::sync::Arc::new(std::sync::Mutex::new(timer)),
                 config: std::sync::Arc::new(std::sync::Mutex::new(
                     crate::config::AppConfig::default(),
@@ -283,6 +244,16 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::get_config,
             tauri_commands::update_config,
             tauri_commands::set_window_theme,
+            // 记账功能命令
+            tauri_commands::get_accounts,
+            tauri_commands::create_account,
+            tauri_commands::update_account,
+            tauri_commands::delete_account,
+            tauri_commands::get_transactions,
+            tauri_commands::create_transaction,
+            tauri_commands::update_transaction,
+            tauri_commands::delete_transaction,
+            tauri_commands::get_financial_stats,
         ])
         .run(tauri::generate_context!())
         .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {
@@ -376,7 +347,7 @@ impl Default for AppConfig {
             crate::utils::get_app_data_dir().unwrap_or_else(|_| std::path::PathBuf::from("./data"));
 
         Self {
-            database_path: app_dir.join("timetracker.db").to_string_lossy().to_string(),
+            database_path: app_dir.join("lifetracker.db").to_string_lossy().to_string(),
             config_path: app_dir.join("config.toml").to_string_lossy().to_string(),
             log_level: "info".to_string(),
             debug_mode: false,
@@ -389,19 +360,19 @@ pub fn get_app_config() -> AppConfig {
     let mut config = AppConfig::default();
 
     // 从环境变量读取配置
-    if let Ok(db_path) = std::env::var("TIMETRACKER_DB_PATH") {
+    if let Ok(db_path) = std::env::var("LIFETRACKER_DB_PATH") {
         config.database_path = db_path;
     }
 
-    if let Ok(config_path) = std::env::var("TIMETRACKER_CONFIG_PATH") {
+    if let Ok(config_path) = std::env::var("LIFETRACKER_CONFIG_PATH") {
         config.config_path = config_path;
     }
 
-    if let Ok(log_level) = std::env::var("TIMETRACKER_LOG_LEVEL") {
+    if let Ok(log_level) = std::env::var("LIFETRACKER_LOG_LEVEL") {
         config.log_level = log_level;
     }
 
-    if std::env::var("TIMETRACKER_DEBUG").is_ok() {
+    if std::env::var("LIFETRACKER_DEBUG").is_ok() {
         config.debug_mode = true;
     }
 
@@ -452,10 +423,10 @@ pub fn check_dependencies() -> Result<()> {
 
 /// 应用程序清理
 pub fn cleanup() {
-    log::info!("TimeTracker 正在关闭");
+    log::info!("LifeTracker 正在关闭");
 
     // 清理临时文件
-    let temp_files = ["test_write_permission", ".timetracker.lock"];
+    let temp_files = ["test_write_permission", ".lifetracker.lock"];
 
     for file in temp_files {
         if std::path::Path::new(file).exists() {
@@ -465,7 +436,7 @@ pub fn cleanup() {
         }
     }
 
-    log::info!("TimeTracker 已关闭");
+    log::info!("LifeTracker 已关闭");
 }
 
 /// 处理启动时错误
@@ -479,7 +450,7 @@ fn handle_startup_error(message: &str) {
     // 在Windows发布版本中，写入错误文件
     #[cfg(all(target_os = "windows", not(debug_assertions)))]
     {
-        if let Err(_) = std::fs::write("timetracker_error.log", message) {
+        if let Err(_) = std::fs::write("lifetracker_error.log", message) {
             // 写入文件失败时记录日志
             log::warn!("无法写入错误日志文件");
         }
@@ -503,7 +474,7 @@ mod tests {
     fn test_app_config_default() {
         let config = AppConfig::default();
         // 数据库路径现在应该包含完整路径，而不是简单的文件名
-        assert!(config.database_path.ends_with("timetracker.db"));
+        assert!(config.database_path.ends_with("lifetracker.db"));
         assert!(config.config_path.ends_with("config.toml"));
         assert_eq!(config.log_level, "info");
         assert!(!config.debug_mode);

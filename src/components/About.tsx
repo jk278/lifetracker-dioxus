@@ -12,16 +12,15 @@ const About: React.FC = () => {
 	useEffect(() => {
 		// 模拟应用信息，实际可以从 Tauri 命令获取
 		const info = {
-			name: "TimeTracker",
-			version: "1.0.0",
-			description:
-				"一个简洁、高效的时间跟踪工具，帮助您更好地管理时间和提高效率。",
-			author: "TimeTracker Team",
-			email: "contact@timetracker.dev",
-			website: "https://timetracker.dev",
-			repository: "https://github.com/timetracker/timetracker",
-			license: "MIT License",
-			buildDate: new Date().toLocaleDateString(),
+			name: "LifeTracker",
+			version: "0.1.0",
+			description: "综合性的生活追踪和管理工具",
+			author: "LifeTracker Team",
+			email: "contact@lifetracker.dev",
+			website: "https://lifetracker.dev",
+			repository: "https://github.com/lifetracker/lifetracker",
+			license: "MIT",
+			buildDate: "2024-01-15",
 			buildTarget: "Windows x64",
 		};
 		setAppInfo(info);
@@ -80,7 +79,7 @@ const About: React.FC = () => {
 			{/* 页面标题 */}
 			<div className="text-center">
 				<h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-					关于 TimeTracker
+					关于 LifeTracker
 				</h2>
 				<p className="text-gray-600 dark:text-gray-400">
 					了解更多关于我们的应用程序
@@ -310,7 +309,7 @@ const About: React.FC = () => {
 							MIT License
 						</h4>
 						<p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-							Copyright (c) 2024 TimeTracker Team
+							Copyright (c) 2024 LifeTracker Team
 							<br />
 							<br />
 							Permission is hereby granted, free of charge, to any person
@@ -409,7 +408,7 @@ const About: React.FC = () => {
 			{/* 底部版权信息 */}
 			<div className="text-center py-6">
 				<p className="text-sm text-gray-500 dark:text-gray-400">
-					© 2024 TimeTracker Team. All rights reserved.
+					© 2024 LifeTracker Team. All rights reserved.
 				</p>
 			</div>
 		</div>

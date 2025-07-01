@@ -5,15 +5,47 @@
 //! - 数据模型定义
 //! - 数据库迁移
 
-pub mod database; // 数据库操作
+pub mod accounting_models;
+pub mod database;
 pub mod migrations;
-pub mod models; // 数据模型 // 数据库迁移
-pub mod task_models; // 任务模型
+pub mod models;
+pub mod task_models;
 
 // 重新导出主要类型
 pub use database::Database;
-pub use models::TimeEntry;
-pub use task_models::{TaskInsert, TaskModel, TaskUpdate};
+pub use models::*;
+pub use task_models::*;
+
+// 导出记账功能相关模型
+pub use accounting_models::{
+    // 主要数据模型
+    Account,
+    AccountBalance,
+    AccountInsert,
+    AccountType,
+    AccountUpdate,
+    Budget,
+    BudgetInsert,
+    BudgetPeriod,
+
+    BudgetUpdate,
+
+    CategoryBreakdown,
+    FinancialReport,
+    // 统计和查询模型
+    FinancialStats,
+    MonthlyTrend,
+    Transaction,
+    TransactionCategory,
+    TransactionCategoryInsert,
+    TransactionCategoryUpdate,
+    TransactionInsert,
+    TransactionQuery,
+    TransactionStatus,
+    // 枚举类型
+    TransactionType,
+    TransactionUpdate,
+};
 
 use crate::errors::AppError;
 use rusqlite::Connection;

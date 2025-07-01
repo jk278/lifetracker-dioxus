@@ -31,6 +31,7 @@
 						"useButtonType": "off",
 						"noStaticElementInteractions": "off",
 						"noLabelWithoutControl": "off",
+						"noSvgWithoutTitle": "off",
 						"useKeyWithClickEvents": "off",
 						"noAutofocus": "off"
 					},
