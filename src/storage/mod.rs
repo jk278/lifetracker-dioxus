@@ -124,26 +124,29 @@ impl StorageManager {
 
     /// 配置数据库优化参数
     fn configure_database(&self) -> crate::errors::Result<()> {
-        let conn = self.database.get_connection()?;
+        let conn = self.database.get_connection()?.get_raw_connection();
+        let conn = conn.lock().unwrap();
 
         // 启用外键约束
-        conn.execute("PRAGMA foreign_keys = ON", &[])?;
+        conn.execute("PRAGMA foreign_keys = ON", rusqlite::params![])?;
 
         // 设置WAL模式（如果启用）
         if self.config.enable_wal {
             let journal_mode: String =
-                conn.query_row("PRAGMA journal_mode = WAL", &[], |row| row.get(0))?;
+                conn.query_row("PRAGMA journal_mode = WAL", rusqlite::params![], |row| {
+                    row.get(0)
+                })?;
             log::debug!("数据库日志模式设置为: {}", journal_mode);
         }
 
         // 设置同步模式
-        conn.execute("PRAGMA synchronous = NORMAL", &[])?;
+        conn.execute("PRAGMA synchronous = NORMAL", rusqlite::params![])?;
 
         // 设置缓存大小
-        conn.execute("PRAGMA cache_size = -64000", &[])?; // 64MB
+        conn.execute("PRAGMA cache_size = -64000", rusqlite::params![])?; // 64MB
 
         // 设置临时存储
-        conn.execute("PRAGMA temp_store = MEMORY", &[])?;
+        conn.execute("PRAGMA temp_store = MEMORY", rusqlite::params![])?;
 
         log::debug!("数据库配置完成");
         Ok(())
@@ -169,7 +172,7 @@ impl StorageManager {
         let mut backup_conn = Connection::open(backup_path)?;
 
         // 使用SQLite的备份API
-        let backup = rusqlite::backup::Backup::new(&source_conn, &mut backup_conn)?;
+        let backup = rusqlite::backup::Backup::new(&*source_conn, &mut backup_conn)?;
         backup.run_to_completion(5, std::time::Duration::from_millis(250), None)?;
 
         log::info!("数据库备份完成");
@@ -196,7 +199,7 @@ impl StorageManager {
         let mut dest_conn = dest_conn.lock().unwrap();
 
         // 使用 rusqlite 的 backup API 进行恢复
-        let backup = rusqlite::backup::Backup::new(&source_conn, &mut dest_conn)?;
+        let backup = rusqlite::backup::Backup::new(&source_conn, &mut *dest_conn)?;
         backup.run_to_completion(5, std::time::Duration::from_millis(250), None)?;
 
         log::info!("数据库恢复完成");
@@ -207,11 +210,12 @@ impl StorageManager {
     ///
     /// 执行VACUUM和ANALYZE操作
     pub fn optimize_database(&self) -> crate::errors::Result<()> {
-        let conn = self.database.get_connection()?;
+        let conn = self.database.get_connection()?.get_raw_connection();
+        let conn = conn.lock().unwrap();
 
         // 清理数据库
-        conn.execute("VACUUM", &[])?;
-        conn.execute("PRAGMA optimize", &[])?;
+        conn.execute("VACUUM", rusqlite::params![])?;
+        conn.execute("PRAGMA optimize", rusqlite::params![])?;
 
         log::info!("数据库优化完成");
         Ok(())
@@ -226,10 +230,11 @@ impl StorageManager {
         // 获取表的记录数
         let tables = vec!["time_entries", "categories"];
         for table in tables {
-            let count: i64 =
-                conn.query_row(&format!("SELECT COUNT(*) FROM {}", table), [], |row| {
-                    row.get(0)
-                })?;
+            let count: i64 = conn.query_row(
+                &format!("SELECT COUNT(*) FROM {}", table),
+                rusqlite::params![],
+                |row| row.get(0),
+            )?;
 
             stats.table_stats.push(TableStats {
                 table_name: table.to_string(),
@@ -244,8 +249,10 @@ impl StorageManager {
         }
 
         // 获取页面信息
-        let page_count: i64 = conn.query_row("PRAGMA page_count", [], |row| row.get(0))?;
-        let page_size: i64 = conn.query_row("PRAGMA page_size", [], |row| row.get(0))?;
+        let page_count: i64 =
+            conn.query_row("PRAGMA page_count", rusqlite::params![], |row| row.get(0))?;
+        let page_size: i64 =
+            conn.query_row("PRAGMA page_size", rusqlite::params![], |row| row.get(0))?;
 
         stats.page_count = page_count as usize;
         stats.page_size = page_size as usize;
@@ -256,8 +263,12 @@ impl StorageManager {
 
     /// 检查数据库完整性
     pub fn check_integrity(&self) -> crate::errors::Result<bool> {
-        let conn = self.database.get_connection()?;
-        let result: String = conn.query_row("PRAGMA integrity_check", &[], |row| row.get(0))?;
+        let conn = self.database.get_connection()?.get_raw_connection();
+        let conn = conn.lock().unwrap();
+        let result: String =
+            conn.query_row("PRAGMA integrity_check", rusqlite::params![], |row| {
+                row.get(0)
+            })?;
 
         let is_ok = result == "ok";
         if !is_ok {
@@ -348,16 +359,17 @@ impl StorageManager {
 
     /// 清空所有数据
     pub fn clear_all_data(&mut self) -> crate::errors::Result<()> {
-        let conn = self.database.get_connection()?;
+        let conn = self.database.get_connection()?.get_raw_connection();
+        let conn = conn.lock().unwrap();
 
         // 删除所有时间条目
-        conn.execute("DELETE FROM time_entries", &[])?;
+        conn.execute("DELETE FROM time_entries", rusqlite::params![])?;
 
         // 删除所有分类
-        conn.execute("DELETE FROM categories", &[])?;
+        conn.execute("DELETE FROM categories", rusqlite::params![])?;
 
         // 重置自增ID（如果存在的话）
-        if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", &[]) {
+        if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", rusqlite::params![]) {
             log::debug!("清理sqlite_sequence表失败（可能不存在）: {}", e);
         }
 

@@ -14,14 +14,21 @@ const CURRENT_DB_VERSION: i32 = 3;
 /// 迁移管理器
 ///
 /// 负责管理数据库表结构的创建和更新
-pub struct MigrationManager {
+pub struct MigrationManager<'conn> {
     /// 数据库连接
-    connection: Connection,
+    connection: &'conn mut Connection,
 }
 
-impl MigrationManager {
-    /// 创建新的迁移管理器
-    pub fn new(connection: Connection) -> Self {
+impl<'conn> MigrationManager<'conn> {
+    /// 创建新的迁移管理器（拥有连接）
+    pub fn new(connection: Connection) -> MigrationManager<'static> {
+        // 这个方法现在返回一个拥有连接的实例
+        // 为了保持向后兼容性，我们需要一个不同的方法
+        unimplemented!("Use new_with_connection instead for referenced connections")
+    }
+
+    /// 使用现有连接引用创建迁移管理器
+    pub fn new_with_connection(connection: &'conn mut Connection) -> Self {
         Self { connection }
     }
 
@@ -796,10 +803,13 @@ impl DatabaseStats {
 /// 便捷函数：运行迁移
 ///
 /// 创建迁移管理器并运行所有必要的迁移
-pub fn run_migrations(connection: Connection) -> Result<Connection> {
-    let mut migration_manager = MigrationManager::new(connection);
-    migration_manager.run_migrations()?;
-    Ok(migration_manager.connection)
+pub fn run_migrations(mut connection: Connection) -> Result<Connection> {
+    // 创建临时的 MigrationManager 来运行迁移
+    {
+        let mut migration_manager = MigrationManager::new_with_connection(&mut connection);
+        migration_manager.run_migrations()?;
+    }
+    Ok(connection)
 }
 
 /// 便捷函数：初始化数据库

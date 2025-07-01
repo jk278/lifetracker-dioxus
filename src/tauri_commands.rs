@@ -14,10 +14,10 @@ use tokio::{
 };
 use uuid::Uuid;
 
-/// 应用状态
-#[derive(Default)]
+/// 应用状态  
+#[derive(Debug)]
 pub struct AppState {
-    pub storage: Arc<AsyncMutex<Option<StorageManager>>>,
+    pub storage: Arc<StorageManager>,
     pub timer: Arc<Mutex<Timer>>,
     pub config: Arc<Mutex<AppConfig>>,
     pub current_task_id: Arc<Mutex<Option<String>>>,
@@ -164,12 +164,11 @@ pub async fn get_tasks(
         offset,
         category_id
     );
+    let storage = &state.storage;
 
     // 在作用域内获取数据，然后立即释放锁
     let (tasks, category_names, db_access_time) = {
         let start_time = std::time::Instant::now();
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
 
         // 从数据库获取任务
         let tasks_result = if let Some(cat_id_str) = &category_id {
@@ -262,6 +261,7 @@ pub async fn create_task(
 ) -> Result<TaskDto, String> {
     log::info!("创建任务: {}", request.name);
     log::debug!("创建任务请求: {:?}", request);
+    let storage = &state.storage;
 
     // 创建任务插入模型
     let task_id = Uuid::new_v4();
@@ -291,9 +291,6 @@ pub async fn create_task(
 
     // 在作用域内执行数据库操作，然后立即释放锁
     let (insert_result, category_name) = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
         // 验证分类ID（如果存在）
         if let Some(category_id_str) = &request.category_id {
             if let Ok(category_id) = Uuid::parse_str(category_id_str) {
@@ -364,6 +361,7 @@ pub async fn update_task(
     request: UpdateTaskRequest,
 ) -> Result<TaskDto, String> {
     log::info!("更新任务: {}", task_id);
+    let storage = &state.storage;
 
     let uuid = Uuid::parse_str(&task_id).map_err(|_| "无效的任务ID格式".to_string())?;
 
@@ -395,9 +393,6 @@ pub async fn update_task(
 
     // 在作用域内执行数据库操作，然后立即释放锁
     let (updated_task, category_name) = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
         // 验证任务是否存在
         let existing_task = storage
             .get_database()
@@ -469,10 +464,8 @@ pub async fn update_task(
 /// 删除任务
 #[tauri::command]
 pub async fn delete_task(state: State<'_, AppState>, task_id: String) -> Result<bool, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     let uuid = Uuid::parse_str(&task_id).map_err(|_| "无效的任务ID格式".to_string())?;
+    let storage = &state.storage;
 
     log::info!("删除任务: {}", task_id);
 
@@ -505,9 +498,8 @@ pub async fn start_timer(
 ) -> Result<TimerStatusDto, String> {
     // 1. 验证任务是否存在
     let task_uuid = Uuid::parse_str(&task_id).map_err(|_| "无效的任务ID")?;
+    let storage = &state.storage;
     {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
         storage
             .get_database()
             .get_task_by_id(task_uuid)
@@ -526,8 +518,6 @@ pub async fn start_timer(
 
     // 4. (可选) 更新任务状态为 'in_progress'
     {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
         let task_update = crate::storage::TaskUpdate {
             status: Some("in_progress".to_string()),
             ..Default::default()
@@ -554,6 +544,7 @@ pub async fn stop_timer(
 ) -> Result<TimerStatusDto, String> {
     let duration;
     let task_id;
+    let storage = &state.storage;
 
     // 1. 停止计时器并获取会话信息
     {
@@ -573,8 +564,6 @@ pub async fn stop_timer(
     // 3. 如果有当前任务，保存时间记录
     if let Some(task_id_str) = task_id {
         let task_uuid = Uuid::parse_str(&task_id_str).map_err(|_| "无效的任务ID")?;
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
 
         // 从数据库获取任务，以填充 `task_name` 和 `category_id`
         let task = storage
@@ -661,10 +650,8 @@ pub async fn get_timer_status(state: State<'_, AppState>) -> Result<TimerStatusD
     let mut current_task_name = None;
 
     if let Some(task_id) = &current_task_id {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
         if let Ok(uuid) = Uuid::parse_str(task_id) {
-            if let Ok(Some(task)) = storage.get_database().get_task_by_id(uuid) {
+            if let Ok(Some(task)) = state.storage.get_database().get_task_by_id(uuid) {
                 current_task_name = Some(task.name);
             }
         }
@@ -688,9 +675,7 @@ pub async fn get_today_time_entries(
 ) -> Result<Vec<serde_json::Value>, String> {
     log::debug!("获取今日时间记录");
     let today = Local::now().date_naive();
-
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
+    let storage = &state.storage;
 
     let entries = storage
         .get_database()
@@ -718,9 +703,7 @@ pub async fn get_today_time_entries(
 /// 调试命令：获取所有时间记录
 #[tauri::command]
 pub async fn debug_get_time_entries(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
+    let storage = &state.storage;
     let entries = storage
         .get_database()
         .get_all_time_entries()
@@ -750,11 +733,7 @@ pub async fn debug_get_time_entries(state: State<'_, AppState>) -> Result<Vec<St
 /// 获取今日统计信息
 #[tauri::command]
 pub async fn get_today_stats(state: State<'_, AppState>) -> Result<TimerStatusDto, String> {
-    let total_today_seconds = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-        get_today_total_seconds(storage)?
-    };
+    let total_today_seconds = { get_today_total_seconds(&state.storage)? };
 
     let mut status_dto = get_timer_status(state).await?;
 
@@ -768,10 +747,8 @@ pub async fn get_today_stats(state: State<'_, AppState>) -> Result<TimerStatusDt
 /// 获取所有分类
 #[tauri::command]
 pub async fn get_categories(state: State<'_, AppState>) -> Result<Vec<CategoryDto>, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     log::debug!("获取分类列表");
+    let storage = &state.storage;
 
     let categories = storage
         .get_database()
@@ -822,10 +799,8 @@ pub async fn create_category(
     state: State<'_, AppState>,
     request: CreateCategoryRequest,
 ) -> Result<CategoryDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     use crate::storage::models::CategoryInsert;
+    let storage = &state.storage;
 
     let category_id = Uuid::new_v4();
     let created_at = Local::now();
@@ -875,10 +850,8 @@ pub async fn update_category(
     category_id: String,
     request: UpdateCategoryRequest,
 ) -> Result<CategoryDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     use crate::storage::models::CategoryInsert;
+    let storage = &state.storage;
 
     let uuid = Uuid::parse_str(&category_id).map_err(|e| format!("无效的分类ID: {}", e))?;
 
@@ -952,10 +925,8 @@ pub async fn delete_category(
     state: State<'_, AppState>,
     category_id: String,
 ) -> Result<bool, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     let uuid = Uuid::parse_str(&category_id).map_err(|e| format!("无效的分类ID: {}", e))?;
+    let storage = &state.storage;
 
     log::debug!("删除分类: {}", category_id);
 
@@ -984,9 +955,6 @@ pub async fn get_statistics(
     state: State<'_, AppState>,
     period: Option<String>, // "today", "week", "month", "all"
 ) -> Result<StatisticsDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     // TODO: 实现实际的统计数据查询逻辑
     let stats = StatisticsDto {
         today: DayStatDto {
@@ -1048,23 +1016,19 @@ pub async fn get_financial_stats(
         start_date,
         end_date
     );
+    let storage = &state.storage;
 
     let start_date_naive = chrono::NaiveDate::parse_from_str(&start_date, "%Y-%m-%d")
         .map_err(|_| "无效的开始日期格式")?;
     let end_date_naive = chrono::NaiveDate::parse_from_str(&end_date, "%Y-%m-%d")
         .map_err(|_| "无效的结束日期格式")?;
 
-    let stats_from_db = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-        log::debug!("[CMD] get_financial_stats: Lock acquired, fetching from DB.");
-
-        storage
-            .get_database()
-            .get_transaction_statistics(start_date_naive, end_date_naive)
-            .map_err(|e| e.to_string())
-    }?;
-    log::debug!("[CMD] get_financial_stats: Lock released, mapping DTO.");
+    log::info!("[CMD] get_financial_stats: Fetching stats from database");
+    let stats_from_db = storage
+        .get_database()
+        .get_transaction_statistics(start_date_naive, end_date_naive)
+        .map_err(|e| e.to_string())?;
+    log::debug!("[CMD] get_financial_stats: Stats fetched, mapping DTO.");
 
     let stats_dto = FinancialStatsDto {
         total_income: stats_from_db.total_income,
@@ -1123,9 +1087,6 @@ pub async fn export_data(
     format: String, // "json", "csv", "xml"
     file_path: String,
 ) -> Result<String, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     log::info!("导出数据到: {}，格式: {}", file_path, format);
 
     let result = match format.as_str() {
@@ -1150,9 +1111,6 @@ pub async fn export_data(
 /// 导入数据
 #[tauri::command]
 pub async fn import_data(state: State<'_, AppState>, file_path: String) -> Result<String, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     log::info!("从 {} 导入数据", file_path);
 
     // TODO: 实现实际的数据导入逻辑
@@ -1409,11 +1367,10 @@ pub struct TransactionQueryRequest {
 #[tauri::command]
 pub async fn get_accounts(state: State<'_, AppState>) -> Result<Vec<AccountDto>, String> {
     log::debug!("[CMD] get_accounts: Attempting to get accounts.");
+    let storage = &state.storage;
 
     // 在作用域内获取数据，然后立即释放锁
     let accounts_from_db = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
         log::debug!("[CMD] get_accounts: Lock acquired, fetching from DB.");
 
         storage
@@ -1454,6 +1411,7 @@ pub async fn create_account(
         "[CMD] create_account: Received request for name '{}'",
         request.name
     );
+    let storage = &state.storage;
 
     // 解析账户类型
     let account_type = match request.account_type.as_str() {
@@ -1483,31 +1441,22 @@ pub async fn create_account(
     };
     log::info!("[CMD] create_account: Prepared account insert data.");
 
-    // 在作用域内执行数据库操作，然后立即释放锁
-    let insert_result = {
-        let storage_guard = state.storage.lock().await;
-        log::info!("[CMD] create_account: Acquired storage lock.");
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
+    // 如果设置为默认账户，先取消其他账户的默认状态
+    if account_insert.is_default {
+        // 这里需要额外的逻辑来处理默认账户，暂时跳过
+        log::warn!("设置默认账户功能待实现");
+    }
 
-        // 如果设置为默认账户，先取消其他账户的默认状态
-        if account_insert.is_default {
-            // 这里需要额外的逻辑来处理默认账户，暂时跳过
-            log::warn!("设置默认账户功能待实现");
-        }
+    // 直接插入数据库，SQLite 内部处理并发
+    let insert_result = storage
+        .get_database()
+        .insert_account(&account_insert)
+        .map_err(|e| e.to_string())?;
 
-        let result = storage.get_database().insert_account(&account_insert);
-
-        log::info!(
-            "[CMD] create_account: Database insert result: {:?}",
-            result
-                .as_ref()
-                .map(|_| "Success")
-                .map_err(|e| e.to_string())
-        );
-
-        result.map_err(|e| e.to_string())?
-    };
-    log::info!("[CMD] create_account: Database lock released.");
+    log::info!(
+        "[CMD] create_account: Database insert successful: {:?}",
+        insert_result
+    );
 
     let account_dto = AccountDto {
         id: account_id.to_string(),
@@ -1534,10 +1483,8 @@ pub async fn update_account(
     account_id: String,
     request: UpdateAccountRequest,
 ) -> Result<AccountDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     let uuid = Uuid::parse_str(&account_id).map_err(|_| "无效的账户ID")?;
+    let storage = &state.storage;
 
     log::debug!("更新账户: {}", account_id);
 
@@ -1600,10 +1547,8 @@ pub async fn delete_account(
     state: State<'_, AppState>,
     account_id: String,
 ) -> Result<bool, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     let uuid = Uuid::parse_str(&account_id).map_err(|_| "无效的账户ID")?;
+    let storage = &state.storage;
 
     log::debug!("删除账户: {}", account_id);
 
@@ -1625,10 +1570,9 @@ pub async fn get_transactions(
     query: Option<TransactionQueryRequest>,
 ) -> Result<Vec<TransactionDto>, String> {
     log::debug!("[CMD] get_transactions: Attempting to get transactions.");
+    let storage = &state.storage;
 
     let (transactions, accounts) = {
-        let storage_guard = state.storage.lock().await;
-        let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
         log::debug!("[CMD] get_transactions: Lock acquired, fetching from DB.");
 
         let transactions_res = if let Some(q) = query {
@@ -1716,10 +1660,8 @@ pub async fn create_transaction(
     state: State<'_, AppState>,
     request: CreateTransactionRequest,
 ) -> Result<TransactionDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
     log::debug!("创建交易: {}", request.description);
+    let storage = &state.storage;
 
     // 解析交易类型
     let transaction_type = match request.transaction_type.as_str() {
@@ -1879,9 +1821,7 @@ pub async fn update_transaction(
     transaction_id: String,
     request: UpdateTransactionRequest,
 ) -> Result<TransactionDto, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
+    let storage = &state.storage;
     let uuid = Uuid::parse_str(&transaction_id).map_err(|_| "无效的交易ID")?;
 
     log::debug!("更新交易: {}", transaction_id);
@@ -1993,9 +1933,7 @@ pub async fn delete_transaction(
     state: State<'_, AppState>,
     transaction_id: String,
 ) -> Result<bool, String> {
-    let storage_guard = state.storage.lock().await;
-    let storage = storage_guard.as_ref().ok_or("存储未初始化")?;
-
+    let storage = &state.storage;
     let uuid = Uuid::parse_str(&transaction_id).map_err(|_| "无效的交易ID")?;
 
     log::debug!("删除交易: {}", transaction_id);

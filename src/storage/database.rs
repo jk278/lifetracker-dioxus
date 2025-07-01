@@ -14,88 +14,117 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-/// 数据库连接包装器
+/// 数据库连接池
 ///
-/// 提供线程安全的数据库连接管理
+/// 提供读写分离的数据库连接管理
 #[derive(Debug)]
 pub struct DatabaseConnection {
-    /// SQLite连接
-    connection: Arc<Mutex<Connection>>,
+    /// 数据库文件路径
+    database_path: String,
+    /// 写连接（互斥）
+    write_connection: Arc<Mutex<Connection>>,
 }
 
 impl DatabaseConnection {
-    /// 创建新的数据库连接
+    /// 创建新的数据库连接池
     pub fn new<P: AsRef<Path>>(database_path: P) -> Result<Self> {
-        // 确保数据库父目录存在，避免在发布模式下因目录缺失导致无法打开
+        let path_str = database_path.as_ref().to_string_lossy().to_string();
+
+        // 确保数据库父目录存在
         if let Some(parent) = database_path.as_ref().parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
                 AppError::Storage(format!("无法创建数据库目录 {}: {}", parent.display(), e))
             })?;
         }
 
-        let conn = Connection::open(&database_path)?;
+        // 创建写连接
+        let write_conn = Connection::open(&database_path)?;
+
+        // 配置数据库参数
+        let _journal_mode: String =
+            write_conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
+        write_conn.busy_timeout(std::time::Duration::from_secs(30))?;
+        write_conn.execute("PRAGMA foreign_keys=ON", [])?;
+        write_conn.execute("PRAGMA synchronous=NORMAL", [])?;
 
         Ok(Self {
-            connection: Arc::new(Mutex::new(conn)),
+            database_path: path_str,
+            write_connection: Arc::new(Mutex::new(write_conn)),
         })
     }
 
-    /// 执行SQL语句
-    pub fn execute(&self, sql: &str, params: &[&dyn rusqlite::ToSql]) -> Result<usize> {
-        let conn = self.connection.lock().unwrap();
-        Ok(conn.execute(sql, params)?)
+    /// 创建只读连接
+    fn create_read_connection(&self) -> Result<Connection> {
+        let conn = Connection::open(&self.database_path)?;
+        // 只读连接配置
+        let _journal_mode: String =
+            conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
+        conn.busy_timeout(std::time::Duration::from_secs(10))?;
+        conn.execute("PRAGMA query_only=ON", [])?;
+        Ok(conn)
     }
 
-    /// 查询单行数据
+    /// 执行读操作（不需要锁）
+    pub fn read<T, F>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&Connection) -> Result<T>,
+    {
+        let read_conn = self.create_read_connection()?;
+        f(&read_conn)
+    }
+
+    /// 执行写操作（需要独占锁）
+    pub fn write<T, F>(&self, f: F) -> Result<T>
+    where
+        F: FnOnce(&mut Connection) -> Result<T>,
+    {
+        let mut write_conn = self
+            .write_connection
+            .lock()
+            .map_err(|_| AppError::System("Failed to acquire write lock".to_string()))?;
+        f(&mut *write_conn)
+    }
+
+    /// 执行SQL语句（写操作）
+    pub fn execute(&self, sql: &str, params: &[&dyn rusqlite::ToSql]) -> Result<usize> {
+        self.write(|conn| Ok(conn.execute(sql, params)?))
+    }
+
+    /// 查询单行数据（读操作）
     pub fn query_row<T, F>(&self, sql: &str, params: &[&dyn rusqlite::ToSql], f: F) -> Result<T>
     where
         F: FnOnce(&rusqlite::Row<'_>) -> SqliteResult<T>,
     {
-        let conn = self.connection.lock().unwrap();
-        Ok(conn.query_row(sql, params, f)?)
+        self.read(|conn| Ok(conn.query_row(sql, params, f)?))
     }
 
-    /// 准备SQL语句
-    /// 注意：由于生命周期限制，这个方法暂时移除
-    /// 建议直接使用execute或query_row方法
-    // pub fn prepare(&self, sql: &str) -> Result<rusqlite::Statement> {
-    //     let conn = self.connection.lock().unwrap();
-    //     Ok(conn.prepare(sql)?)
-    // }
-
-    /// 开始事务
+    /// 开始事务（写操作）
     pub fn begin_transaction(&self) -> Result<()> {
-        let conn = self
-            .connection
-            .lock()
-            .map_err(|_| AppError::System("Failed to acquire database lock".to_string()))?;
-        conn.execute("BEGIN TRANSACTION", [])?;
-        Ok(())
+        self.write(|conn| {
+            conn.execute("BEGIN TRANSACTION", [])?;
+            Ok(())
+        })
     }
 
-    /// 提交事务
+    /// 提交事务（写操作）
     pub fn commit_transaction(&self) -> Result<()> {
-        let conn = self
-            .connection
-            .lock()
-            .map_err(|_| AppError::System("Failed to acquire database lock".to_string()))?;
-        conn.execute("COMMIT", [])?;
-        Ok(())
+        self.write(|conn| {
+            conn.execute("COMMIT", [])?;
+            Ok(())
+        })
     }
 
-    /// 回滚事务
+    /// 回滚事务（写操作）
     pub fn rollback_transaction(&self) -> Result<()> {
-        let conn = self
-            .connection
-            .lock()
-            .map_err(|_| AppError::System("Failed to acquire database lock".to_string()))?;
-        conn.execute("ROLLBACK", [])?;
-        Ok(())
+        self.write(|conn| {
+            conn.execute("ROLLBACK", [])?;
+            Ok(())
+        })
     }
 
-    /// 获取底层连接的引用（用于备份等操作）
+    /// 获取写连接的引用（用于迁移等特殊操作）
     pub fn get_raw_connection(&self) -> Arc<Mutex<Connection>> {
-        self.connection.clone()
+        self.write_connection.clone()
     }
 }
 
@@ -129,18 +158,13 @@ impl Database {
     pub fn run_migrations(&self) -> Result<()> {
         use crate::storage::migrations::MigrationManager;
 
-        // 获取现有连接的克隆，用于迁移
-        let conn = self.connection.connection.lock().unwrap();
-        let temp_path = self.database_path.clone();
-        drop(conn); // 释放锁
-
-        // 创建临时连接用于迁移
-        let migration_conn = Connection::open(&temp_path)?;
-        let mut migration_manager = MigrationManager::new(migration_conn);
-        migration_manager.run_migrations()?;
-
-        log::info!("数据库迁移完成");
-        Ok(())
+        // 使用写连接进行迁移
+        self.connection.write(|conn| {
+            let mut migration_manager = MigrationManager::new_with_connection(conn);
+            migration_manager.run_migrations()?;
+            log::info!("数据库迁移完成");
+            Ok(())
+        })
     }
 
     /// 获取数据库连接
@@ -453,47 +477,51 @@ impl Database {
             ORDER BY created_at DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
-        let mut stmt = conn.prepare(sql)?;
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
 
-        let tasks = stmt.query_map([], |row| {
-            Ok(TaskModel {
-                id: Uuid::parse_str(&row.get::<_, String>("id")?).unwrap(),
-                name: row.get("name")?,
-                description: row.get("description")?,
-                category_id: row
-                    .get::<_, Option<String>>("category_id")?
-                    .and_then(|s| Uuid::parse_str(&s).ok()),
-                status: row.get("status")?,
-                priority: row.get("priority")?,
-                estimated_duration_seconds: row.get("estimated_duration_seconds")?,
-                total_duration_seconds: row.get("total_duration_seconds")?,
-                tags: row.get("tags")?,
-                due_date: row
-                    .get::<_, Option<String>>("due_date")?
-                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|dt| dt.with_timezone(&Local)),
-                is_completed: row.get("is_completed")?,
-                completed_at: row
-                    .get::<_, Option<String>>("completed_at")?
-                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|dt| dt.with_timezone(&Local)),
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                    .unwrap()
-                    .with_timezone(&Local),
-                updated_at: row
-                    .get::<_, Option<String>>("updated_at")?
-                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
-                    .map(|dt| dt.with_timezone(&Local)),
-            })
-        })?;
+            let task_iter = stmt.query_map([], |row| {
+                let tags_json: String = row.get(8)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
 
-        let mut result = Vec::new();
-        for task in tasks {
-            result.push(task?);
-        }
+                Ok(TaskModel {
+                    id: Self::uuid_from_str(row.get(0)?)?,
+                    name: row.get(1)?,
+                    description: row.get(2)?,
+                    category_id: row
+                        .get::<_, Option<String>>(3)?
+                        .map(|s| Self::uuid_from_str(s))
+                        .transpose()?,
+                    status: row.get(4)?,
+                    priority: row.get(5)?,
+                    estimated_duration_seconds: row.get(6)?,
+                    total_duration_seconds: row.get(7)?,
+                    tags: tags_json,
+                    due_date: row
+                        .get::<_, Option<String>>(9)?
+                        .map(|s| Self::datetime_from_str(s))
+                        .transpose()?,
+                    is_completed: row.get(10)?,
+                    completed_at: row
+                        .get::<_, Option<String>>(11)?
+                        .map(|s| Self::datetime_from_str(s))
+                        .transpose()?,
+                    created_at: Self::datetime_from_str(row.get(12)?)?,
+                    updated_at: row
+                        .get::<_, Option<String>>(13)?
+                        .map(|s| Self::datetime_from_str(s))
+                        .transpose()?,
+                })
+            })?;
 
-        Ok(result)
+            let mut tasks = Vec::new();
+            for task_result in task_iter {
+                tasks.push(task_result?);
+            }
+
+            log::debug!("获取到 {} 个任务", tasks.len());
+            Ok(tasks)
+        })
     }
 
     /// 根据ID获取任务
@@ -653,10 +681,14 @@ impl Database {
             ORDER BY created_at DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let tasks = stmt.query_map([category_id.to_string()], |row| {
+            let tags_json: String = row.get("tags")?;
+            let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+
             Ok(TaskModel {
                 id: Uuid::parse_str(&row.get::<_, String>("id")?).unwrap(),
                 name: row.get("name")?,
@@ -668,7 +700,7 @@ impl Database {
                 priority: row.get("priority")?,
                 estimated_duration_seconds: row.get("estimated_duration_seconds")?,
                 total_duration_seconds: row.get("total_duration_seconds")?,
-                tags: row.get("tags")?,
+                tags: tags_json,
                 due_date: row
                     .get::<_, Option<String>>("due_date")?
                     .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
@@ -744,7 +776,8 @@ impl Database {
             ORDER BY sort_order, name
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let categories = stmt.query_map([], |row| {
@@ -874,7 +907,8 @@ impl Database {
             GROUP BY category_id
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let mut counts = std::collections::HashMap::new();
@@ -903,7 +937,8 @@ impl Database {
             GROUP BY category_id
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let mut durations = std::collections::HashMap::new();
@@ -933,7 +968,8 @@ impl Database {
             LIMIT ?1
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let entries = stmt.query_map([limit as i64], |row| {
@@ -983,7 +1019,8 @@ impl Database {
             ORDER BY start_time DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let entries = stmt.query_map([], |row| {
@@ -1071,38 +1108,36 @@ impl Database {
             ORDER BY is_default DESC, name ASC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
-        let mut stmt = conn.prepare(sql)?;
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
 
-        let mut rows = stmt.query([])?;
-        let mut accounts = Vec::new();
-        while let Some(row) = rows.next()? {
-            let id_str: String = row.get(0)?;
-            let account_type_str: String = row.get(2)?;
-            let created_str: String = row.get(9)?;
+            let account_iter = stmt.query_map([], |row| {
+                Ok(crate::storage::Account {
+                    id: Self::uuid_from_str(row.get(0)?)?,
+                    name: row.get(1)?,
+                    account_type: Self::parse_account_type_sql(&row.get::<_, String>(2)?)?,
+                    currency: row.get(3)?,
+                    balance: row.get(4)?,
+                    initial_balance: row.get(5)?,
+                    description: row.get(6)?,
+                    is_active: row.get(7)?,
+                    is_default: row.get(8)?,
+                    created_at: Self::datetime_from_str(row.get(9)?)?,
+                    updated_at: row
+                        .get::<_, Option<String>>(10)?
+                        .map(|s| Self::datetime_from_str(s))
+                        .transpose()?,
+                })
+            })?;
 
-            let updated_opt: Option<String> = row.get(10)?;
+            let mut accounts = Vec::new();
+            for account_result in account_iter {
+                accounts.push(account_result?);
+            }
 
-            let account = crate::storage::Account {
-                id: Self::uuid_from_str(id_str)?,
-                name: row.get(1)?,
-                account_type: Self::parse_account_type_sql(&account_type_str)?,
-                currency: row.get(3)?,
-                balance: row.get(4)?,
-                initial_balance: row.get(5)?,
-                description: row.get(6)?,
-                is_active: row.get(7)?,
-                is_default: row.get(8)?,
-                created_at: Self::datetime_from_str(created_str)?,
-                updated_at: match updated_opt {
-                    Some(s) => Some(Self::datetime_from_str(s)?),
-                    None => None,
-                },
-            };
-            accounts.push(account);
-        }
-
-        Ok(accounts)
+            log::debug!("获取到 {} 个账户", accounts.len());
+            Ok(accounts)
+        })
     }
 
     /// 将文本解析为 Uuid 并转换为 rusqlite 错误类型
@@ -1146,13 +1181,15 @@ impl Database {
             FROM accounts WHERE id = ?1
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
         let mut rows = stmt.query([id.to_string()])?;
         if let Some(row) = rows.next()? {
             let id_str: String = row.get(0)?;
             let account_type_str: String = row.get(2)?;
             let created_str: String = row.get(9)?;
+
             let updated_opt: Option<String> = row.get(10)?;
 
             let account = crate::storage::Account {
@@ -1305,7 +1342,8 @@ impl Database {
             ORDER BY t.transaction_date DESC, t.created_at DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let transaction_iter = stmt.query_map([], |row| {
@@ -1369,7 +1407,8 @@ impl Database {
             ORDER BY t.transaction_date DESC, t.created_at DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let transaction_iter = stmt.query_map(
@@ -1438,7 +1477,8 @@ impl Database {
             ORDER BY t.transaction_date DESC, t.created_at DESC
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
         let mut stmt = conn.prepare(sql)?;
 
         let transaction_iter = stmt.query_map(params![account_id.to_string()], |row| {
@@ -1639,20 +1679,21 @@ impl Database {
             GROUP BY currency
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
-        let mut stmt = conn.prepare(sql)?;
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
 
-        let balance_iter = stmt.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-        })?;
+            let balance_iter = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+            })?;
 
-        let mut balances = HashMap::new();
-        for balance in balance_iter {
-            let (currency, total) = balance?;
-            balances.insert(currency, total);
-        }
+            let mut balances = HashMap::new();
+            for balance in balance_iter {
+                let (currency, total) = balance?;
+                balances.insert(currency, total);
+            }
 
-        Ok(balances)
+            Ok(balances)
+        })
     }
 
     /// 获取交易统计
@@ -1671,51 +1712,52 @@ impl Database {
             GROUP BY transaction_type
         "#;
 
-        let conn = self.connection.connection.lock().unwrap();
-        let mut stmt = conn.prepare(sql)?;
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
 
-        let stats_iter = stmt.query_map(
-            params![
-                start_date.format("%Y-%m-%d").to_string(),
-                end_date.format("%Y-%m-%d").to_string()
-            ],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, f64>(1)?,
-                    row.get::<_, i64>(2)?,
-                ))
-            },
-        )?;
+            let stats_iter = stmt.query_map(
+                params![
+                    start_date.format("%Y-%m-%d").to_string(),
+                    end_date.format("%Y-%m-%d").to_string()
+                ],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, f64>(1)?,
+                        row.get::<_, i64>(2)?,
+                    ))
+                },
+            )?;
 
-        let mut total_income = 0.0;
-        let mut total_expense = 0.0;
-        let mut transaction_count = 0;
+            let mut total_income = 0.0;
+            let mut total_expense = 0.0;
+            let mut transaction_count = 0;
 
-        for stat in stats_iter {
-            let (transaction_type, amount, count) = stat?;
-            transaction_count += count;
+            for stat in stats_iter {
+                let (transaction_type, amount, count) = stat?;
+                transaction_count += count;
 
-            match transaction_type.as_str() {
-                "income" => total_income += amount,
-                "expense" => total_expense += amount,
-                "transfer" => {} // 转账不计入收支统计
-                _ => {}
+                match transaction_type.as_str() {
+                    "income" => total_income += amount,
+                    "expense" => total_expense += amount,
+                    "transfer" => {} // 转账不计入收支统计
+                    _ => {}
+                }
             }
-        }
 
-        let net_income = total_income - total_expense;
-        let account_balance = self.get_account_balance_summary()?.values().sum();
+            let net_income = total_income - total_expense;
+            let account_balance = self.get_account_balance_summary()?.values().sum();
 
-        Ok(crate::storage::FinancialStats {
-            total_income,
-            total_expense,
-            net_income,
-            account_balance,
-            transaction_count,
-            period_start: start_date,
-            period_end: end_date,
-            currency: "CNY".to_string(), // 默认货币，后续可配置
+            Ok(crate::storage::FinancialStats {
+                total_income,
+                total_expense,
+                net_income,
+                account_balance,
+                transaction_count,
+                period_start: start_date,
+                period_end: end_date,
+                currency: "CNY".to_string(), // 默认货币，后续可配置
+            })
         })
     }
 

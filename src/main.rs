@@ -152,7 +152,7 @@ async fn run_tauri_mode() -> Result<()> {
                         )));
                     }
                     log::info!("数据库初始化成功");
-                    Some(sm)
+                    sm
                 }
                 Err(e) => {
                     log::error!("存储管理器创建失败: {}", e);
@@ -168,7 +168,7 @@ async fn run_tauri_mode() -> Result<()> {
 
             // 创建应用状态
             let app_state = tauri_commands::AppState {
-                storage: std::sync::Arc::new(tokio::sync::Mutex::new(storage_manager)),
+                storage: std::sync::Arc::new(storage_manager),
                 timer: std::sync::Arc::new(std::sync::Mutex::new(timer)),
                 config: std::sync::Arc::new(std::sync::Mutex::new(
                     crate::config::AppConfig::default(),
