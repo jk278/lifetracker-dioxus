@@ -252,7 +252,6 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::delete_account,
             tauri_commands::get_transactions,
             tauri_commands::create_transaction,
-            tauri_commands::update_transaction,
             tauri_commands::delete_transaction,
             tauri_commands::get_financial_stats,
         ])

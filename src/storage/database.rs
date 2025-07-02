@@ -1527,6 +1527,65 @@ impl Database {
         Ok(transactions)
     }
 
+    /// 根据ID获取交易
+    pub fn get_transaction_by_id(&self, id: Uuid) -> Result<Option<crate::storage::Transaction>> {
+        let sql = r#"
+            SELECT t.id, t.transaction_type, t.amount, t.currency, t.description,
+                   t.account_id, t.category_id, t.to_account_id, t.status,
+                   t.transaction_date, t.tags, t.receipt_path, t.created_at, t.updated_at
+            FROM transactions t
+            WHERE t.id = ?1
+        "#;
+
+        let conn = self.connection.get_raw_connection();
+        let conn = conn.lock().unwrap();
+        let mut stmt = conn.prepare(sql)?;
+
+        let mut transaction_iter = stmt.query_map(params![id.to_string()], |row| {
+            let tags_json: String = row.get(10)?;
+            let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    10,
+                    rusqlite::types::Type::Text,
+                    Box::new(e),
+                )
+            })?;
+
+            Ok(crate::storage::Transaction {
+                id: Self::uuid_from_str(row.get::<_, String>(0)?)?,
+                transaction_type: Self::parse_transaction_type_sql(&row.get::<_, String>(1)?)?,
+                amount: row.get(2)?,
+                currency: row.get(3)?,
+                description: row.get(4)?,
+                account_id: Self::uuid_from_str(row.get::<_, String>(5)?)?,
+                category_id: row
+                    .get::<_, Option<String>>(6)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                to_account_id: row
+                    .get::<_, Option<String>>(7)?
+                    .map(|s| Self::uuid_from_str(s))
+                    .transpose()?,
+                status: Self::parse_transaction_status_sql(&row.get::<_, String>(8)?)?,
+                transaction_date: Self::naive_date_from_str(row.get::<_, String>(9)?)?,
+                tags,
+                receipt_path: row.get(11)?,
+                created_at: Self::datetime_from_str(row.get::<_, String>(12)?)?,
+                updated_at: row
+                    .get::<_, Option<String>>(13)?
+                    .map(|s| Self::datetime_from_str(s))
+                    .transpose()?
+                    .map(|dt| dt.with_timezone(&Local)),
+            })
+        })?;
+
+        // 获取第一个（也应该是唯一的）结果
+        match transaction_iter.next() {
+            Some(transaction) => Ok(Some(transaction?)),
+            None => Ok(None),
+        }
+    }
+
     /// 更新交易
     pub fn update_transaction(
         &self,

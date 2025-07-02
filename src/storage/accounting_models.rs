@@ -9,7 +9,7 @@ use uuid::Uuid;
 // ==================== 枚举类型 ====================
 
 /// 交易类型枚举
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum TransactionType {
     /// 收入
