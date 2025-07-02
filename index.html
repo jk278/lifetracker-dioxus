@@ -7,7 +7,12 @@
     
     <!-- 防止白色闪烁：隐藏内容 + 加载后显示 -->
     <style>
-      /* 隐藏内容直到React应用准备好 */
+      /*
+        目的：防止 Tauri/React 初始化时出现白屏或未渲染内容的闪烁。
+        1. 先隐藏 body，避免 WebView/React 加载前出现空白或布局错乱。
+        2. 媒体查询保证背景色与系统主题一致，防止首帧白屏。
+        3. React 挂载/内容渲染后再显示 body，实现平滑过渡。
+      */
       body { 
         visibility: hidden; 
         opacity: 0; 
@@ -18,6 +23,24 @@
       noscript body { 
         visibility: visible !important; 
         opacity: 1 !important; 
+      }
+      
+      /*
+        初始背景色：根据系统主题自动适配，避免首帧白屏。
+        需与 Tailwind/ThemeProvider 主题色保持一致。
+        这样即使 JS 未执行，页面也能正确适配明暗模式。
+      */
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0; /* 移除默认 8px 外边距，避免边缘白条 */
+        background: #f9fafb; /* 亮色模式下与 Tailwind gray-50 对齐 */
+      }
+      
+      @media (prefers-color-scheme: dark) {
+        html, body {
+          background: #0f1419; /* 暗色模式下与 ThemeProvider 的 darkBg 对齐 */
+        }
       }
     </style>
   </head>
@@ -33,21 +56,23 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
-    <!-- React应用初始化完成后显示内容 -->
+    <!--
+      目的：确保 Tauri/React 初始化完成后再显示内容，避免白屏或未渲染内容的闪烁。
+      1. MutationObserver 监听 #root 节点内容变化，React 挂载后立即显示 body。
+      2. 兜底：3 秒后强制显示，防止极端情况下内容迟迟未渲染。
+      3. 若浏览器不支持 MutationObserver，则 200ms 后兜底显示。
+    -->
     <script>
-      // 显示应用内容
+      // 显示应用内容（解除隐藏/透明）
       function showApp() {
         document.body.style.visibility = 'visible';
         document.body.style.opacity = '1';
       }
       
-      // 使用MutationObserver监听DOM变化
       if (window.MutationObserver) {
         let hasShown = false;
-        
         const observer = new MutationObserver(function(mutations) {
           if (hasShown) return;
-          
           for (let mutation of mutations) {
             if (mutation.addedNodes.length > 0) {
               const root = document.getElementById('root');
@@ -60,12 +85,10 @@
             }
           }
         });
-        
         observer.observe(document.getElementById('root'), {
           childList: true,
           subtree: true
         });
-        
         // 兜底：3秒后强制显示，避免无限等待
         setTimeout(function() {
           if (!hasShown) {
@@ -75,7 +98,7 @@
           }
         }, 3000);
       } else {
-        // 兜底：如果不支持MutationObserver，延迟显示
+        // 兜底：如果不支持 MutationObserver，延迟显示
         setTimeout(showApp, 200);
       }
     </script>

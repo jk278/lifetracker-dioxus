@@ -110,7 +110,7 @@ async fn run_tauri_mode() -> Result<()> {
             let is_dark_theme =
                 crate::config::theme::ThemeConfig::get_initial_theme_class() == "dark";
             let bg_color = if is_dark_theme {
-                Color(0, 0, 0, 255) // 暗色模式纯黑 #000000
+                Color(15, 20, 25, 255) // 暗色模式背景 #0f1419
             } else {
                 Color(249, 250, 251, 255) // 亮色模式背景 #f9fafb (gray-50)
             };
