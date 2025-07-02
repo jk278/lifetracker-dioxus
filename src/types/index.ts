@@ -226,13 +226,13 @@ export interface UpdateAccountRequest {
 // 创建交易请求类型
 export interface CreateTransactionRequest {
   transaction_type: TransactionType;
-  amount: number;
+  amount: string | number;
   description: string;
   account_id: string;
   category_id?: string;
-  to_account_id?: string;  // 转账时使用
-  transaction_date?: string;
-  tags?: string[];
+  to_account_id?: string;
+  transaction_date: string;
+  tags: string[];
   receipt_path?: string;
 }
 

@@ -2,7 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
 	AccountDto,
 	AccountType,
@@ -39,7 +39,7 @@ const AccountingManagement: React.FC = () => {
 	const [newTransaction, setNewTransaction] =
 		useState<CreateTransactionRequest>({
 			transaction_type: "expense",
-			amount: 0,
+			amount: "",
 			description: "",
 			account_id: "",
 			category_id: undefined,
@@ -48,6 +48,17 @@ const AccountingManagement: React.FC = () => {
 			tags: [],
 			receipt_path: undefined,
 		});
+
+	// 金额输入框ref
+	const amountInputRef = useRef<HTMLInputElement>(null);
+
+	// 弹窗打开时自动聚焦并全选金额输入框
+	useEffect(() => {
+		if (isCreateTransactionOpen && amountInputRef.current) {
+			amountInputRef.current.focus();
+			amountInputRef.current.select();
+		}
+	}, [isCreateTransactionOpen]);
 
 	// 获取数据的方法
 	const fetchAccounts = useCallback(async () => {
@@ -120,11 +131,16 @@ const AccountingManagement: React.FC = () => {
 	// 创建交易
 	const createTransaction = async () => {
 		try {
-			await invoke("create_transaction", { request: newTransaction });
+			await invoke("create_transaction", {
+				request: {
+					...newTransaction,
+					amount: Number(newTransaction.amount) || 0,
+				},
+			});
 			setIsCreateTransactionOpen(false);
 			setNewTransaction({
 				transaction_type: "expense",
-				amount: 0,
+				amount: "",
 				description: "",
 				account_id: "",
 				category_id: undefined,
@@ -724,11 +740,12 @@ const AccountingManagement: React.FC = () => {
 									<input
 										type="number"
 										step="0.01"
+										ref={amountInputRef}
 										value={newTransaction.amount}
 										onChange={(e) =>
 											setNewTransaction({
 												...newTransaction,
-												amount: Number(e.target.value),
+												amount: e.target.value,
 											})
 										}
 										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
