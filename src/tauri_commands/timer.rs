@@ -141,6 +141,28 @@ pub async fn pause_timer(
     Ok(status_dto)
 }
 
+/// 恢复计时器
+#[tauri::command]
+pub async fn resume_timer(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+) -> Result<TimerStatusDto, String> {
+    {
+        let mut timer = state.timer.lock().map_err(|e| e.to_string())?;
+        timer.resume().map_err(|e| e.to_string())?;
+    }
+
+    // 只是恢复，不写入数据库，状态由TimerStatusDto反映
+    log::info!("计时器已恢复");
+
+    // 获取并返回当前状态
+    let status_dto = get_timer_status(state).await?;
+    app_handle
+        .emit("timer_status_changed", &status_dto)
+        .map_err(|e| e.to_string())?;
+    Ok(status_dto)
+}
+
 /// 获取当前计时器状态
 #[tauri::command]
 pub async fn get_timer_status(state: State<'_, AppState>) -> Result<TimerStatusDto, String> {

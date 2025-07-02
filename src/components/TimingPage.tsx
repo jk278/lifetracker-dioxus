@@ -11,6 +11,7 @@ interface TimingPageProps {
 	tasks: Task[];
 	onStartTimer: (taskId: string) => void;
 	onPauseTimer: () => void;
+	onResumeTimer: () => void;
 	onStopTimer: () => void;
 	selectedTaskId: string;
 	setSelectedTaskId: (id: string) => void;
@@ -37,6 +38,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 	tasks,
 	onStartTimer,
 	onPauseTimer,
+	onResumeTimer,
 	onStopTimer,
 	selectedTaskId,
 	setSelectedTaskId,
@@ -81,6 +83,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 					tasks={tasks}
 					onStartTimer={onStartTimer}
 					onPauseTimer={onPauseTimer}
+					onResumeTimer={onResumeTimer}
 					onStopTimer={onStopTimer}
 					selectedTaskId={selectedTaskId}
 					setSelectedTaskId={setSelectedTaskId}

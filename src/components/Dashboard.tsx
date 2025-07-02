@@ -23,6 +23,7 @@ interface DashboardProps {
 	tasks: Task[];
 	onStartTimer: (taskId: string) => void;
 	onPauseTimer: () => void;
+	onResumeTimer: () => void;
 	onStopTimer: () => void;
 	selectedTaskId: string;
 	setSelectedTaskId: (id: string) => void;
@@ -56,6 +57,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 	tasks,
 	onStartTimer,
 	onPauseTimer,
+	onResumeTimer,
 	onStopTimer,
 	selectedTaskId,
 	setSelectedTaskId,
@@ -213,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 					) : (
 						<>
 							<button
-								onClick={onPauseTimer}
+								onClick={timerStatus.state === "running" ? onPauseTimer : onResumeTimer}
 								className="flex items-center justify-center w-20 h-20 bg-yellow-600 text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all transform hover:scale-105"
 								title={timerStatus.state === "running" ? "暂停" : "继续"}
 							>

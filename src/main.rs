@@ -230,6 +230,7 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::start_timer,
             tauri_commands::stop_timer,
             tauri_commands::pause_timer,
+            tauri_commands::resume_timer,
             tauri_commands::get_timer_status,
             tauri_commands::get_today_time_entries,
             tauri_commands::debug_get_time_entries,

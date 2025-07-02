@@ -219,6 +219,16 @@ function App() {
 		}
 	}, []);
 
+	// 恢复计时
+	const resumeTimer = useCallback(async () => {
+		try {
+			const status = await invoke<TimerStatus>("resume_timer");
+			setTimerStatus(status);
+		} catch (error) {
+			console.error("恢复计时失败:", error);
+		}
+	}, []);
+
 	// 停止计时
 	const stopTimer = useCallback(async () => {
 		try {
@@ -287,10 +297,10 @@ function App() {
 		} else if (timerStatus.state === "running") {
 			pauseTimer();
 		} else if (timerStatus.state === "paused") {
-			// 从暂停状态恢复运行 - 调用pauseTimer实际上会恢复运行
-			pauseTimer();
+			// 从暂停状态恢复运行 - 调用resumeTimer
+			resumeTimer();
 		}
-	}, [pauseTimer, startTimer, timerStatus.state]);
+	}, [pauseTimer, resumeTimer, startTimer, timerStatus.state]);
 
 	// 获取悬浮按钮的图标 - 使用延迟状态实现平滑切换
 	const getFloatingButtonIcon = useCallback(() => {
@@ -398,6 +408,7 @@ function App() {
 											tasks={tasks}
 											onStartTimer={startTimer}
 											onPauseTimer={pauseTimer}
+											onResumeTimer={resumeTimer}
 											onStopTimer={stopTimer}
 											selectedTaskId={selectedTaskId}
 											setSelectedTaskId={setSelectedTaskId}
