@@ -52,6 +52,10 @@ const AccountingManagement: React.FC = () => {
 	// 金额输入框ref
 	const amountInputRef = useRef<HTMLInputElement>(null);
 
+	// 当前正在编辑的交易（为空表示创建模式）
+	const [editingTransaction, setEditingTransaction] =
+		useState<TransactionDto | null>(null);
+
 	// 弹窗打开时自动聚焦并全选金额输入框
 	useEffect(() => {
 		if (isCreateTransactionOpen && amountInputRef.current) {
@@ -128,16 +132,36 @@ const AccountingManagement: React.FC = () => {
 		}
 	};
 
-	// 创建交易
-	const createTransaction = async () => {
+	// 保存（创建/编辑）交易
+	const saveTransaction = async () => {
 		try {
-			await invoke("create_transaction", {
-				request: {
-					...newTransaction,
-					amount: Number(newTransaction.amount) || 0,
-				},
-			});
+			if (editingTransaction) {
+				// 调用更新接口
+				await invoke("update_transaction", {
+					transactionId: editingTransaction.id,
+					request: {
+						transaction_type: newTransaction.transaction_type,
+						amount: Number(newTransaction.amount) || 0,
+						description: newTransaction.description,
+						account_id: newTransaction.account_id,
+						category_id: newTransaction.category_id,
+						to_account_id: newTransaction.to_account_id,
+						transaction_date: newTransaction.transaction_date,
+						tags: newTransaction.tags,
+						receipt_path: newTransaction.receipt_path,
+					},
+				});
+			} else {
+				// 调用创建接口
+				await invoke("create_transaction", {
+					request: {
+						...newTransaction,
+						amount: Number(newTransaction.amount) || 0,
+					},
+				});
+			}
 			setIsCreateTransactionOpen(false);
+			setEditingTransaction(null);
 			setNewTransaction({
 				transaction_type: "expense",
 				amount: "",
@@ -153,9 +177,26 @@ const AccountingManagement: React.FC = () => {
 			await fetchAccounts(); // 刷新账户余额
 			await fetchFinancialStats(); // 刷新统计
 		} catch (err) {
-			console.error("创建交易失败:", err);
-			setError("创建交易失败");
+			console.error("保存交易失败:", err);
+			setError("保存交易失败");
 		}
+	};
+
+	// 打开编辑交易弹窗并预填数据
+	const handleEditTransaction = (tx: TransactionDto) => {
+		setEditingTransaction(tx);
+		setNewTransaction({
+			transaction_type: tx.transaction_type,
+			amount: tx.amount.toString(),
+			description: tx.description,
+			account_id: tx.account_id,
+			category_id: tx.category_id,
+			to_account_id: tx.to_account_id,
+			transaction_date: tx.transaction_date,
+			tags: tx.tags,
+			receipt_path: tx.receipt_path,
+		});
+		setIsCreateTransactionOpen(true);
 	};
 
 	// 初始化数据
@@ -449,6 +490,9 @@ const AccountingManagement: React.FC = () => {
 												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
 													日期
 												</th>
+												<th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
+													操作
+												</th>
 											</tr>
 										</thead>
 										<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -510,6 +554,14 @@ const AccountingManagement: React.FC = () => {
 													</td>
 													<td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
 														{transaction.transaction_date}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-right">
+														<button
+															onClick={() => handleEditTransaction(transaction)}
+															className="text-blue-600 hover:text-blue-800 text-sm"
+														>
+															编辑
+														</button>
 													</td>
 												</tr>
 											))}
@@ -709,7 +761,7 @@ const AccountingManagement: React.FC = () => {
 					<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
 						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
 							<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-								创建交易
+								{editingTransaction ? "编辑交易" : "创建交易"}
 							</h3>
 
 							<div className="space-y-4">
@@ -845,16 +897,19 @@ const AccountingManagement: React.FC = () => {
 
 							<div className="flex justify-end space-x-3 mt-6">
 								<button
-									onClick={() => setIsCreateTransactionOpen(false)}
+									onClick={() => {
+										setIsCreateTransactionOpen(false);
+										setEditingTransaction(null);
+									}}
 									className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
 								>
 									取消
 								</button>
 								<button
-									onClick={createTransaction}
+									onClick={saveTransaction}
 									className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
 								>
-									创建
+									{editingTransaction ? "保存" : "创建"}
 								</button>
 							</div>
 						</div>
