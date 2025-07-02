@@ -11,10 +11,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
-import AccountingManagement from "./components/AccountingManagement";
+import AccountingPage from "./components/Accounting/AccountingPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import SettingsComponent from "./components/Settings";
-import TimingPage from "./components/TimingPage";
+import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
 import { useScrollbarHiding } from "./hooks/useScrollbarHiding";
 import { ThemeProvider } from "./hooks/useTheme";
@@ -93,12 +93,17 @@ function App() {
 	// 获取今日统计数据
 	const fetchTodayStats = useCallback(async () => {
 		try {
-			// 从后端获取今日真实统计数据
-			const todayStats = await invoke<TimerStatus>("get_today_stats");
-			console.log("后端今日统计数据:", todayStats);
+			// 1. 获取今日已记录的总时长（秒）
+			const timerStats = await invoke<TimerStatus>("get_today_stats");
+			console.log("后端今日统计数据:", timerStats);
 
-			const totalSeconds = todayStats.total_today_seconds;
-			const taskCount = todayStats.elapsed_seconds; // 复用这个字段传递任务数
+			const totalSeconds = timerStats.total_today_seconds;
+
+			// 2. 获取今日的时间记录，用条目数量作为"任务/会话数量"
+			const todayEntries = await invoke<any[]>("get_today_time_entries");
+			const taskCount = todayEntries.length;
+
+			// 3. 计算平均时长（秒）
 			const averageSeconds =
 				taskCount > 0 ? Math.round(totalSeconds / taskCount) : 0;
 
@@ -116,23 +121,16 @@ function App() {
 				avgSessionMinutes = totalSeconds / 60 / taskCount; // 平均每段工作时长（分钟）
 
 				// 1. 专注度评分 (40分) - 基于平均会话时长
-				if (avgSessionMinutes >= 25)
-					focusScore = 40; // 25分钟以上 = 专注
-				else if (avgSessionMinutes >= 15)
-					focusScore = 30; // 15-25分钟 = 良好
-				else if (avgSessionMinutes >= 5)
-					focusScore = 20; // 5-15分钟 = 一般
+				if (avgSessionMinutes >= 25) focusScore = 40; // 25分钟以上 = 专注
+				else if (avgSessionMinutes >= 15) focusScore = 30; // 15-25分钟 = 良好
+				else if (avgSessionMinutes >= 5) focusScore = 20; // 5-15分钟 = 一般
 				else focusScore = 10; // 5分钟以下 = 需改进
 
 				// 2. 工作量评分 (30分) - 基于总工作时长
-				if (hoursWorked >= 6)
-					volumeScore = 30; // 6小时以上 = 饱满
-				else if (hoursWorked >= 4)
-					volumeScore = 25; // 4-6小时 = 充实
-				else if (hoursWorked >= 2)
-					volumeScore = 20; // 2-4小时 = 适中
-				else if (hoursWorked >= 1)
-					volumeScore = 15; // 1-2小时 = 轻量
+				if (hoursWorked >= 6) volumeScore = 30; // 6小时以上 = 饱满
+				else if (hoursWorked >= 4) volumeScore = 25; // 4-6小时 = 充实
+				else if (hoursWorked >= 2) volumeScore = 20; // 2-4小时 = 适中
+				else if (hoursWorked >= 1) volumeScore = 15; // 1-2小时 = 轻量
 				else volumeScore = 10; // 1小时以下 = 起步
 
 				// 3. 节奏评分 (30分) - 基于工作段数与时长的平衡
@@ -422,7 +420,7 @@ function App() {
 
 									{activeView === "about" && <About />}
 
-									{activeView === "accounting" && <AccountingManagement />}
+									{activeView === "accounting" && <AccountingPage />}
 								</ErrorBoundary>
 							</div>
 						</div>

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import type { Category, Task, TimeEntry, TimerStatus } from "../types";
+import type { Category, Task, TimeEntry, TimerStatus } from "../../types";
 
 interface DashboardProps {
 	timerStatus: TimerStatus;

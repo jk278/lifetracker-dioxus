@@ -1,5 +1,3 @@
-// AccountingManagement.tsx - 记账功能管理组件
-
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -11,9 +9,13 @@ import type {
 	FinancialStatsDto,
 	TransactionDto,
 	TransactionType,
-} from "../types";
+} from "../../types";
+import AccountsTab from "./AccountsTab";
+import OverviewTab from "./OverviewTab";
+import StatsTab from "./StatsTab";
+import TransactionsTab from "./TransactionsTab";
 
-const AccountingManagement: React.FC = () => {
+const AccountingPage: React.FC = () => {
 	// 状态管理
 	const [activeTab, setActiveTab] = useState<
 		"overview" | "accounts" | "transactions" | "stats"
@@ -237,36 +239,74 @@ const AccountingManagement: React.FC = () => {
 		return types[type] || type;
 	};
 
+	const renderActiveTab = () => {
+		switch (activeTab) {
+			case "overview":
+				return (
+					<OverviewTab
+						accounts={accounts}
+						financialStats={financialStats}
+						transactions={transactions}
+						formatAmount={formatAmount}
+					/>
+				);
+			case "accounts":
+				return (
+					<AccountsTab
+						accounts={accounts}
+						formatAmount={formatAmount}
+						getAccountTypeLabel={getAccountTypeLabel}
+						onOpenCreateAccount={() => setIsCreateAccountOpen(true)}
+					/>
+				);
+			case "transactions":
+				return (
+					<TransactionsTab
+						transactions={transactions}
+						formatAmount={formatAmount}
+						getTransactionTypeLabel={getTransactionTypeLabel}
+						onOpenCreateTransaction={() => setIsCreateTransactionOpen(true)}
+						onEditTransaction={handleEditTransaction}
+					/>
+				);
+			case "stats":
+				return (
+					<StatsTab
+						financialStats={financialStats}
+						formatAmount={formatAmount}
+					/>
+				);
+			default:
+				return null;
+		}
+	};
+
 	return (
 		<div className="space-y-6">
-			{/* 页面标题 */}
-			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-					记账管理
-				</h2>
-			</div>
-
 			{/* 内容主体（保留标签页等） */}
 			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 flex flex-col h-[80vh]">
 				{/* 标签与内容区域保留原结构，但移除多余边距 */}
 				<div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
 					{[
-						{ key: "overview", label: "总览", icon: "📊" },
-						{ key: "accounts", label: "账户", icon: "🏦" },
-						{ key: "transactions", label: "交易", icon: "💳" },
-						{ key: "stats", label: "统计", icon: "📈" },
+						{ key: "overview", label: "总览" },
+						{ key: "accounts", label: "账户" },
+						{ key: "transactions", label: "交易" },
+						{ key: "stats", label: "统计" },
 					].map((tab) => (
 						<button
 							key={tab.key}
-							onClick={() => setActiveTab(tab.key as any)}
-							className={`flex items-center space-x-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${
+							onClick={() =>
+								setActiveTab(
+									tab.key as "overview" | "accounts" | "transactions" | "stats",
+								)
+							}
+							className={`px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
 								activeTab === tab.key
 									? "border-blue-500 text-blue-600 dark:text-blue-400"
 									: "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
 							}`}
 						>
-							<span>{tab.icon}</span>
-							<span>{tab.label}</span>
+							{tab.label}
 						</button>
 					))}
 				</div>
@@ -279,359 +319,7 @@ const AccountingManagement: React.FC = () => {
 				)}
 
 				{/* 内容区域 */}
-				<div className="flex-1 overflow-hidden">
-					{/* 总览标签页 */}
-					{activeTab === "overview" && (
-						<div className="p-6 h-full overflow-y-auto">
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-								{/* 总余额 */}
-								<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-									<div className="flex items-center">
-										<div className="flex-shrink-0 text-3xl">💰</div>
-										<div className="ml-4">
-											<p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												总余额
-											</p>
-											<p className="text-2xl font-semibold text-gray-900 dark:text-white">
-												{formatAmount(
-													accounts.reduce((sum, acc) => sum + acc.balance, 0),
-												)}
-											</p>
-										</div>
-									</div>
-								</div>
-
-								{/* 本月收入 */}
-								<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-									<div className="flex items-center">
-										<div className="flex-shrink-0 text-3xl">📈</div>
-										<div className="ml-4">
-											<p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												本月收入
-											</p>
-											<p className="text-2xl font-semibold text-gray-900 dark:text-white">
-												{financialStats
-													? formatAmount(financialStats.total_income)
-													: "￥0.00"}
-											</p>
-										</div>
-									</div>
-								</div>
-
-								{/* 本月支出 */}
-								<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-									<div className="flex items-center">
-										<div className="flex-shrink-0 text-3xl">📉</div>
-										<div className="ml-4">
-											<p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												本月支出
-											</p>
-											<p className="text-2xl font-semibold text-gray-900 dark:text-white">
-												{financialStats
-													? formatAmount(financialStats.total_expense)
-													: "￥0.00"}
-											</p>
-										</div>
-									</div>
-								</div>
-
-								{/* 净收入 */}
-								<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-									<div className="flex items-center">
-										<div className="flex-shrink-0 text-3xl">💎</div>
-										<div className="ml-4">
-											<p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												净收入
-											</p>
-											<p className="text-2xl font-semibold text-gray-900 dark:text-white">
-												{financialStats
-													? formatAmount(financialStats.net_income)
-													: "￥0.00"}
-											</p>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							{/* 最近交易 */}
-							<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-									最近交易
-								</h3>
-								<div className="space-y-4">
-									{transactions.slice(0, 5).map((transaction) => (
-										<div
-											key={transaction.id}
-											className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-										>
-											<div className="flex items-center space-x-4">
-												<div
-													className={`w-3 h-3 rounded-full ${
-														transaction.transaction_type === "income"
-															? "bg-green-500"
-															: transaction.transaction_type === "expense"
-																? "bg-red-500"
-																: "bg-blue-500"
-													}`}
-												/>
-												<div>
-													<p className="font-medium text-gray-900 dark:text-gray-100">
-														{transaction.description}
-													</p>
-													<p className="text-sm text-gray-500 dark:text-gray-400">
-														{transaction.account_name} •{" "}
-														{transaction.transaction_date}
-													</p>
-												</div>
-											</div>
-											<div
-												className={`text-lg font-semibold ${
-													transaction.transaction_type === "income"
-														? "text-green-600 dark:text-green-400"
-														: transaction.transaction_type === "expense"
-															? "text-red-600 dark:text-red-400"
-															: "text-blue-600 dark:text-blue-400"
-												}`}
-											>
-												{transaction.transaction_type === "income"
-													? "+"
-													: transaction.transaction_type === "expense"
-														? "-"
-														: ""}
-												{formatAmount(transaction.amount, transaction.currency)}
-											</div>
-										</div>
-									))}
-								</div>
-							</div>
-						</div>
-					)}
-
-					{/* 账户标签页 */}
-					{activeTab === "accounts" && (
-						<div className="p-6 h-full overflow-y-auto">
-							<div className="flex justify-between items-center mb-6">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-									账户管理
-								</h3>
-								<button
-									onClick={() => setIsCreateAccountOpen(true)}
-									className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-								>
-									添加账户
-								</button>
-							</div>
-
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-								{accounts.map((account) => (
-									<div
-										key={account.id}
-										className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
-									>
-										<div className="flex items-center justify-between mb-4">
-											<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-												{account.name}
-											</h4>
-											{account.is_default && (
-												<span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-													默认
-												</span>
-											)}
-										</div>
-										<p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-											{getAccountTypeLabel(account.account_type)}
-										</p>
-										<p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-											{formatAmount(account.balance, account.currency)}
-										</p>
-										{account.description && (
-											<p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-												{account.description}
-											</p>
-										)}
-									</div>
-								))}
-							</div>
-						</div>
-					)}
-
-					{/* 交易标签页 */}
-					{activeTab === "transactions" && (
-						<div className="p-6 h-full overflow-y-auto">
-							<div className="flex justify-between items-center mb-6">
-								<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-									交易记录
-								</h3>
-								<button
-									onClick={() => setIsCreateTransactionOpen(true)}
-									className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-								>
-									添加交易
-								</button>
-							</div>
-
-							<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-								<div className="overflow-x-auto">
-									<table className="w-full">
-										<thead className="bg-gray-50 dark:bg-gray-800">
-											<tr>
-												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-													类型
-												</th>
-												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-													描述
-												</th>
-												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-													账户
-												</th>
-												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-													金额
-												</th>
-												<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-													日期
-												</th>
-												<th className="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">
-													操作
-												</th>
-											</tr>
-										</thead>
-										<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-											{transactions.map((transaction) => (
-												<tr
-													key={transaction.id}
-													className="hover:bg-gray-50 dark:hover:bg-gray-800"
-												>
-													<td className="px-6 py-4 whitespace-nowrap">
-														<span
-															className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-																transaction.transaction_type === "income"
-																	? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-																	: transaction.transaction_type === "expense"
-																		? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-																		: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-															}`}
-														>
-															{getTransactionTypeLabel(
-																transaction.transaction_type,
-															)}
-														</span>
-													</td>
-													<td className="px-6 py-4">
-														<div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-															{transaction.description}
-														</div>
-													</td>
-													<td className="px-6 py-4">
-														<div className="text-sm text-gray-900 dark:text-gray-100">
-															{transaction.account_name}
-														</div>
-														{transaction.to_account_name && (
-															<div className="text-xs text-gray-500 dark:text-gray-400">
-																→ {transaction.to_account_name}
-															</div>
-														)}
-													</td>
-													<td className="px-6 py-4">
-														<div
-															className={`text-sm font-medium ${
-																transaction.transaction_type === "income"
-																	? "text-green-600 dark:text-green-400"
-																	: transaction.transaction_type === "expense"
-																		? "text-red-600 dark:text-red-400"
-																		: "text-blue-600 dark:text-blue-400"
-															}`}
-														>
-															{transaction.transaction_type === "income"
-																? "+"
-																: transaction.transaction_type === "expense"
-																	? "-"
-																	: ""}
-															{formatAmount(
-																transaction.amount,
-																transaction.currency,
-															)}
-														</div>
-													</td>
-													<td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-														{transaction.transaction_date}
-													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-right">
-														<button
-															onClick={() => handleEditTransaction(transaction)}
-															className="text-blue-600 hover:text-blue-800 text-sm"
-														>
-															编辑
-														</button>
-													</td>
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
-							</div>
-						</div>
-					)}
-
-					{/* 统计标签页 */}
-					{activeTab === "stats" && (
-						<div className="p-6 h-full overflow-y-auto">
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
-								财务统计
-							</h3>
-
-							{financialStats && (
-								<div className="space-y-6">
-									{/* 统计卡片 */}
-									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-										<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-											<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												总收入
-											</h4>
-											<p className="text-2xl font-bold text-green-600 dark:text-green-400">
-												{formatAmount(financialStats.total_income)}
-											</p>
-										</div>
-										<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-											<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												总支出
-											</h4>
-											<p className="text-2xl font-bold text-red-600 dark:text-red-400">
-												{formatAmount(financialStats.total_expense)}
-											</p>
-										</div>
-										<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-											<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												净收入
-											</h4>
-											<p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-												{formatAmount(financialStats.net_income)}
-											</p>
-										</div>
-										<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-											<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-												交易笔数
-											</h4>
-											<p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-												{financialStats.transaction_count}
-											</p>
-										</div>
-									</div>
-
-									{/* 统计期间 */}
-									<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-										<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-											统计期间
-										</h4>
-										<p className="text-gray-600 dark:text-gray-400">
-											{financialStats.period_start} 至{" "}
-											{financialStats.period_end}
-										</p>
-									</div>
-								</div>
-							)}
-						</div>
-					)}
-				</div>
+				<div className="flex-1 overflow-hidden">{renderActiveTab()}</div>
 
 				{/* 创建账户弹窗 */}
 				{isCreateAccountOpen && (
@@ -920,4 +608,4 @@ const AccountingManagement: React.FC = () => {
 	);
 };
 
-export default AccountingManagement;
+export default AccountingPage; 

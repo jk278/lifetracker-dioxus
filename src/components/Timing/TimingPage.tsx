@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState } from "react";
-import type { Task, TimerStatus } from "../types";
+import type { Task, TimerStatus } from "../../types";
 import CategoryManagement from "./CategoryManagement";
 import Dashboard from "./Dashboard";
 import Statistics from "./Statistics";
