@@ -4,6 +4,11 @@
 
 use chrono::Duration;
 
+/// 格式化持续时间（默认使用紧凑格式）
+pub fn format_duration(duration: Duration) -> String {
+    format_duration_compact(duration)
+}
+
 /// 格式化持续时间为详细格式
 pub fn format_duration_detailed(duration: Duration) -> String {
     let total_seconds = duration.num_seconds().abs();

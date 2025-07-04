@@ -1,11 +1,7 @@
 {
 	"overrides": [
 		{
-			"includes": [
-				"**/*.svelte",
-				"**/*.astro",
-				"**/*.vue"
-			],
+			"includes": ["**/*.svelte", "**/*.astro", "**/*.vue"],
 			"linter": {
 				"rules": {
 					"style": {
@@ -21,10 +17,7 @@
 			}
 		},
 		{
-			"includes": [
-				"**/*.tsx",
-				"**/*.jsx"
-			],
+			"includes": ["**/*.tsx", "**/*.jsx"],
 			"linter": {
 				"rules": {
 					"a11y": {

@@ -808,12 +808,27 @@ pub fn create_simple_export_data(
     let converted_categories: Vec<Category> = categories
         .into_iter()
         .map(|cm| {
-            Category::new(
-                cm.name,
-                cm.description,
-                Some(crate::core::category::CategoryColor::from_hex(&cm.color)),
-                Some(crate::core::category::CategoryIcon::Work), // 默认图标
-            )
+            use crate::core::category::{CategoryColor, CategoryIcon};
+
+            Category {
+                id: cm.id,
+                name: cm.name,
+                description: cm.description,
+                color: CategoryColor::from_hex(&cm.color),
+                icon: CategoryIcon::Work, // 默认图标，可以后续根据 cm.icon 字段解析
+                created_at: cm.created_at,
+                updated_at: cm.updated_at.unwrap_or_else(|| Local::now()),
+                daily_target: cm
+                    .daily_target_seconds
+                    .map(|s| chrono::Duration::seconds(s)),
+                weekly_target: cm
+                    .weekly_target_seconds
+                    .map(|s| chrono::Duration::seconds(s)),
+                target_duration: None,
+                is_active: cm.is_active,
+                sort_order: cm.sort_order,
+                parent_id: cm.parent_id,
+            }
         })
         .collect();
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
 	Clock,
+	Database,
 	Info,
 	Menu,
 	Pause,
@@ -12,6 +13,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
+import { DataManagement } from "./components/DataManagement";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import SettingsComponent from "./components/Settings";
 import TimingPage from "./components/Timing/TimingPage";
@@ -37,7 +39,7 @@ function App() {
 
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [activeView, setActiveView] = useState<
-		"timing" | "settings" | "about" | "accounting"
+		"timing" | "settings" | "about" | "accounting" | "data"
 	>("timing");
 	const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
@@ -356,7 +358,7 @@ function App() {
 						{/* 侧边栏 - 重构后的实现 */}
 						<div
 							className={`${
-								isCollapsed ? "w-16" : "w-56"
+								isCollapsed ? "w-16" : "w-48"
 							} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col relative overflow-hidden`}
 						>
 							{/* 折叠展开控制按钮 */}
@@ -397,6 +399,7 @@ function App() {
 									{[
 										{ id: "timing", name: "计时", icon: Clock },
 										{ id: "accounting", name: "记账", icon: Wallet },
+										{ id: "data", name: "数据管理", icon: Database },
 										{ id: "settings", name: "设置", icon: Settings },
 										{ id: "about", name: "关于", icon: Info },
 									].map(({ id, name, icon: Icon }) => (
@@ -476,6 +479,8 @@ function App() {
 									{activeView === "about" && <About />}
 
 									{activeView === "accounting" && <AccountingPage />}
+
+									{activeView === "data" && <DataManagement />}
 								</ErrorBoundary>
 							</div>
 						</div>
