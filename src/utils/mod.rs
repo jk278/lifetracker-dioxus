@@ -4,7 +4,6 @@
 
 use crate::errors::Result;
 use chrono::{DateTime, Duration, Local};
-use rand::Rng;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -207,30 +206,30 @@ pub fn generate_random_string(length: usize) -> String {
         .collect()
 }
 
+/// 应用标识符，与 tauri.conf.json 中的 identifier 保持一致
+const APP_IDENTIFIER: &str = "com.lifetracker.app";
+
 /// 获取应用数据目录
 pub fn get_app_data_dir() -> Result<std::path::PathBuf> {
-    // 检测是否为开发环境
-    let is_dev = cfg!(debug_assertions) || std::env::var("CARGO").is_ok();
+    // 使用与前端一致的目录标识符
+    if let Some(data_dir) = dirs::data_dir() {
+        return Ok(data_dir.join(APP_IDENTIFIER));
+    }
 
-    if is_dev {
-        // 开发环境：使用项目内的data目录
-        Ok(std::path::PathBuf::from("./data"))
-    } else {
-        // 生产环境：使用系统标准目录
-        #[cfg(target_os = "windows")]
-        {
-            let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
-            Ok(std::path::PathBuf::from(appdata).join("TimeTracker"))
-        }
+    // Fallback：手动构建路径
+    #[cfg(target_os = "windows")]
+    {
+        let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
+        return Ok(std::path::PathBuf::from(appdata).join(APP_IDENTIFIER));
+    }
 
-        #[cfg(not(target_os = "windows"))]
-        {
-            let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
-            Ok(std::path::PathBuf::from(home)
-                .join(".local")
-                .join("share")
-                .join("timetracker"))
-        }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
+        return Ok(std::path::PathBuf::from(home)
+            .join(".local")
+            .join("share")
+            .join(APP_IDENTIFIER));
     }
 }
 

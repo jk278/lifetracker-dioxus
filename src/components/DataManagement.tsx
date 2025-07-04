@@ -1,4 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
+import {
+	appDataDir,
+	join,
+	isAbsolute as pathIsAbsolute,
+	resolve as pathResolve,
+} from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
 	AlertCircle,
@@ -23,6 +29,12 @@ interface ExportOptions {
 	group_by_date?: boolean;
 	group_by_category?: boolean;
 	include_metadata?: boolean;
+}
+
+// 获取应用数据目录
+async function getAppDataDir(): Promise<string> {
+	// 始终使用系统应用数据目录，让 Tauri 处理开发/生产环境差异
+	return await appDataDir();
 }
 
 export function DataManagement() {
@@ -52,40 +64,88 @@ export function DataManagement() {
 		backupDirectory: "",
 	});
 
-	// 初始化时加载配置中的备份设置
+	// 初始化时加载配置中的备份设置，并确保目录为绝对路径
 	useEffect(() => {
 		(async () => {
 			try {
 				const cfg: any = await invoke("get_config");
-				if (cfg && cfg.data) {
-					setBackupSettings({
-						autoBackup: cfg.data.auto_backup,
-						backupInterval: cfg.data.backup_interval,
-						backupRetention: cfg.data.backup_retention,
-						backupDirectory: cfg.data.backup_directory ?? "",
-					});
+
+				// 读取备份目录，如果是相对路径则转换为绝对路径（相对应用数据目录）
+				let dir = cfg?.data?.backup_directory ?? "";
+				const isAbsolute =
+					typeof dir === "string" &&
+					(dir.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(dir));
+
+				try {
+					if (!isAbsolute && dir) {
+						const base = await getAppDataDir();
+						dir = await join(base, dir);
+					}
+
+					if (!dir) {
+						const base = await getAppDataDir();
+						dir = await join(base, "backups");
+					}
+				} catch (err) {
+					console.warn("无法获取默认备份目录", err);
 				}
+
+				setBackupSettings({
+					autoBackup: cfg?.data?.auto_backup ?? true,
+					backupInterval: cfg?.data?.backup_interval ?? 7,
+					backupRetention: cfg?.data?.backup_retention ?? 30,
+					backupDirectory: dir,
+				});
 			} catch (e) {
 				console.error("读取配置失败", e);
 			}
 		})();
 	}, []);
 
+	// 获取当前（或默认）备份目录
+	const getEffectiveBackupDir = useCallback(async () => {
+		let dir = backupSettings.backupDirectory;
+
+		if (!dir) {
+			const base = await getAppDataDir();
+			dir = await join(base, "backups");
+		}
+
+		// 转换为绝对路径，确保文件对话框能够正确识别
+		dir = await pathResolve(dir);
+
+		return dir;
+	}, [backupSettings.backupDirectory]);
+
 	// 选择备份目录
 	const chooseBackupDirectory = useCallback(async () => {
 		try {
-			const dir = await open({ directory: true, multiple: false });
-			if (!dir || Array.isArray(dir)) return;
-			setBackupSettings((prev) => ({ ...prev, backupDirectory: dir }));
+			const defaultDir = await getEffectiveBackupDir();
+			const dir = await open({ directory: true, defaultPath: defaultDir });
+			if (dir && !Array.isArray(dir)) {
+				setBackupSettings((prev) => ({ ...prev, backupDirectory: dir }));
+			}
 		} catch (e) {
 			console.error(e);
 		}
-	}, []);
+	}, [getEffectiveBackupDir]);
 
 	// 保存备份设置到配置
 	const handleSaveBackupSettings = useCallback(async () => {
 		try {
 			const cfg: any = await invoke("get_config");
+
+			// 保存前再次确保备份目录为绝对路径
+			let dir = backupSettings.backupDirectory;
+			const isAbsolute =
+				typeof dir === "string" &&
+				(dir.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(dir));
+
+			if (!isAbsolute) {
+				const base = await getAppDataDir();
+				dir = await join(base, dir);
+			}
+
 			const updated = {
 				...cfg,
 				data: {
@@ -93,9 +153,10 @@ export function DataManagement() {
 					auto_backup: backupSettings.autoBackup,
 					backup_interval: backupSettings.backupInterval,
 					backup_retention: backupSettings.backupRetention,
-					backup_directory: backupSettings.backupDirectory,
+					backup_directory: dir,
 				},
 			};
+
 			await invoke("update_config", { config: updated });
 			alert("备份设置已保存！");
 		} catch (e) {
@@ -117,6 +178,7 @@ export function DataManagement() {
 						extensions: [exportFormat],
 					},
 				],
+				// 仅给出文件名，让操作系统记住并决定导出目录
 				defaultPath: `lifetracker-export-${new Date().toISOString().split("T")[0]}.${exportFormat}`,
 			});
 
@@ -219,33 +281,40 @@ export function DataManagement() {
 
 	const handleBackup = useCallback(async () => {
 		try {
-			const filePath = await save({
-				filters: [
-					{ name: "SQLite Backup", extensions: ["db", "sqlite", "bak"] },
-				],
-				defaultPath: `lifetracker-backup-${
-					new Date().toISOString().split("T")[0]
-				}.db`,
-			});
-			if (!filePath) return;
+			if (!backupSettings.backupDirectory) {
+				alert("请先在下方选择备份目录，再执行立即备份。");
+				return;
+			}
+			const now = new Date();
+			const timestamp = now
+				.toISOString()
+				.replace(/T/, "_")
+				.replace(/:/g, "-")
+				.split(".")[0]; // YYYY-MM-DD_HH-MM-SS
+			const path = await join(
+				backupSettings.backupDirectory,
+				`lifetracker-backup-${timestamp}.db`,
+			);
+			setBackupPath(path);
 			const res = await invoke<string>("backup_database", {
-				destPath: filePath,
+				destPath: path,
 			});
-			setBackupPath(filePath);
 			alert(res);
 		} catch (e) {
 			console.error(e);
 			alert("备份失败");
 		}
-	}, []);
+	}, [backupSettings.backupDirectory]);
 
 	const handleRestore = useCallback(async () => {
 		try {
+			const defaultDir = await getEffectiveBackupDir();
 			const filePath = await open({
 				filters: [
 					{ name: "SQLite Backup", extensions: ["db", "sqlite", "bak"] },
 				],
 				multiple: false,
+				defaultPath: defaultDir,
 			});
 			if (!filePath || Array.isArray(filePath)) return;
 			if (!confirm("导入备份将覆盖当前数据库，确定继续？")) return;
@@ -257,7 +326,7 @@ export function DataManagement() {
 			console.error(e);
 			alert("恢复失败");
 		}
-	}, []);
+	}, [getEffectiveBackupDir]);
 
 	return (
 		<div className="space-y-6">
