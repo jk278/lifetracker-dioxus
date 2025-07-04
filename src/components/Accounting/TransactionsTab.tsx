@@ -24,7 +24,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 				</h3>
 				<button
 					onClick={onOpenCreateTransaction}
-					className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+					className="px-4 py-2 bg-theme-primary text-white rounded-lg bg-theme-primary-hover theme-transition"
 				>
 					添加交易
 				</button>
@@ -68,7 +68,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 													? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
 													: transaction.transaction_type === "expense"
 														? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-														: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+														: "bg-theme-primary-light dark:bg-theme-primary-dark text-theme-primary-dark dark:text-theme-primary-lighter"
 											}`}
 										>
 											{getTransactionTypeLabel(transaction.transaction_type)}
@@ -96,7 +96,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 													? "text-green-600 dark:text-green-400"
 													: transaction.transaction_type === "expense"
 														? "text-red-600 dark:text-red-400"
-														: "text-blue-600 dark:text-blue-400"
+														: "text-theme-primary text-theme-primary-hover"
 											}`}
 										>
 											{transaction.transaction_type === "income"
@@ -113,7 +113,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 									<td className="px-6 py-4 whitespace-nowrap text-right">
 										<button
 											onClick={() => onEditTransaction(transaction)}
-											className="text-blue-600 hover:text-blue-800 text-sm"
+											className="text-theme-primary text-theme-primary-hover text-sm theme-transition"
 										>
 											编辑
 										</button>

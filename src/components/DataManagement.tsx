@@ -117,6 +117,15 @@ export function DataManagement() {
 		return dir;
 	}, [backupSettings.backupDirectory]);
 
+	// 获取当前（或默认）导出目录
+	const getEffectiveExportDir = useCallback(async () => {
+		const base = await getAppDataDir();
+		const dir = await join(base, "exports");
+
+		// 转换为绝对路径，确保文件对话框能够正确识别
+		return await pathResolve(dir);
+	}, []);
+
 	// 选择备份目录
 	const chooseBackupDirectory = useCallback(async () => {
 		try {
@@ -170,6 +179,11 @@ export function DataManagement() {
 			setIsExporting(true);
 			setLastExportResult("");
 
+			// 获取默认导出目录
+			const defaultDir = await getEffectiveExportDir();
+			const filename = `lifetracker-export-${new Date().toISOString().split("T")[0]}.${exportFormat}`;
+			const defaultPath = await join(defaultDir, filename);
+
 			// 选择保存文件路径
 			const filePath = await save({
 				filters: [
@@ -178,8 +192,7 @@ export function DataManagement() {
 						extensions: [exportFormat],
 					},
 				],
-				// 仅给出文件名，让操作系统记住并决定导出目录
-				defaultPath: `lifetracker-export-${new Date().toISOString().split("T")[0]}.${exportFormat}`,
+				defaultPath,
 			});
 
 			if (!filePath) {
@@ -211,12 +224,15 @@ export function DataManagement() {
 		} finally {
 			setIsExporting(false);
 		}
-	}, [exportFormat, exportOptions, dateRange]);
+	}, [exportFormat, exportOptions, dateRange, getEffectiveExportDir]);
 
 	const handleImport = useCallback(async () => {
 		try {
 			setIsImporting(true);
 			setLastImportResult("");
+
+			// 获取默认导出目录作为导入的默认位置
+			const defaultDir = await getEffectiveExportDir();
 
 			// 选择导入文件
 			const filePath = await open({
@@ -227,6 +243,7 @@ export function DataManagement() {
 					},
 				],
 				multiple: false,
+				defaultPath: defaultDir,
 			});
 
 			if (!filePath) {
@@ -249,7 +266,7 @@ export function DataManagement() {
 		} finally {
 			setIsImporting(false);
 		}
-	}, []);
+	}, [getEffectiveExportDir]);
 
 	const handleClearData = useCallback(async () => {
 		if (

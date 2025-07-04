@@ -1,4 +1,4 @@
-import { Clock, Minus, Square, X } from "lucide-react";
+import { Minus, Square, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 interface TitleBarProps {
@@ -78,12 +78,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 
 	return (
 		<div className="flex items-center justify-between h-8 surface-adaptive border-b border-gray-200 dark:border-gray-700 select-none">
-			{/* 左侧：应用图标和标题 - 可拖拽区域 */}
+			{/* 左侧：应用标题 - 可拖拽区域 */}
 			<div
 				data-tauri-drag-region="true"
-				className="flex items-center space-x-2 pl-3 flex-1 h-full"
+				className="flex items-center pl-3 flex-1 h-full"
 			>
-				<Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
 				<span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">
 					{title}
 				</span>

@@ -95,7 +95,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 							<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								净收入
 							</h4>
-							<p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+							<p className="text-2xl font-bold text-theme-primary">
 								{formatAmount(financialStats.net_income)}
 							</p>
 						</div>
@@ -123,7 +123,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											type="radio"
 											checked={trendType === "month"}
 											onChange={() => setTrendType("month")}
-											className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
+											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 										/>
 										<span className="text-sm text-gray-700 dark:text-gray-300">
 											月度
@@ -134,7 +134,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											type="radio"
 											checked={trendType === "week"}
 											onChange={() => setTrendType("week")}
-											className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
+											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 										/>
 										<span className="text-sm text-gray-700 dark:text-gray-300">
 											周度
@@ -145,7 +145,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											type="radio"
 											checked={trendType === "day"}
 											onChange={() => setTrendType("day")}
-											className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
+											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 										/>
 										<span className="text-sm text-gray-700 dark:text-gray-300">
 											日度
@@ -180,44 +180,53 @@ const StatsTab: React.FC<StatsTabProps> = ({
 							</div>
 						</div>
 
-						{/* 趋势图表 */}
-						{trendLoading ? (
-							<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-								<div className="flex items-center justify-center h-64">
-									<div className="text-center">
-										<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
-										<p className="text-gray-500 dark:text-gray-400">
-											加载中...
-										</p>
-									</div>
+						{/* 趋势图表 - 使用固定高度容器防止跳动 */}
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 transition-all duration-200 ease-in-out">
+							<div className="p-6">
+								<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+									收支趋势
+								</h4>
+
+								{/* 固定高度的内容区域 */}
+								<div className="h-80 relative">
+									{trendLoading ? (
+										<div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+											<div className="text-center">
+												<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-theme-primary mx-auto mb-2" />
+												<p className="text-gray-500 dark:text-gray-400">
+													加载中...
+												</p>
+											</div>
+										</div>
+									) : trendError ? (
+										<div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+											<div className="text-center">
+												<div className="text-red-500 text-lg mb-2">⚠️</div>
+												<p className="text-red-600 dark:text-red-400 mb-3">
+													{trendError}
+												</p>
+												<button
+													onClick={fetchTrendData}
+													className="px-4 py-2 bg-theme-primary text-white rounded-lg bg-theme-primary-hover theme-transition"
+												>
+													重试
+												</button>
+											</div>
+										</div>
+									) : (
+										<div className="h-full transition-opacity duration-200 ease-in-out">
+											<FinancialTrendChart
+												data={trendData}
+												showIncome={showIncome}
+												showExpense={showExpense}
+												granularity={trendType}
+												formatAmount={formatAmount}
+											/>
+										</div>
+									)}
 								</div>
 							</div>
-						) : trendError ? (
-							<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-								<div className="flex items-center justify-center h-64">
-									<div className="text-center">
-										<div className="text-red-500 text-lg mb-2">⚠️</div>
-										<p className="text-red-600 dark:text-red-400">
-											{trendError}
-										</p>
-										<button
-											onClick={fetchTrendData}
-											className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-										>
-											重试
-										</button>
-									</div>
-								</div>
-							</div>
-						) : (
-							<FinancialTrendChart
-								data={trendData}
-								showIncome={showIncome}
-								showExpense={showExpense}
-								granularity={trendType}
-								formatAmount={formatAmount}
-							/>
-						)}
+						</div>
 					</div>
 
 					{/* 统计期间 */}
