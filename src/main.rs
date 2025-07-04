@@ -213,6 +213,10 @@ async fn run_tauri_mode() -> Result<()> {
                         let _ = window.set_focus();
                     }
                 }
+                "restart" => {
+                    log::info!("托盘菜单：重启应用");
+                    app.restart();
+                }
                 "quit" => {
                     log::info!("托盘菜单：退出应用");
                     app.exit(0);
@@ -285,6 +289,7 @@ fn setup_system_tray(app: &tauri::App) -> Result<()> {
     let pause_item = MenuItem::with_id(app, "pause_timer", "暂停计时", true, None::<&str>)?;
     let stop_item = MenuItem::with_id(app, "stop_timer", "停止计时", true, None::<&str>)?;
     let show_item = MenuItem::with_id(app, "show_window", "显示主窗口", true, None::<&str>)?;
+    let restart_item = MenuItem::with_id(app, "restart", "重启应用", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
     let menu = Menu::with_items(
@@ -296,6 +301,7 @@ fn setup_system_tray(app: &tauri::App) -> Result<()> {
             &pause_item,
             &stop_item,
             &PredefinedMenuItem::separator(app)?,
+            &restart_item,
             &quit_item,
         ],
     )?;
