@@ -254,6 +254,8 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::create_transaction,
             tauri_commands::delete_transaction,
             tauri_commands::get_financial_stats,
+            tauri_commands::get_monthly_trend,
+            tauri_commands::get_financial_trend,
         ])
         .run(tauri::generate_context!())
         .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> {

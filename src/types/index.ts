@@ -331,18 +331,34 @@ export interface FinancialReport {
     percentage: number;
     transactions: Transaction[];
   }[];
-  monthly_trend: {
-    month: string;
-    income: number;
-    expense: number;
-    net: number;
-  }[];
+  monthly_trend: MonthlyTrend[];
   account_balances: {
     account_id: string;
     account_name: string;
     balance: number;
     currency: string;
   }[];
+}
+
+// 月度趋势数据类型
+export interface MonthlyTrend {
+  month: string;
+  income: number;
+  expense: number;
+  net: number;
+}
+
+// === 新增统一趋势类型 ===
+export type TrendGranularity = "day" | "week" | "month";
+
+export interface TrendData {
+  /**
+   * X 轴标签，根据粒度可能是日期(YYYY-MM-DD)、周(YYYY-Www)或月(YYYY-MM)
+   */
+  label: string;
+  income: number;
+  expense: number;
+  net: number;
 }
 
 // ==================== DTO 类型别名 ====================

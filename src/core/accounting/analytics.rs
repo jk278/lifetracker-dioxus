@@ -200,6 +200,87 @@ impl AnalyticsManager {
         Ok(trends)
     }
 
+    /// 生成日度趋势
+    pub fn generate_daily_trend(
+        &self,
+        transactions: &[Transaction],
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<Vec<MonthlyTrend>> {
+        if start_date > end_date {
+            return Err(AppError::Validation("开始日期不能晚于结束日期".to_string()));
+        }
+
+        let mut daily_data: HashMap<String, (f64, f64)> = HashMap::new();
+
+        for transaction in transactions {
+            if transaction.transaction_date >= start_date
+                && transaction.transaction_date <= end_date
+            {
+                let day_key = transaction.transaction_date.format("%Y-%m-%d").to_string();
+                let entry = daily_data.entry(day_key).or_insert((0.0, 0.0));
+                match transaction.transaction_type {
+                    TransactionType::Income => entry.0 += transaction.amount,
+                    TransactionType::Expense => entry.1 += transaction.amount,
+                    TransactionType::Transfer => {}
+                }
+            }
+        }
+
+        let mut trends: Vec<MonthlyTrend> = daily_data
+            .into_iter()
+            .map(|(label, (income, expense))| MonthlyTrend {
+                month: label,
+                income,
+                expense,
+                net: income - expense,
+            })
+            .collect();
+
+        trends.sort_by(|a, b| a.month.cmp(&b.month));
+        Ok(trends)
+    }
+
+    /// 生成周度趋势 (ISO周)
+    pub fn generate_weekly_trend(
+        &self,
+        transactions: &[Transaction],
+        start_date: NaiveDate,
+        end_date: NaiveDate,
+    ) -> Result<Vec<MonthlyTrend>> {
+        if start_date > end_date {
+            return Err(AppError::Validation("开始日期不能晚于结束日期".to_string()));
+        }
+        let mut weekly_data: HashMap<String, (f64, f64)> = HashMap::new();
+
+        for transaction in transactions {
+            if transaction.transaction_date >= start_date
+                && transaction.transaction_date <= end_date
+            {
+                let iso_week = transaction.transaction_date.iso_week();
+                let week_key = format!("{:04}-W{:02}", iso_week.year(), iso_week.week());
+                let entry = weekly_data.entry(week_key).or_insert((0.0, 0.0));
+                match transaction.transaction_type {
+                    TransactionType::Income => entry.0 += transaction.amount,
+                    TransactionType::Expense => entry.1 += transaction.amount,
+                    TransactionType::Transfer => {}
+                }
+            }
+        }
+
+        let mut trends: Vec<MonthlyTrend> = weekly_data
+            .into_iter()
+            .map(|(label, (income, expense))| MonthlyTrend {
+                month: label,
+                income,
+                expense,
+                net: income - expense,
+            })
+            .collect();
+        trends.sort_by(|a, b| a.month.cmp(&b.month));
+        Ok(trends)
+    }
+
     /// 生成完整财务报表
     pub fn generate_financial_report(
         &self,

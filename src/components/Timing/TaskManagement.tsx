@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Clock, Edit, Plus, Search, Tag, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { Category, Task } from "../types";
+import type { Category, Task } from "../../types";
 
 interface TaskManagementProps {
 	tasks: Task[];
@@ -281,7 +281,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 
 									{task.tags && task.tags.length > 0 && (
 										<div className="flex flex-wrap gap-1">
-											{task.tags.slice(0, 3).map((tag) => (
+											{task.tags.slice(0, 3).map((tag: string) => (
 												<span
 													key={tag}
 													className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200"
