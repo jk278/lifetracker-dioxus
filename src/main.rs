@@ -243,6 +243,8 @@ async fn run_tauri_mode() -> Result<()> {
             tauri_commands::get_statistics,
             tauri_commands::export_data,
             tauri_commands::import_data,
+            tauri_commands::backup_database,
+            tauri_commands::restore_database,
             tauri_commands::get_config,
             tauri_commands::update_config,
             tauri_commands::set_window_theme,

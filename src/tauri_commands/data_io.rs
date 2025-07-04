@@ -6,6 +6,7 @@ use super::*;
 use crate::utils::export::{create_export_data, DataExporter, ExportFormat, ExportOptions};
 use chrono::{DateTime, Local};
 use std::path::Path;
+use std::sync::Arc;
 
 // ========== 数据导入导出命令 ==========
 
@@ -193,4 +194,41 @@ pub async fn import_data(state: State<'_, AppState>, file_path: String) -> Resul
 
     // TODO: 实现实际的数据导入逻辑
     Ok(format!("数据已从文件导入: {}", file_path))
+}
+
+/// 备份数据库到指定文件
+#[tauri::command]
+pub async fn backup_database(
+    state: State<'_, AppState>,
+    dest_path: String,
+) -> Result<String, String> {
+    log::info!("备份数据库到 {}", dest_path);
+    let storage = &state.storage;
+    match storage.backup_database(&dest_path) {
+        Ok(_) => Ok(format!("数据库已备份到 {}", dest_path)),
+        Err(e) => {
+            log::error!("数据库备份失败: {}", e);
+            Err(e.to_string())
+        }
+    }
+}
+
+/// 从备份文件恢复数据库
+#[tauri::command]
+pub async fn restore_database(
+    state: State<'_, AppState>,
+    src_path: String,
+) -> Result<String, String> {
+    log::info!("从 {} 恢复数据库", src_path);
+    let mut storage = state.storage.clone();
+    match Arc::get_mut(&mut storage) {
+        Some(mut_storage) => match mut_storage.restore_database(&src_path) {
+            Ok(_) => Ok("数据库恢复完成".to_string()),
+            Err(e) => {
+                log::error!("数据库恢复失败: {}", e);
+                Err(e.to_string())
+            }
+        },
+        None => Err("无法获取可变存储引用".to_string()),
+    }
 }

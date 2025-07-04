@@ -1,16 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
 	Bell,
-	Database,
-	Download,
 	Monitor,
 	Moon,
 	Palette,
-	RefreshCw,
 	Save,
 	Settings as SettingsIcon,
 	Sun,
-	Upload,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -68,53 +64,6 @@ const Settings: React.FC<SettingsProps> = () => {
 			alert("保存失败，请重试。");
 		} finally {
 			setSaving(false);
-		}
-	};
-
-	const exportData = async () => {
-		try {
-			await invoke("export_data", {
-				request: {
-					format: "json",
-					include_all: true,
-				},
-			});
-			alert("数据导出成功！");
-		} catch (error) {
-			console.error("导出数据失败:", error);
-			alert("导出失败，请重试。");
-		}
-	};
-
-	const importData = async () => {
-		if (!confirm("导入数据将覆盖现有数据，确定要继续吗？")) return;
-
-		try {
-			// 这里需要实现文件选择器，暂时使用假的路径
-			await invoke("import_data", {
-				file_path: "/path/to/import/file.json",
-			});
-			alert("数据导入成功！");
-		} catch (error) {
-			console.error("导入数据失败:", error);
-			alert("导入失败，请重试。");
-		}
-	};
-
-	const clearData = async () => {
-		if (
-			!confirm(
-				"这将删除所有数据，包括任务、分类和计时记录。此操作不可恢复，确定要继续吗？",
-			)
-		)
-			return;
-
-		try {
-			await invoke("clear_all_data");
-			alert("数据已清除！");
-		} catch (error) {
-			console.error("清除数据失败:", error);
-			alert("清除失败，请重试。");
 		}
 	};
 
@@ -341,81 +290,7 @@ const Settings: React.FC<SettingsProps> = () => {
 					</div>
 				</div>
 
-				{/* 数据管理 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
-					<div className="flex items-center mb-4">
-						<Database className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2" />
-						<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-							数据管理
-						</h3>
-					</div>
-
-					<div className="space-y-4">
-						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-								数据保留天数
-							</label>
-							<input
-								type="number"
-								min="30"
-								max="3650"
-								value={config.data_retention_days}
-								onChange={(e) =>
-									setConfig({
-										...config,
-										data_retention_days: Number.parseInt(e.target.value),
-									})
-								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-							/>
-							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-								超过此天数的数据将被自动删除
-							</p>
-						</div>
-
-						<div className="flex items-center justify-between">
-							<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-								启用自动备份
-							</label>
-							<input
-								type="checkbox"
-								checked={config.backup_enabled}
-								onChange={(e) =>
-									setConfig({ ...config, backup_enabled: e.target.checked })
-								}
-								className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
-							/>
-						</div>
-
-						<div className="pt-4 border-t border-gray-200 dark:border-gray-600">
-							<div className="flex flex-col space-y-2">
-								<button
-									onClick={exportData}
-									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 theme-transition"
-								>
-									<Download className="h-4 w-4 mr-2" />
-									导出数据
-								</button>
-
-								<button
-									onClick={importData}
-									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 theme-transition"
-								>
-									<Upload className="h-4 w-4 mr-2" />
-									导入数据
-								</button>
-
-								<button
-									onClick={clearData}
-									className="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-								>
-									<RefreshCw className="h-4 w-4 mr-2" />
-									清除所有数据
-								</button>
-							</div>
-						</div>
-					</div>
-				</div>
+				{/* 数据管理卡片已移至单独页面 */}
 			</div>
 		</div>
 	);
