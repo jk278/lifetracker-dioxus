@@ -179,6 +179,103 @@ impl StorageManager {
         Ok(())
     }
 
+    /// 从备份恢复数据库（共享引用版本）
+    ///
+    /// # 参数
+    /// * `backup_path` - 备份文件路径
+    ///
+    /// 注意：此方法不需要可变引用，通过内部的数据库连接管理来实现恢复
+    pub fn restore_database_from_backup<P: AsRef<Path>>(
+        &self,
+        backup_path: P,
+    ) -> crate::errors::Result<()> {
+        let backup_path = backup_path.as_ref();
+        log::info!("开始恢复数据库从备份文件: {}", backup_path.display());
+
+        if !backup_path.exists() {
+            let error_msg = format!("备份文件不存在: {}", backup_path.display());
+            log::error!("{}", error_msg);
+            return Err(AppError::Storage(error_msg));
+        }
+
+        // 检查备份文件是否是有效的SQLite文件
+        let backup_file_size = std::fs::metadata(backup_path)
+            .map_err(|e| AppError::Storage(format!("无法读取备份文件信息: {}", e)))?
+            .len();
+
+        log::info!("备份文件大小: {} bytes", backup_file_size);
+
+        if backup_file_size == 0 {
+            return Err(AppError::Storage("备份文件为空".to_string()));
+        }
+
+        log::info!("正在打开备份文件连接...");
+        let backup_conn = Connection::open(backup_path)
+            .map_err(|e| AppError::Storage(format!("无法打开备份文件: {}", e)))?;
+
+        log::info!("正在验证备份文件的完整性...");
+        // 检查备份文件的完整性
+        let integrity_check: String = backup_conn
+            .query_row("PRAGMA integrity_check", rusqlite::params![], |row| {
+                row.get(0)
+            })
+            .map_err(|e| AppError::Storage(format!("备份文件完整性检查失败: {}", e)))?;
+
+        if integrity_check != "ok" {
+            return Err(AppError::Storage(format!(
+                "备份文件已损坏: {}",
+                integrity_check
+            )));
+        }
+
+        log::info!("备份文件完整性验证通过");
+
+        // 获取目标数据库连接
+        log::info!("正在获取目标数据库连接...");
+        let target_conn = self
+            .database
+            .get_connection()
+            .map_err(|e| AppError::Storage(format!("无法获取目标数据库连接: {}", e)))?
+            .get_raw_connection();
+
+        log::info!("正在获取数据库写锁...");
+        let mut target_conn_guard = target_conn
+            .lock()
+            .map_err(|_| AppError::Storage("无法获取数据库写锁".to_string()))?;
+
+        log::info!("开始执行数据库恢复...");
+        // 使用 rusqlite 的 backup API 进行恢复
+        // 从备份文件(source)恢复到当前数据库(destination)
+        {
+            let backup = rusqlite::backup::Backup::new(&backup_conn, &mut *target_conn_guard)
+                .map_err(|e| AppError::Storage(format!("创建备份对象失败: {}", e)))?;
+
+            log::info!("正在执行数据恢复...");
+            backup
+                .run_to_completion(5, std::time::Duration::from_millis(250), None)
+                .map_err(|e| AppError::Storage(format!("数据恢复执行失败: {}", e)))?;
+        } // backup 在这里被释放，结束可变借用
+
+        log::info!("数据库恢复完成，正在验证恢复结果...");
+
+        // 验证恢复后的数据库完整性
+        let restored_integrity: String = target_conn_guard
+            .query_row("PRAGMA integrity_check", rusqlite::params![], |row| {
+                row.get(0)
+            })
+            .map_err(|e| AppError::Storage(format!("恢复后完整性检查失败: {}", e)))?;
+
+        if restored_integrity != "ok" {
+            return Err(AppError::Storage(format!(
+                "恢复后数据库完整性验证失败: {}",
+                restored_integrity
+            )));
+        }
+
+        log::info!("数据库恢复完成并验证通过");
+        Ok(())
+    }
+
     /// 从备份恢复数据库
     ///
     /// # 参数
@@ -187,23 +284,8 @@ impl StorageManager {
         &mut self,
         backup_path: P,
     ) -> crate::errors::Result<()> {
-        if !backup_path.as_ref().exists() {
-            return Err(AppError::Storage(format!(
-                "备份文件不存在: {}",
-                backup_path.as_ref().display()
-            )));
-        }
-
-        let source_conn = Connection::open(backup_path.as_ref())?;
-        let dest_conn = self.database.get_connection()?.get_raw_connection();
-        let mut dest_conn = dest_conn.lock().unwrap();
-
-        // 使用 rusqlite 的 backup API 进行恢复
-        let backup = rusqlite::backup::Backup::new(&source_conn, &mut *dest_conn)?;
-        backup.run_to_completion(5, std::time::Duration::from_millis(250), None)?;
-
-        log::info!("数据库恢复完成");
-        Ok(())
+        // 直接调用共享引用版本
+        self.restore_database_from_backup(backup_path)
     }
 
     /// 优化数据库
@@ -288,11 +370,6 @@ impl StorageManager {
     /// 创建数据库备份
     pub fn create_backup<P: AsRef<Path>>(&self, backup_path: P) -> crate::errors::Result<()> {
         self.backup_database(backup_path)
-    }
-
-    /// 从备份恢复数据库
-    pub fn restore_backup<P: AsRef<Path>>(&mut self, backup_path: P) -> crate::errors::Result<()> {
-        self.restore_database(backup_path)
     }
 
     /// 导出数据到文件

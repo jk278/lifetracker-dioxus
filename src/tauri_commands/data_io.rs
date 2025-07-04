@@ -220,15 +220,27 @@ pub async fn restore_database(
     src_path: String,
 ) -> Result<String, String> {
     log::info!("从 {} 恢复数据库", src_path);
-    let mut storage = state.storage.clone();
-    match Arc::get_mut(&mut storage) {
-        Some(mut_storage) => match mut_storage.restore_database(&src_path) {
-            Ok(_) => Ok("数据库恢复完成".to_string()),
-            Err(e) => {
-                log::error!("数据库恢复失败: {}", e);
-                Err(e.to_string())
-            }
-        },
-        None => Err("无法获取可变存储引用".to_string()),
+
+    // 检查备份文件是否存在
+    if !std::path::Path::new(&src_path).exists() {
+        let error_msg = format!("备份文件不存在: {}", src_path);
+        log::error!("{}", error_msg);
+        return Err(error_msg);
+    }
+
+    // 直接通过 storage 内部方法进行恢复，避免 Arc::get_mut 的问题
+    let storage = &state.storage;
+
+    // 由于 StorageManager 的 restore_database 需要 &mut self，
+    // 我们需要在存储层实现一个新的方法来处理这个问题
+    match storage.restore_database_from_backup(&src_path) {
+        Ok(_) => {
+            log::info!("数据库恢复完成");
+            Ok("数据库恢复完成".to_string())
+        }
+        Err(e) => {
+            log::error!("数据库恢复失败: {}", e);
+            Err(e.to_string())
+        }
     }
 }
