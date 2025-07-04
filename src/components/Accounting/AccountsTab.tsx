@@ -15,8 +15,8 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
 	onOpenCreateAccount,
 }) => {
 	return (
-		<div className="p-6 h-full overflow-y-auto">
-			<div className="flex justify-between items-center mb-6">
+		<div className="h-full overflow-y-auto mt-4 mb-0 space-y-6">
+			<div className="flex justify-between items-center">
 				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					账户管理
 				</h3>
@@ -32,7 +32,7 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
 				{accounts.map((account) => (
 					<div
 						key={account.id}
-						className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+						className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 p-6"
 					>
 						<div className="flex items-center justify-between mb-4">
 							<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -62,4 +62,4 @@ const AccountsTab: React.FC<AccountsTabProps> = ({
 	);
 };
 
-export default AccountsTab; 
+export default AccountsTab;

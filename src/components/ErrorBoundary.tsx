@@ -119,7 +119,7 @@ export class ErrorBoundary extends Component<
 			// 默认错误 UI
 			return (
 				<div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-md w-full">
+					<div className="bg-surface rounded-lg shadow-lg p-8 max-w-md w-full">
 						<div className="flex items-center space-x-3 mb-4">
 							<AlertTriangle className="h-8 w-8 text-red-500" />
 							<h2 className="text-xl font-semibold text-gray-900 dark:text-white">

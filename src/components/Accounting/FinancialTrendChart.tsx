@@ -56,7 +56,7 @@ const FinancialTrendChart: React.FC<FinancialTrendChartProps> = ({
 	const CustomTooltip = ({ active, payload, label }: any) => {
 		if (active && payload && payload.length) {
 			return (
-				<div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-4">
+				<div className="bg-surface border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-4">
 					<p className="font-medium text-gray-900 dark:text-gray-100 mb-2">
 						{label}
 					</p>
@@ -76,7 +76,7 @@ const FinancialTrendChart: React.FC<FinancialTrendChartProps> = ({
 	};
 
 	return (
-		<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+		<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 p-6">
 			<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
 				收支趋势
 			</h4>

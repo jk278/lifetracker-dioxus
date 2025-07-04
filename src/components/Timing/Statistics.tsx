@@ -1,9 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Activity, BarChart3, Clock, PieChart, Target } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
-
-type StatisticsProps = {};
 
 // 匹配后端的StatisticsDto结构
 interface StatisticsData {
@@ -46,7 +43,7 @@ interface StatisticsData {
 	}[];
 }
 
-const Statistics: React.FC<StatisticsProps> = () => {
+const Statistics = () => {
 	const [period, setPeriod] = useState<string>("week");
 	const [stats, setStats] = useState<StatisticsData | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -94,9 +91,9 @@ const Statistics: React.FC<StatisticsProps> = () => {
 	if (error) {
 		return (
 			<div className="space-y-6">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					统计报告
-				</h2>
+				</h3>
 				<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
 					<p className="text-red-600 dark:text-red-400">{error}</p>
 					<button
@@ -114,9 +111,9 @@ const Statistics: React.FC<StatisticsProps> = () => {
 		<div className="space-y-6">
 			{/* 页面标题和控制 */}
 			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					统计报告
-				</h2>
+				</h3>
 				<div className="flex space-x-2">
 					<select
 						value={period}
@@ -139,7 +136,7 @@ const Statistics: React.FC<StatisticsProps> = () => {
 				<>
 					{/* 总体统计卡片 */}
 					<div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-6">
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<div className="flex items-center">
 								<div className="flex-shrink-0">
 									<Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -170,7 +167,7 @@ const Statistics: React.FC<StatisticsProps> = () => {
 							</div>
 						</div>
 
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<div className="flex items-center">
 								<div className="flex-shrink-0">
 									<Target className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -192,7 +189,7 @@ const Statistics: React.FC<StatisticsProps> = () => {
 							</div>
 						</div>
 
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<div className="flex items-center">
 								<div className="flex-shrink-0">
 									<BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
@@ -216,7 +213,7 @@ const Statistics: React.FC<StatisticsProps> = () => {
 							</div>
 						</div>
 
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<div className="flex items-center">
 								<div className="flex-shrink-0">
 									<Activity className="h-8 w-8 text-orange-600 dark:text-orange-400" />
@@ -241,7 +238,7 @@ const Statistics: React.FC<StatisticsProps> = () => {
 
 					{/* 分类统计 */}
 					{stats.category_stats && stats.category_stats.length > 0 && (
-						<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<div className="flex items-center justify-between mb-4">
 								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
 									分类时间分布
@@ -250,9 +247,9 @@ const Statistics: React.FC<StatisticsProps> = () => {
 							</div>
 
 							<div className="space-y-4">
-								{stats.category_stats.map((category, index) => (
+								{stats.category_stats.map((category) => (
 									<div
-										key={index}
+										key={category.category_id}
 										className="flex items-center justify-between"
 									>
 										<div className="flex items-center space-x-3">

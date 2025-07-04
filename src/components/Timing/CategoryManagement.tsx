@@ -173,9 +173,9 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 	return (
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					分类管理
-				</h2>
+				</h3>
 				<button
 					onClick={() => {
 						setEditingCategory(null);
@@ -194,7 +194,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 				</button>
 			</div>
 
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-4">
+			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4">
 				<div className="relative">
 					<Search className="h-5 w-5 absolute left-3 top-3 text-gray-400 dark:text-gray-500" />
 					<input
@@ -202,13 +202,13 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
 						placeholder="搜索分类名称或描述..."
-						className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+						className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 					/>
 				</div>
 			</div>
 
 			{filteredCategories.length === 0 ? (
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20">
 					<div className="text-center py-12">
 						<Folder className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
 						<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
@@ -226,7 +226,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 					{filteredCategories.map((category) => (
 						<div
 							key={category.id}
-							className="bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-700/20 hover:shadow-lg dark:hover:shadow-gray-700/30 transition-shadow"
+							className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-md dark:shadow-gray-700/20 hover:shadow-lg dark:hover:shadow-gray-700/30 transition-shadow"
 						>
 							<div className="p-6">
 								<div className="flex items-center justify-between mb-4">
@@ -291,7 +291,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 
 			{showCreateDialog && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md mx-4 shadow-xl">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							{editingCategory ? "编辑分类" : "创建新分类"}
 						</h3>

@@ -284,14 +284,14 @@ const AccountingPage: React.FC = () => {
 	return (
 		<div className="space-y-6">
 			{/* 内容主体（保留标签页等） */}
-			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 flex flex-col h-[80vh]">
+			<div className="flex flex-col px-2 space-y-4">
 				{/* 标签与内容区域保留原结构，但移除多余边距 */}
-				<div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
+				<div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
 					{[
-						{ key: "overview", label: "总览" },
-						{ key: "accounts", label: "账户" },
-						{ key: "transactions", label: "交易" },
-						{ key: "stats", label: "统计" },
+						{ key: "overview", label: "总览概览" },
+						{ key: "accounts", label: "账户管理" },
+						{ key: "transactions", label: "交易明细" },
+						{ key: "stats", label: "统计分析" },
 					].map((tab) => (
 						<button
 							key={tab.key}
@@ -300,10 +300,10 @@ const AccountingPage: React.FC = () => {
 									tab.key as "overview" | "accounts" | "transactions" | "stats",
 								)
 							}
-							className={`px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
+							className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
 								activeTab === tab.key
-									? "border-blue-500 text-blue-600 dark:text-blue-400"
-									: "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
+									? "text-theme-primary border-theme-primary"
+									: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-transparent"
 							}`}
 						>
 							{tab.label}
@@ -608,4 +608,4 @@ const AccountingPage: React.FC = () => {
 	);
 };
 
-export default AccountingPage; 
+export default AccountingPage;

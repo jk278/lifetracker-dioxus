@@ -58,7 +58,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 	];
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 px-2">
 			{/* 内部标签导航 */}
 			<div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
 				{tabs.map((tab) => (

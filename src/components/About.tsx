@@ -147,7 +147,7 @@ const About: React.FC = () => {
 			</div>
 
 			{/* 基本信息 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+			<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 				<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 					基本信息
 				</h3>
@@ -198,7 +198,7 @@ const About: React.FC = () => {
 			</div>
 
 			{/* 相关链接 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+			<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 				<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 					相关链接
 				</h3>
@@ -232,7 +232,7 @@ const About: React.FC = () => {
 			</div>
 
 			{/* 主要功能 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+			<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 				<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 					主要功能
 				</h3>
@@ -255,7 +255,7 @@ const About: React.FC = () => {
 
 			{/* 系统信息 */}
 			{showSystemInfo && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						系统信息
 					</h3>
@@ -300,7 +300,7 @@ const About: React.FC = () => {
 
 			{/* 许可证信息 */}
 			{showLicense && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						许可证信息
 					</h3>
@@ -336,7 +336,7 @@ const About: React.FC = () => {
 
 			{/* 版本历史 */}
 			{showDetails && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 						版本历史
 					</h3>
@@ -378,7 +378,7 @@ const About: React.FC = () => {
 
 			{/* 致谢 */}
 			{showDetails && (
-				<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
 					<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
 						<Heart className="h-5 w-5 text-red-500" />
 						<span>致谢</span>

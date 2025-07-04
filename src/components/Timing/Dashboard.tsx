@@ -158,9 +158,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 		<div className="space-y-6">
 			{/* 页面标题 */}
 			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					仪表板
-				</h2>
+				</h3>
 				<div className="flex space-x-2">
 					<button
 						onClick={() => setShowQuickStart(true)}
@@ -173,7 +173,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			</div>
 
 			{/* 计时器控制区域 */}
-			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6 flex flex-col items-center gap-6">
+			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6 flex flex-col items-center gap-6">
 				{/* Timer display */}
 				<div className="text-center">
 					<div className="text-6xl font-mono font-bold text-gray-900 dark:text-white">
@@ -215,7 +215,9 @@ const Dashboard: React.FC<DashboardProps> = ({
 					) : (
 						<>
 							<button
-								onClick={timerStatus.state === "running" ? onPauseTimer : onResumeTimer}
+								onClick={
+									timerStatus.state === "running" ? onPauseTimer : onResumeTimer
+								}
 								className="flex items-center justify-center w-20 h-20 bg-yellow-600 text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all transform hover:scale-105"
 								title={timerStatus.state === "running" ? "暂停" : "继续"}
 							>
@@ -240,7 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 今日统计卡片 */}
 			<div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-6">
 				{/* 今日总时间 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
@@ -257,7 +259,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				</div>
 
 				{/* 任务数量 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<Target className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -274,7 +276,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 				</div>
 
 				{/* 平均时间 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0">
 							<BarChart3 className="h-8 w-8 text-purple-600 dark:text-purple-400" />
@@ -292,7 +294,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 				{/* 效率指标 */}
 				<div
-					className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6 cursor-pointer hover:shadow-xl dark:hover:shadow-gray-700/30 transition-shadow duration-200"
+					className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6 cursor-pointer hover:shadow-xl dark:hover:shadow-gray-700/30 transition-shadow duration-200"
 					onClick={() => setShowEfficiencyDetails(true)}
 				>
 					<div className="flex items-center">
@@ -315,7 +317,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			</div>
 
 			{/* 今日工作记录 */}
-			<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 				<div className="flex items-center justify-between mb-4">
 					<h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
 						<History className="h-5 w-5 mr-2 text-theme-primary" />
@@ -376,7 +378,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 快速开始对话框 */}
 			{showQuickStart && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="surface-adaptive rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-md mx-4">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							创建新任务
 						</h3>
@@ -450,7 +452,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 效率评分详情弹窗 */}
 			{showEfficiencyDetails && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="surface-adaptive rounded-lg p-6 w-full max-w-2xl mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-2xl mx-4">
 						{/* 弹窗头部 */}
 						<div className="flex items-center justify-between mb-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -653,7 +655,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 					onClick={() => setIsTaskSelectorOpen(false)}
 				>
 					<div
-						className="surface-adaptive rounded-lg p-6 w-full max-w-md mx-4 shadow-xl"
+						className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 shadow-xl"
 						onClick={(e) => e.stopPropagation()}
 					>
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

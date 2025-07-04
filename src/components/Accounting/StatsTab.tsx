@@ -66,8 +66,8 @@ const StatsTab: React.FC<StatsTabProps> = ({
 		fetchTrendData();
 	}, [fetchTrendData]);
 	return (
-		<div className="p-6 h-full overflow-y-auto">
-			<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">
+		<div className="h-full overflow-y-auto mt-4 mb-0 space-y-6">
+			<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 				财务统计
 			</h3>
 
@@ -75,7 +75,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 				<div className="space-y-6">
 					{/* 统计卡片 */}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-						<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								总收入
 							</h4>
@@ -83,7 +83,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 								{formatAmount(financialStats.total_income)}
 							</p>
 						</div>
-						<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								总支出
 							</h4>
@@ -91,7 +91,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 								{formatAmount(financialStats.total_expense)}
 							</p>
 						</div>
-						<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								净收入
 							</h4>
@@ -99,7 +99,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 								{formatAmount(financialStats.net_income)}
 							</p>
 						</div>
-						<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
 								交易笔数
 							</h4>
@@ -112,7 +112,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 					{/* 收支趋势图表 */}
 					<div className="space-y-4">
 						{/* 图表控制选项 */}
-						<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4">
 							<div className="flex items-center justify-between">
 								<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 									收支趋势 (过去12个月)
@@ -182,7 +182,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 
 						{/* 趋势图表 */}
 						{trendLoading ? (
-							<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+							<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 								<div className="flex items-center justify-center h-64">
 									<div className="text-center">
 										<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2" />
@@ -193,7 +193,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 								</div>
 							</div>
 						) : trendError ? (
-							<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+							<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 								<div className="flex items-center justify-center h-64">
 									<div className="text-center">
 										<div className="text-red-500 text-lg mb-2">⚠️</div>
@@ -221,7 +221,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 					</div>
 
 					{/* 统计期间 */}
-					<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
 							统计期间
 						</h4>

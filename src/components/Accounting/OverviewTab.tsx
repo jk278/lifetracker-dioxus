@@ -1,5 +1,9 @@
 import type React from "react";
-import type { AccountDto, FinancialStatsDto, TransactionDto } from "../../types";
+import type {
+	AccountDto,
+	FinancialStatsDto,
+	TransactionDto,
+} from "../../types";
 
 interface OverviewTabProps {
 	accounts: AccountDto[];
@@ -15,10 +19,16 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 	formatAmount,
 }) => {
 	return (
-		<div className="p-6 h-full overflow-y-auto">
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+		<div className="h-full overflow-y-auto mt-4 mb-0 space-y-6">
+			<div className="flex justify-between items-center mb-2">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+					总览概览
+				</h3>
+			</div>
+			{/* 统计卡片区 */}
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 				{/* 总余额 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0 text-3xl">💰</div>
 						<div className="ml-4">
@@ -33,9 +43,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 						</div>
 					</div>
 				</div>
-
 				{/* 本月收入 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0 text-3xl">📈</div>
 						<div className="ml-4">
@@ -50,9 +59,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 						</div>
 					</div>
 				</div>
-
 				{/* 本月支出 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0 text-3xl">📉</div>
 						<div className="ml-4">
@@ -67,9 +75,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 						</div>
 					</div>
 				</div>
-
 				{/* 净收入 */}
-				<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+				<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 					<div className="flex items-center">
 						<div className="flex-shrink-0 text-3xl">💎</div>
 						<div className="ml-4">
@@ -85,9 +92,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 					</div>
 				</div>
 			</div>
-
-			{/* 最近交易 */}
-			<div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+			{/* 最近交易卡片 */}
+			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
 					最近交易
 				</h3>
@@ -112,8 +118,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 										{transaction.description}
 									</p>
 									<p className="text-sm text-gray-500 dark:text-gray-400">
-										{transaction.account_name} •{" "}
-										{transaction.transaction_date}
+										{transaction.account_name} • {transaction.transaction_date}
 									</p>
 								</div>
 							</div>
@@ -141,4 +146,4 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 	);
 };
 
-export default OverviewTab; 
+export default OverviewTab;

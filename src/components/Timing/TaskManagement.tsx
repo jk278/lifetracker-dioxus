@@ -151,9 +151,9 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 		<div className="space-y-6">
 			{/* 页面标题和工具栏 */}
 			<div className="flex items-center justify-between">
-				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					任务管理
-				</h2>
+				</h3>
 				<button
 					onClick={() => {
 						setEditingTask(null);
@@ -173,7 +173,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 			</div>
 
 			{/* 搜索和筛选 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 p-4">
+			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4">
 				<div className="flex flex-col sm:flex-row gap-4">
 					{/* 搜索框 */}
 					<div className="flex-1 relative">
@@ -183,7 +183,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
 							placeholder="搜索任务名称或描述..."
-							className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+							className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 						/>
 					</div>
 
@@ -192,7 +192,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 						<select
 							value={selectedCategory}
 							onChange={(e) => setSelectedCategory(e.target.value)}
-							className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+							className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 						>
 							<option value="">所有分类</option>
 							{categories.map((category) => (
@@ -206,7 +206,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 			</div>
 
 			{/* 任务列表 */}
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-700/20 overflow-hidden">
+			<div>
 				{filteredTasks.length === 0 ? (
 					<div className="text-center py-12">
 						<Clock className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
@@ -220,7 +220,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 						</p>
 					</div>
 				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 						{filteredTasks.map((task) => {
 							const category = categories.find(
 								(cat) => cat.id === task.category_id,
@@ -229,7 +229,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 							return (
 								<div
 									key={task.id}
-									className="border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-gray-700/30 transition-shadow"
+									className="border border-gray-200 dark:border-gray-700 bg-surface rounded-lg p-4 hover:shadow-md dark:hover:shadow-gray-700/30 transition-shadow"
 								>
 									<div className="flex items-start justify-between mb-3">
 										<h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
@@ -260,7 +260,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 									<div className="flex items-center justify-between mb-3">
 										{category ? (
 											<span
-												className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+												className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-700"
 												style={{
 													backgroundColor: category.color + "20",
 													color: category.color,
@@ -311,7 +311,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 			{/* 创建/编辑任务对话框 */}
 			{showCreateDialog && (
 				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+					<div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							{editingTask ? "编辑任务" : "创建新任务"}
 						</h3>
@@ -327,7 +327,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 									onChange={(e) =>
 										setNewTask({ ...newTask, name: e.target.value })
 									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 									placeholder="输入任务名称..."
 									autoFocus
 								/>
@@ -342,7 +342,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 									onChange={(e) =>
 										setNewTask({ ...newTask, description: e.target.value })
 									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 									placeholder="输入任务描述..."
 									rows={3}
 								/>
@@ -357,7 +357,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 									onChange={(e) =>
 										setNewTask({ ...newTask, category_id: e.target.value })
 									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 								>
 									<option value="">无分类</option>
 									{categories.map((category) => (
@@ -378,7 +378,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 									onChange={(e) =>
 										setNewTask({ ...newTask, tags: e.target.value })
 									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 									placeholder="工作, 项目, 重要..."
 								/>
 							</div>
@@ -396,7 +396,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 										tags: "",
 									});
 								}}
-								className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+								className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
 							>
 								取消
 							</button>

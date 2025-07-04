@@ -121,16 +121,23 @@ function App() {
 				avgSessionMinutes = totalSeconds / 60 / taskCount; // 平均每段工作时长（分钟）
 
 				// 1. 专注度评分 (40分) - 基于平均会话时长
-				if (avgSessionMinutes >= 25) focusScore = 40; // 25分钟以上 = 专注
-				else if (avgSessionMinutes >= 15) focusScore = 30; // 15-25分钟 = 良好
-				else if (avgSessionMinutes >= 5) focusScore = 20; // 5-15分钟 = 一般
+				if (avgSessionMinutes >= 25)
+					focusScore = 40; // 25分钟以上 = 专注
+				else if (avgSessionMinutes >= 15)
+					focusScore = 30; // 15-25分钟 = 良好
+				else if (avgSessionMinutes >= 5)
+					focusScore = 20; // 5-15分钟 = 一般
 				else focusScore = 10; // 5分钟以下 = 需改进
 
 				// 2. 工作量评分 (30分) - 基于总工作时长
-				if (hoursWorked >= 6) volumeScore = 30; // 6小时以上 = 饱满
-				else if (hoursWorked >= 4) volumeScore = 25; // 4-6小时 = 充实
-				else if (hoursWorked >= 2) volumeScore = 20; // 2-4小时 = 适中
-				else if (hoursWorked >= 1) volumeScore = 15; // 1-2小时 = 轻量
+				if (hoursWorked >= 6)
+					volumeScore = 30; // 6小时以上 = 饱满
+				else if (hoursWorked >= 4)
+					volumeScore = 25; // 4-6小时 = 充实
+				else if (hoursWorked >= 2)
+					volumeScore = 20; // 2-4小时 = 适中
+				else if (hoursWorked >= 1)
+					volumeScore = 15; // 1-2小时 = 轻量
 				else volumeScore = 10; // 1小时以下 = 起步
 
 				// 3. 节奏评分 (30分) - 基于工作段数与时长的平衡
@@ -346,22 +353,39 @@ function App() {
 
 					{/* 主要内容区域 */}
 					<div className="flex flex-1 overflow-hidden">
-						{/* 侧边栏 - 简化为直接使用 Tailwind 类 */}
+						{/* 侧边栏 - 重构后的实现 */}
 						<div
 							className={`${
 								isCollapsed ? "w-16" : "w-56"
-							} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col`}
+							} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col relative overflow-hidden`}
 						>
-							{/* 折叠 / 展开控制按钮（与菜单项对齐） */}
-							<div className={isCollapsed ? "p-2 py-4" : "p-4"}>
-								<button
-									onClick={() => setIsCollapsed(!isCollapsed)}
-									className={`w-full flex items-center ${isCollapsed ? "justify-center px-2" : "px-4"} py-3 text-sm font-medium rounded-lg transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700`}
-									title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
-								>
-									<Menu className={`h-5 w-5 ${!isCollapsed ? "mr-3" : ""}`} />
-									{!isCollapsed && <span className="truncate">菜单</span>}
-								</button>
+							{/* 折叠展开控制按钮 */}
+							<div className="p-2">
+								<div className="relative h-12">
+									{/* 固定的图标层 */}
+									<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10">
+										<button
+											onClick={() => setIsCollapsed(!isCollapsed)}
+											className="w-8 h-8 flex items-center justify-center rounded-md transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+											title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
+										>
+											<Menu className="h-5 w-5" />
+										</button>
+									</div>
+
+									{/* 文本层 - 独立动画 */}
+									<div
+										className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out ${
+											isCollapsed
+												? "opacity-0 translate-x-[-8px] pointer-events-none"
+												: "opacity-100 translate-x-0"
+										}`}
+									>
+										<span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+											菜单
+										</span>
+									</div>
+								</div>
 							</div>
 
 							{/* 导航菜单 */}
@@ -369,25 +393,56 @@ function App() {
 								ref={navRef}
 								className="flex-1 overflow-y-auto scroll-container"
 							>
-								<div className={`p-4 space-y-2 ${isCollapsed ? "px-2" : ""}`}>
+								<div className="p-2 space-y-1">
 									{[
 										{ id: "timing", name: "计时", icon: Clock },
 										{ id: "accounting", name: "记账", icon: Wallet },
 										{ id: "settings", name: "设置", icon: Settings },
 										{ id: "about", name: "关于", icon: Info },
 									].map(({ id, name, icon: Icon }) => (
-										<button
-											key={id}
-											onClick={() => setActiveView(id as any)}
-											className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors duration-200 ${
-												activeView === id
-													? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
-													: "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300"
-											} ${isCollapsed ? "justify-center" : ""}`}
-										>
-											<Icon size={20} />
-											{!isCollapsed && <span>{name}</span>}
-										</button>
+										<div key={id} className="relative h-12">
+											{/* 背景层 - 完整宽度的点击区域 */}
+											<button
+												onClick={() => setActiveView(id as any)}
+												className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
+													activeView === id
+														? "bg-theme-primary/10 hover:bg-theme-primary/15"
+														: "hover:bg-gray-50 dark:hover:bg-gray-700"
+												}`}
+												title={isCollapsed ? name : undefined}
+											/>
+
+											{/* 固定的图标层 */}
+											<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10 pointer-events-none">
+												<Icon
+													size={20}
+													className={`transition-colors duration-200 ${
+														activeView === id
+															? "text-theme-primary"
+															: "text-gray-500 dark:text-gray-400"
+													}`}
+												/>
+											</div>
+
+											{/* 文本层 - 独立动画 */}
+											<div
+												className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out pointer-events-none ${
+													isCollapsed
+														? "opacity-0 translate-x-[-8px]"
+														: "opacity-100 translate-x-0"
+												}`}
+											>
+												<span
+													className={`text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
+														activeView === id
+															? "text-theme-primary"
+															: "text-gray-700 dark:text-gray-200"
+													}`}
+												>
+													{name}
+												</span>
+											</div>
+										</div>
 									))}
 								</div>
 							</nav>

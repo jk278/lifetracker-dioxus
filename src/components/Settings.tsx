@@ -173,8 +173,8 @@ const Settings: React.FC<SettingsProps> = () => {
 										onClick={() => setTheme(value as any)}
 										className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
 											theme === value
-												? "border-theme-primary bg-theme-primary-light text-theme-primary-dark"
-												: "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500"
+												? "border-theme-primary bg-theme-primary-light text-gray-900 dark:bg-theme-primary-dark dark:text-white"
+												: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500 text-gray-900 dark:text-gray-100"
 										}`}
 									>
 										<Icon className="h-5 w-5 mb-1" />
@@ -196,7 +196,7 @@ const Settings: React.FC<SettingsProps> = () => {
 										className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
 											themeColor === key
 												? "border-gray-400 dark:border-gray-300 bg-gray-50 dark:bg-gray-700"
-												: "border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500"
+												: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500"
 										}`}
 									>
 										<div
@@ -220,7 +220,7 @@ const Settings: React.FC<SettingsProps> = () => {
 								onChange={(e) =>
 									setConfig({ ...config, language: e.target.value })
 								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 							>
 								<option value="zh-CN">简体中文</option>
 								<option value="en-US">English</option>
@@ -297,7 +297,7 @@ const Settings: React.FC<SettingsProps> = () => {
 										work_session_duration: Number.parseInt(e.target.value),
 									})
 								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 							/>
 						</div>
 
@@ -316,7 +316,7 @@ const Settings: React.FC<SettingsProps> = () => {
 										break_duration: Number.parseInt(e.target.value),
 									})
 								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 							/>
 						</div>
 
@@ -335,7 +335,7 @@ const Settings: React.FC<SettingsProps> = () => {
 										long_break_duration: Number.parseInt(e.target.value),
 									})
 								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 							/>
 						</div>
 					</div>
@@ -366,7 +366,7 @@ const Settings: React.FC<SettingsProps> = () => {
 										data_retention_days: Number.parseInt(e.target.value),
 									})
 								}
-								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
 							/>
 							<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
 								超过此天数的数据将被自动删除
@@ -391,7 +391,7 @@ const Settings: React.FC<SettingsProps> = () => {
 							<div className="flex flex-col space-y-2">
 								<button
 									onClick={exportData}
-									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 theme-transition"
 								>
 									<Download className="h-4 w-4 mr-2" />
 									导出数据
@@ -399,7 +399,7 @@ const Settings: React.FC<SettingsProps> = () => {
 
 								<button
 									onClick={importData}
-									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+									className="flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 theme-transition"
 								>
 									<Upload className="h-4 w-4 mr-2" />
 									导入数据

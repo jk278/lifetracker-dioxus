@@ -204,4 +204,9 @@ code {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Material You surface background */
+.bg-surface {
+  background-color: var(--theme-surface);
 } 
