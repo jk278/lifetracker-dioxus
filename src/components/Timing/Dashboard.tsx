@@ -662,7 +662,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 			{/* 任务选择模态框 */}
 			{isTaskSelectorOpen && (
 				<div
-					className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+					className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 !mt-0"
 					onClick={() => setIsTaskSelectorOpen(false)}
 				>
 					<div

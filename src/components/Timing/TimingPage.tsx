@@ -60,7 +60,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 	return (
 		<div className="flex flex-col h-full px-2">
 			{/* 内部标签导航 - 固定在顶部 */}
-			<div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10">
+			<div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
 				<div className="flex">
 					{tabs.map((tab) => (
 						<button

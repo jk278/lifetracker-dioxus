@@ -488,7 +488,7 @@ function App() {
 								isMobileLayout ? "pb-20" : "" // 移动端底部留出底部菜单栏空间
 							}`}
 						>
-							<div className={`${isMobileLayout ? "p-4" : "p-6"}`}>
+							<div className={`${isMobileLayout ? "px-4 pb-4" : "px-6 pb-6"}`}>
 								<ErrorBoundary resetKeys={[activeView]}>
 									{activeView === "timing" && (
 										<TimingPage

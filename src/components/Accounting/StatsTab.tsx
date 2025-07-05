@@ -66,7 +66,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 		fetchTrendData();
 	}, [fetchTrendData]);
 	return (
-		<div className="h-full overflow-y-auto mt-4 mb-0 space-y-6">
+		<div className="h-full overflow-y-auto mt-2 mb-0 space-y-6">
 			<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 				财务统计
 			</h3>

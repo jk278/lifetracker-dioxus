@@ -17,7 +17,7 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 	onEditTransaction,
 }) => {
 	return (
-		<div className="h-full overflow-y-auto mt-4 mb-0 space-y-6">
+		<div className="h-full overflow-y-auto mt-2 mb-0 space-y-6">
 			<div className="flex justify-between items-center">
 				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 					交易记录
