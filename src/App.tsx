@@ -30,6 +30,15 @@ const formatDuration = (seconds: number): string => {
 	return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
+// 导航菜单项配置
+const NAV_ITEMS = [
+	{ id: "timing", name: "计时", icon: Clock },
+	{ id: "accounting", name: "记账", icon: Wallet },
+	{ id: "data", name: "数据", icon: Database },
+	{ id: "settings", name: "设置", icon: Settings },
+	{ id: "about", name: "关于", icon: Info },
+] as const;
+
 function App() {
 	const [timerStatus, setTimerStatus] = useState<TimerStatus>({
 		state: "stopped",
@@ -45,6 +54,10 @@ function App() {
 
 	// 侧边栏状态管理 - 简化状态
 	const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+
+	// 窗口宽度状态管理
+	const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
+	const [isMobileLayout, setIsMobileLayout] = useState<boolean>(false);
 
 	// 悬浮按钮动画状态
 	const [delayedIconState, setDelayedIconState] = useState<
@@ -342,6 +355,29 @@ function App() {
 		[],
 	);
 
+	// 窗口宽度检测
+	useEffect(() => {
+		const handleResize = () => {
+			const width = window.innerWidth;
+			setWindowWidth(width);
+			setIsMobileLayout(width < 768); // 768px 作为断点
+		};
+
+		// 初始化
+		handleResize();
+
+		// 监听窗口大小变化
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
+	}, []);
+
+	// 移动端模式下强制收起侧边栏
+	useEffect(() => {
+		if (isMobileLayout) {
+			setIsCollapsed(true);
+		}
+	}, [isMobileLayout]);
+
 	return (
 		<ErrorBoundary
 			onError={handleError}
@@ -355,108 +391,106 @@ function App() {
 
 					{/* 主要内容区域 */}
 					<div className="flex flex-1 overflow-hidden">
-						{/* 侧边栏 - 重构后的实现 */}
-						<div
-							className={`${
-								isCollapsed ? "w-16" : "w-48"
-							} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col relative overflow-hidden`}
-						>
-							{/* 折叠展开控制按钮 */}
-							<div className="p-2">
-								<div className="relative h-12">
-									{/* 固定的图标层 */}
-									<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10">
-										<button
-											onClick={() => setIsCollapsed(!isCollapsed)}
-											className="w-8 h-8 flex items-center justify-center rounded-md transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
-											title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
-										>
-											<Menu className="h-5 w-5" />
-										</button>
-									</div>
+						{/* 侧边栏 - 桌面端显示 */}
+						{!isMobileLayout && (
+							<div
+								className={`${
+									isCollapsed ? "w-16" : "w-48"
+								} surface-adaptive shadow-sm border-r border-gray-200 dark:border-gray-700 flex-shrink-0 transition-all duration-300 ease-out h-full flex flex-col relative overflow-hidden`}
+							>
+								{/* 折叠展开控制按钮 */}
+								<div className="p-2">
+									<div className="relative h-12">
+										{/* 固定的图标层 */}
+										<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10">
+											<button
+												onClick={() => setIsCollapsed(!isCollapsed)}
+												className="w-8 h-8 flex items-center justify-center rounded-md transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+												title={isCollapsed ? "展开侧边栏" : "折叠侧边栏"}
+											>
+												<Menu className="h-5 w-5" />
+											</button>
+										</div>
 
-									{/* 文本层 - 独立动画 */}
-									<div
-										className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out ${
-											isCollapsed
-												? "opacity-0 translate-x-[-8px] pointer-events-none"
-												: "opacity-100 translate-x-0"
-										}`}
-									>
-										<span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
-											菜单
-										</span>
+										{/* 文本层 - 独立动画 */}
+										<div
+											className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out ${
+												isCollapsed
+													? "opacity-0 translate-x-[-8px] pointer-events-none"
+													: "opacity-100 translate-x-0"
+											}`}
+										>
+											<span className="text-sm font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
+												菜单
+											</span>
+										</div>
 									</div>
 								</div>
-							</div>
 
-							{/* 导航菜单 */}
-							<nav
-								ref={navRef}
-								className="flex-1 overflow-y-auto scroll-container"
-							>
-								<div className="p-2 space-y-1">
-									{[
-										{ id: "timing", name: "计时", icon: Clock },
-										{ id: "accounting", name: "记账", icon: Wallet },
-										{ id: "data", name: "数据管理", icon: Database },
-										{ id: "settings", name: "设置", icon: Settings },
-										{ id: "about", name: "关于", icon: Info },
-									].map(({ id, name, icon: Icon }) => (
-										<div key={id} className="relative h-12">
-											{/* 背景层 - 完整宽度的点击区域 */}
-											<button
-												onClick={() => setActiveView(id as any)}
-												className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
-													activeView === id
-														? "bg-theme-primary/10 hover:bg-theme-primary/15"
-														: "hover:bg-gray-50 dark:hover:bg-gray-700"
-												}`}
-												title={isCollapsed ? name : undefined}
-											/>
-
-											{/* 固定的图标层 */}
-											<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10 pointer-events-none">
-												<Icon
-													size={20}
-													className={`transition-colors duration-200 ${
+								{/* 导航菜单 */}
+								<nav
+									ref={navRef}
+									className="flex-1 overflow-y-auto scroll-container"
+								>
+									<div className="p-2 space-y-1">
+										{NAV_ITEMS.map(({ id, name, icon: Icon }) => (
+											<div key={id} className="relative h-12">
+												{/* 背景层 - 完整宽度的点击区域 */}
+												<button
+													onClick={() => setActiveView(id as any)}
+													className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
 														activeView === id
-															? "text-theme-primary"
-															: "text-gray-500 dark:text-gray-400"
+															? "bg-theme-primary/10 hover:bg-theme-primary/15"
+															: "hover:bg-gray-50 dark:hover:bg-gray-700"
 													}`}
+													title={isCollapsed ? name : undefined}
 												/>
-											</div>
 
-											{/* 文本层 - 独立动画 */}
-											<div
-												className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out pointer-events-none ${
-													isCollapsed
-														? "opacity-0 translate-x-[-8px]"
-														: "opacity-100 translate-x-0"
-												}`}
-											>
-												<span
-													className={`text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
-														activeView === id
-															? "text-theme-primary"
-															: "text-gray-700 dark:text-gray-200"
+												{/* 固定的图标层 */}
+												<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10 pointer-events-none">
+													<Icon
+														size={20}
+														className={`transition-colors duration-200 ${
+															activeView === id
+																? "text-theme-primary"
+																: "text-gray-500 dark:text-gray-400"
+														}`}
+													/>
+												</div>
+
+												{/* 文本层 - 独立动画 */}
+												<div
+													className={`absolute left-12 top-0 h-12 flex items-center transition-all duration-300 ease-out pointer-events-none ${
+														isCollapsed
+															? "opacity-0 translate-x-[-8px]"
+															: "opacity-100 translate-x-0"
 													}`}
 												>
-													{name}
-												</span>
+													<span
+														className={`text-sm font-medium whitespace-nowrap transition-colors duration-200 ${
+															activeView === id
+																? "text-theme-primary"
+																: "text-gray-700 dark:text-gray-200"
+														}`}
+													>
+														{name}
+													</span>
+												</div>
 											</div>
-										</div>
-									))}
-								</div>
-							</nav>
-						</div>
+										))}
+									</div>
+								</nav>
+							</div>
+						)}
 
 						{/* 主内容区 - 简化为直接使用 Tailwind 类 */}
 						<div
 							ref={mainContentRef}
-							className="flex-1 overflow-y-auto bg-adaptive relative scroll-container"
+							className={`flex-1 overflow-y-auto bg-adaptive relative scroll-container ${
+								isMobileLayout ? "pb-20" : "" // 移动端底部留出底部菜单栏空间
+							}`}
 						>
-							<div className="p-6">
+							<div className={`${isMobileLayout ? "p-4" : "p-6"}`}>
 								<ErrorBoundary resetKeys={[activeView]}>
 									{activeView === "timing" && (
 										<TimingPage
@@ -486,9 +520,35 @@ function App() {
 						</div>
 					</div>
 
+					{/* 底部菜单栏 - 移动端显示 */}
+					{isMobileLayout && (
+						<div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40">
+							<div className="flex h-full">
+								{NAV_ITEMS.map(({ id, name, icon: Icon }) => (
+									<button
+										key={id}
+										onClick={() => setActiveView(id as any)}
+										className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 ${
+											activeView === id
+												? "text-theme-primary bg-theme-primary/5"
+												: "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+										}`}
+									>
+										<Icon size={20} />
+										<span className="text-xs font-medium">{name}</span>
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+
 					{/* 悬浮按钮 - 仅在仪表板(计时页面)显示 */}
 					{activeView === "timing" && (
-						<div className="fixed bottom-6 right-6 z-50">
+						<div
+							className={`fixed right-6 z-50 ${
+								isMobileLayout ? "bottom-20" : "bottom-6" // 移动端避开底部菜单栏
+							}`}
+						>
 							<div
 								className={`${getFloatingButtonStyle()} shadow-lg flex items-center rounded-lg relative transition-all duration-300 ease-out ${
 									isFloatingButtonExpanded

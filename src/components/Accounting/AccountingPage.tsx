@@ -282,33 +282,39 @@ const AccountingPage: React.FC = () => {
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="flex flex-col h-full">
 			{/* 内容主体（保留标签页等） */}
-			<div className="flex flex-col px-2 space-y-4">
+			<div className="flex flex-col px-2 h-full">
 				{/* 标签与内容区域保留原结构，但移除多余边距 */}
-				<div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-					{[
-						{ key: "overview", label: "总览概览" },
-						{ key: "accounts", label: "账户管理" },
-						{ key: "transactions", label: "交易明细" },
-						{ key: "stats", label: "统计分析" },
-					].map((tab) => (
-						<button
-							key={tab.key}
-							onClick={() =>
-								setActiveTab(
-									tab.key as "overview" | "accounts" | "transactions" | "stats",
-								)
-							}
-							className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-								activeTab === tab.key
-									? "text-theme-primary border-theme-primary"
-									: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-transparent"
-							}`}
-						>
-							{tab.label}
-						</button>
-					))}
+				<div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10">
+					<div className="flex">
+						{[
+							{ key: "overview", label: "总览概览" },
+							{ key: "accounts", label: "账户管理" },
+							{ key: "transactions", label: "交易明细" },
+							{ key: "stats", label: "统计分析" },
+						].map((tab) => (
+							<button
+								key={tab.key}
+								onClick={() =>
+									setActiveTab(
+										tab.key as
+											| "overview"
+											| "accounts"
+											| "transactions"
+											| "stats",
+									)
+								}
+								className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
+									activeTab === tab.key
+										? "text-theme-primary border-theme-primary"
+										: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-transparent"
+								}`}
+							>
+								{tab.label}
+							</button>
+						))}
+					</div>
 				</div>
 
 				{/* 错误提示 */}
@@ -318,8 +324,8 @@ const AccountingPage: React.FC = () => {
 					</div>
 				)}
 
-				{/* 内容区域 */}
-				<div className="flex-1 overflow-hidden">{renderActiveTab()}</div>
+				{/* 内容区域 - 可滚动 */}
+				<div className="flex-1 overflow-y-auto py-4">{renderActiveTab()}</div>
 
 				{/* 创建账户弹窗 */}
 				{isCreateAccountOpen && (

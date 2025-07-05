@@ -13,7 +13,7 @@ export default defineConfig(async () => ({
 	server: {
 		port: 1420,
 		strictPort: true,
-		host: "0.0.0.0", // 监听所有网络接口，让 Android 模拟器可以访问
+		host: "0.0.0.0", // 监听所有网络接口，让 Android 模拟器可以访问 (WebSocket连接失败，不能热重载)
 		watch: {
 			// 3. tell vite to ignore watching `src-tauri`
 			ignored: ["**/src-tauri/**"],

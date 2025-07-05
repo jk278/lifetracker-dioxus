@@ -8,13 +8,12 @@ interface TitleBarProps {
 const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 	const [isMaximized, setIsMaximized] = useState(false);
 
-	// 检测是否为移动端环境
+	// 检测是否为移动端环境（仅根据设备类型判断，不考虑窗口宽度）
 	const isMobile =
 		typeof window !== "undefined" &&
-		(/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+		/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
 			navigator.userAgent,
-		) ||
-			window.innerWidth < 768);
+		);
 
 	// 检查窗口是否最大化
 	const checkMaximized = useCallback(async () => {
