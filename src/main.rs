@@ -40,8 +40,8 @@ fn add_system_tray(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri:
             let _ = window.show();
         }
 
-        // 初始化应用状态
-        let app_state = life_tracker::create_app_state()?;
+        // 初始化应用状态，使用应用句柄来获取正确的数据目录
+        let app_state = life_tracker::create_app_state_with_handle(app.handle())?;
         app.manage(app_state);
 
         // 创建系统托盘菜单

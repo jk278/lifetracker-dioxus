@@ -26,6 +26,7 @@
    - 访问 https://developer.android.com/studio
    - 安装时选择 "Standard" 安装类型
    - 确保安装了 Android SDK 和 Android Virtual Device (AVD)
+   - **注意**：Tauri V2 不支持 Android SDK 35，如未找到支持的版本，开发时会自动在SDK目录下载（可能产生网络错误）
 
 3. **Android SDK 和工具**
    - Android SDK Platform-Tools

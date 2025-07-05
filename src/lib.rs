@@ -110,8 +110,8 @@ pub fn create_app_builder_with_setup() -> tauri::Builder<tauri::Wry> {
             // let _ = window.show();
         }
 
-        // 初始化应用状态
-        let app_state = create_app_state()?;
+        // 初始化应用状态，使用应用句柄来获取正确的数据目录
+        let app_state = create_app_state_with_handle(app.handle())?;
         app.manage(app_state);
 
         log::info!("Tauri 应用初始化完成");
@@ -152,6 +152,61 @@ pub fn create_app_state() -> Result<crate::tauri_commands::AppState> {
 
     // 创建存储管理器
     let app_config = AppConfig::default();
+    let db_config = crate::storage::DatabaseConfig {
+        database_path: app_config.data.database_path.to_string_lossy().to_string(),
+        enable_wal: true,
+        pool_size: 10,
+        timeout_seconds: 30,
+    };
+    let mut storage = Arc::new(StorageManager::new(db_config)?);
+
+    // 初始化存储系统
+    if let Some(storage_mut) = Arc::get_mut(&mut storage) {
+        storage_mut.initialize()?;
+    }
+
+    // 创建计时器
+    let timer = Arc::new(Mutex::new(Timer::new()));
+
+    // 创建当前任务ID
+    let current_task_id = Arc::new(Mutex::new(None));
+
+    let app_state = crate::tauri_commands::AppState {
+        storage,
+        timer,
+        config,
+        current_task_id,
+    };
+
+    Ok(app_state)
+}
+
+/// 创建应用状态（使用 Tauri 应用句柄，支持移动端）
+#[cfg(feature = "tauri")]
+pub fn create_app_state_with_handle(
+    app_handle: &tauri::AppHandle,
+) -> Result<crate::tauri_commands::AppState> {
+    use std::sync::{Arc, Mutex};
+
+    // 使用 Tauri 的路径 API 获取应用数据目录
+    let data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::System(format!("无法获取应用数据目录: {}", e)))?;
+
+    // 确保目录存在
+    if !data_dir.exists() {
+        std::fs::create_dir_all(&data_dir)?;
+    }
+
+    // 创建配置，使用正确的数据目录
+    let mut app_config = AppConfig::default();
+    app_config.data.database_path = data_dir.join("timetracker.db");
+    app_config.data.backup_directory = data_dir.join("backups");
+
+    let config = Arc::new(Mutex::new(app_config.clone()));
+
+    // 创建存储管理器
     let db_config = crate::storage::DatabaseConfig {
         database_path: app_config.data.database_path.to_string_lossy().to_string(),
         enable_wal: true,

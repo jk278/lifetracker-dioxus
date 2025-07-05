@@ -211,25 +211,39 @@ const APP_IDENTIFIER: &str = "com.lifetracker.app";
 
 /// 获取应用数据目录
 pub fn get_app_data_dir() -> Result<std::path::PathBuf> {
-    // 使用与前端一致的目录标识符
-    if let Some(data_dir) = dirs::data_dir() {
-        return Ok(data_dir.join(APP_IDENTIFIER));
+    // Android 环境特殊处理
+    #[cfg(target_os = "android")]
+    {
+        // 在 Android 中，使用固定的应用数据目录
+        // 这个路径会在运行时由 Android 系统提供
+        return Ok(std::path::PathBuf::from(
+            "/data/data/com.lifetracker.app/files",
+        ));
     }
 
-    // Fallback：手动构建路径
-    #[cfg(target_os = "windows")]
+    // 桌面环境使用 dirs crate
+    #[cfg(not(target_os = "android"))]
     {
-        let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
-        return Ok(std::path::PathBuf::from(appdata).join(APP_IDENTIFIER));
-    }
+        // 使用与前端一致的目录标识符
+        if let Some(data_dir) = dirs::data_dir() {
+            return Ok(data_dir.join(APP_IDENTIFIER));
+        }
 
-    #[cfg(not(target_os = "windows"))]
-    {
-        let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
-        return Ok(std::path::PathBuf::from(home)
-            .join(".local")
-            .join("share")
-            .join(APP_IDENTIFIER));
+        // Fallback：手动构建路径
+        #[cfg(target_os = "windows")]
+        {
+            let appdata = std::env::var("APPDATA").map_err(|_| "无法获取APPDATA环境变量")?;
+            return Ok(std::path::PathBuf::from(appdata).join(APP_IDENTIFIER));
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let home = std::env::var("HOME").map_err(|_| "无法获取HOME环境变量")?;
+            return Ok(std::path::PathBuf::from(home)
+                .join(".local")
+                .join("share")
+                .join(APP_IDENTIFIER));
+        }
     }
 }
 
