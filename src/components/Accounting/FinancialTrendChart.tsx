@@ -49,7 +49,7 @@ const FinancialTrendChart: React.FC<FinancialTrendChartProps> = ({
 			return label.replace(/\d{4}-W/, "W"); // W27
 		}
 		// month
-		return label.split("-")[1] + "月";
+		return `${label.split("-")[1]}月`;
 	};
 
 	// 自定义工具提示

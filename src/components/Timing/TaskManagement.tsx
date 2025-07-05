@@ -129,8 +129,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 	const filteredTasks = tasks.filter((task) => {
 		const matchesSearch =
 			task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(task.description &&
-				task.description.toLowerCase().includes(searchTerm.toLowerCase()));
+			task.description?.toLowerCase().includes(searchTerm.toLowerCase());
 		const matchesCategory =
 			!selectedCategory || task.category_id === selectedCategory;
 		return matchesSearch && matchesCategory;
@@ -310,7 +309,7 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 
 			{/* 创建/编辑任务对话框 */}
 			{showCreateDialog && (
-				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 !mt-0">
 					<div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							{editingTask ? "编辑任务" : "创建新任务"}

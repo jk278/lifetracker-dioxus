@@ -377,7 +377,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 			{/* 快速开始对话框 */}
 			{showQuickStart && (
-				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 !mt-0">
 					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-md mx-4">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							创建新任务
@@ -451,199 +451,210 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 			{/* 效率评分详情弹窗 */}
 			{showEfficiencyDetails && (
-				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-2xl mx-4">
-						{/* 弹窗头部 */}
-						<div className="flex items-center justify-between mb-6">
-							<h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-								<TrendingUp className="h-6 w-6 mr-2 text-orange-600 dark:text-orange-400" />
-								效率评分详情
-							</h3>
-							<button
-								onClick={() => setShowEfficiencyDetails(false)}
-								className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-							>
-								<X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-							</button>
+				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4 !mt-0">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+						{/* 固定头部 */}
+						<div className="flex-shrink-0 p-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+							<div className="flex items-center justify-between mb-6">
+								<h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+									<TrendingUp className="h-6 w-6 mr-2 text-orange-600 dark:text-orange-400" />
+									效率评分详情
+								</h3>
+								<button
+									onClick={() => setShowEfficiencyDetails(false)}
+									className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+								>
+									<X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+								</button>
+							</div>
+
+							{/* 总分展示 */}
+							<div className="text-center">
+								<div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full mb-3">
+									<span className="text-2xl font-bold text-white">
+										{todayStats.efficiency}
+									</span>
+								</div>
+								<h4 className="text-lg font-medium text-gray-900 dark:text-white">
+									今日效率评分
+								</h4>
+								<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+									基于专注度、工作量和节奏的综合评估
+								</p>
+							</div>
 						</div>
 
-						{/* 总分展示 */}
-						<div className="text-center mb-8">
-							<div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full mb-3">
-								<span className="text-2xl font-bold text-white">
-									{todayStats.efficiency}
-								</span>
-							</div>
-							<h4 className="text-lg font-medium text-gray-900 dark:text-white">
-								今日效率评分
-							</h4>
-							<p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-								基于专注度、工作量和节奏的综合评估
-							</p>
-						</div>
-
-						{/* 详细评分项 */}
-						<div className="space-y-6">
-							{/* 专注度评分 */}
-							<div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-								<div className="flex items-center justify-between mb-3">
-									<div className="flex items-center">
-										<Brain className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-										<h5 className="font-medium text-gray-900 dark:text-white">
-											专注度评分
-										</h5>
-									</div>
-									<span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-										{todayStats.efficiencyDetails.focusScore}/40
-									</span>
-								</div>
-								<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
-									<div
-										className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-										style={{
-											width: `${(todayStats.efficiencyDetails.focusScore / 40) * 100}%`,
-										}}
-									/>
-								</div>
-								<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-									<p>
-										平均会话时长:{" "}
-										<span className="font-medium">
-											{todayStats.efficiencyDetails.avgSessionMinutes.toFixed(
-												1,
-											)}{" "}
-											分钟
+						{/* 可滚动内容区域 */}
+						<div className="flex-1 overflow-y-auto p-6">
+							{/* 详细评分项 */}
+							<div className="space-y-6">
+								{/* 专注度评分 */}
+								<div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+									<div className="flex items-center justify-between mb-3">
+										<div className="flex items-center">
+											<Brain className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+											<h5 className="font-medium text-gray-900 dark:text-white">
+												专注度评分
+											</h5>
+										</div>
+										<span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+											{todayStats.efficiencyDetails.focusScore}/40
 										</span>
-									</p>
-									<div className="text-xs text-gray-500 dark:text-gray-400">
-										<p>
-											• ≥25分钟: 40分 (深度专注) • 15-25分钟: 30分 (良好专注)
-										</p>
-										<p>
-											• 5-15分钟: 20分 (短时专注) • &lt;5分钟: 10分 (过于碎片化)
-										</p>
 									</div>
-								</div>
-							</div>
-
-							{/* 工作量评分 */}
-							<div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-								<div className="flex items-center justify-between mb-3">
-									<div className="flex items-center">
-										<Gauge className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
-										<h5 className="font-medium text-gray-900 dark:text-white">
-											工作量评分
-										</h5>
+									<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+										<div
+											className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+											style={{
+												width: `${(todayStats.efficiencyDetails.focusScore / 40) * 100}%`,
+											}}
+										/>
 									</div>
-									<span className="text-lg font-bold text-green-600 dark:text-green-400">
-										{todayStats.efficiencyDetails.volumeScore}/30
-									</span>
-								</div>
-								<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
-									<div
-										className="bg-green-600 h-2 rounded-full transition-all duration-300"
-										style={{
-											width: `${(todayStats.efficiencyDetails.volumeScore / 30) * 100}%`,
-										}}
-									/>
-								</div>
-								<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-									<p>
-										今日工作时长:{" "}
-										<span className="font-medium">
-											{todayStats.efficiencyDetails.hoursWorked.toFixed(1)} 小时
-										</span>
-									</p>
-									<div className="text-xs text-gray-500 dark:text-gray-400">
+									<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
 										<p>
-											• ≥6小时: 30分 (饱满) • 4-6小时: 25分 (充实) • 2-4小时:
-											20分 (适中)
-										</p>
-										<p>• 1-2小时: 15分 (轻量) • &lt;1小时: 10分 (起步)</p>
-									</div>
-								</div>
-							</div>
-
-							{/* 节奏评分 */}
-							<div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-								<div className="flex items-center justify-between mb-3">
-									<div className="flex items-center">
-										<Activity className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
-										<h5 className="font-medium text-gray-900 dark:text-white">
-											节奏评分
-										</h5>
-									</div>
-									<span className="text-lg font-bold text-purple-600 dark:text-purple-400">
-										{todayStats.efficiencyDetails.rhythmScore}/30
-									</span>
-								</div>
-								<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
-									<div
-										className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-										style={{
-											width: `${(todayStats.efficiencyDetails.rhythmScore / 30) * 100}%`,
-										}}
-									/>
-								</div>
-								<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-									{todayStats.efficiencyDetails.hoursWorked >= 0.25 ? (
-										<p>
-											工作节奏:{" "}
+											平均会话时长:{" "}
 											<span className="font-medium">
-												{todayStats.efficiencyDetails.actualSessionsPerHour.toFixed(
+												{todayStats.efficiencyDetails.avgSessionMinutes.toFixed(
 													1,
 												)}{" "}
-												段/小时
+												分钟
 											</span>
 										</p>
-									) : (
+										<div className="text-xs text-gray-500 dark:text-gray-400">
+											<p>
+												• ≥25分钟: 40分 (深度专注) • 15-25分钟: 30分 (良好专注)
+											</p>
+											<p>
+												• 5-15分钟: 20分 (短时专注) • &lt;5分钟: 10分
+												(过于碎片化)
+											</p>
+										</div>
+									</div>
+								</div>
+
+								{/* 工作量评分 */}
+								<div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+									<div className="flex items-center justify-between mb-3">
+										<div className="flex items-center">
+											<Gauge className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
+											<h5 className="font-medium text-gray-900 dark:text-white">
+												工作量评分
+											</h5>
+										</div>
+										<span className="text-lg font-bold text-green-600 dark:text-green-400">
+											{todayStats.efficiencyDetails.volumeScore}/30
+										</span>
+									</div>
+									<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+										<div
+											className="bg-green-600 h-2 rounded-full transition-all duration-300"
+											style={{
+												width: `${(todayStats.efficiencyDetails.volumeScore / 30) * 100}%`,
+											}}
+										/>
+									</div>
+									<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
 										<p>
-											工作节奏:{" "}
-											<span className="font-medium text-gray-500">
-												数据不足 (需≥15分钟)
+											今日工作时长:{" "}
+											<span className="font-medium">
+												{todayStats.efficiencyDetails.hoursWorked.toFixed(1)}{" "}
+												小时
 											</span>
+										</p>
+										<div className="text-xs text-gray-500 dark:text-gray-400">
+											<p>
+												• ≥6小时: 30分 (饱满) • 4-6小时: 25分 (充实) • 2-4小时:
+												20分 (适中)
+											</p>
+											<p>• 1-2小时: 15分 (轻量) • &lt;1小时: 10分 (起步)</p>
+										</div>
+									</div>
+								</div>
+
+								{/* 节奏评分 */}
+								<div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+									<div className="flex items-center justify-between mb-3">
+										<div className="flex items-center">
+											<Activity className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+											<h5 className="font-medium text-gray-900 dark:text-white">
+												节奏评分
+											</h5>
+										</div>
+										<span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+											{todayStats.efficiencyDetails.rhythmScore}/30
+										</span>
+									</div>
+									<div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-3">
+										<div
+											className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+											style={{
+												width: `${(todayStats.efficiencyDetails.rhythmScore / 30) * 100}%`,
+											}}
+										/>
+									</div>
+									<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+										{todayStats.efficiencyDetails.hoursWorked >= 0.25 ? (
+											<p>
+												工作节奏:{" "}
+												<span className="font-medium">
+													{todayStats.efficiencyDetails.actualSessionsPerHour.toFixed(
+														1,
+													)}{" "}
+													段/小时
+												</span>
+											</p>
+										) : (
+											<p>
+												工作节奏:{" "}
+												<span className="font-medium text-gray-500">
+													数据不足 (需≥15分钟)
+												</span>
+											</p>
+										)}
+										<div className="text-xs text-gray-500 dark:text-gray-400">
+											<p>• 理想节奏: 2段/小时 (每段30分钟)</p>
+											<p>• 评分基于实际节奏与理想节奏的匹配度</p>
+											{todayStats.efficiencyDetails.hoursWorked < 0.25 && (
+												<p>• 工作时间少于15分钟时给予基础分数</p>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+
+							{/* 改进建议 */}
+							<div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+								<h5 className="font-medium text-gray-900 dark:text-white mb-2">
+									💡 改进建议
+								</h5>
+								<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+									{todayStats.efficiencyDetails.focusScore < 30 && (
+										<p>
+											• 尝试延长单次工作时间，建议使用番茄工作法(25分钟专注)
 										</p>
 									)}
-									<div className="text-xs text-gray-500 dark:text-gray-400">
-										<p>• 理想节奏: 2段/小时 (每段30分钟)</p>
-										<p>• 评分基于实际节奏与理想节奏的匹配度</p>
-										{todayStats.efficiencyDetails.hoursWorked < 0.25 && (
-											<p>• 工作时间少于15分钟时给予基础分数</p>
-										)}
-									</div>
+									{todayStats.efficiencyDetails.volumeScore < 20 && (
+										<p>• 增加今日工作总时长，保持持续的工作节奏</p>
+									)}
+									{todayStats.efficiencyDetails.rhythmScore < 20 && (
+										<p>• 调整工作节奏，避免过于频繁的开始停止</p>
+									)}
+									{todayStats.efficiency >= 80 && (
+										<p>🎉 效率很高！保持这种良好的工作状态</p>
+									)}
 								</div>
 							</div>
 						</div>
 
-						{/* 改进建议 */}
-						<div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							<h5 className="font-medium text-gray-900 dark:text-white mb-2">
-								💡 改进建议
-							</h5>
-							<div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
-								{todayStats.efficiencyDetails.focusScore < 30 && (
-									<p>• 尝试延长单次工作时间，建议使用番茄工作法(25分钟专注)</p>
-								)}
-								{todayStats.efficiencyDetails.volumeScore < 20 && (
-									<p>• 增加今日工作总时长，保持持续的工作节奏</p>
-								)}
-								{todayStats.efficiencyDetails.rhythmScore < 20 && (
-									<p>• 调整工作节奏，避免过于频繁的开始停止</p>
-								)}
-								{todayStats.efficiency >= 80 && (
-									<p>🎉 效率很高！保持这种良好的工作状态</p>
-								)}
+						{/* 固定底部 */}
+						<div className="flex-shrink-0 p-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+							<div className="flex justify-end">
+								<button
+									onClick={() => setShowEfficiencyDetails(false)}
+									className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+								>
+									关闭
+								</button>
 							</div>
-						</div>
-
-						{/* 关闭按钮 */}
-						<div className="flex justify-end mt-6">
-							<button
-								onClick={() => setShowEfficiencyDetails(false)}
-								className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
-							>
-								关闭
-							</button>
 						</div>
 					</div>
 				</div>

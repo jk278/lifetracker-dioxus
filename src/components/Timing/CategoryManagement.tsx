@@ -290,7 +290,7 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 			)}
 
 			{showCreateDialog && (
-				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
+				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 !mt-0">
 					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 p-6 w-full max-w-md mx-4 shadow-xl">
 						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
 							{editingCategory ? "编辑分类" : "创建新分类"}

@@ -56,7 +56,6 @@ function App() {
 	const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
 	// 窗口宽度状态管理
-	const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
 	const [isMobileLayout, setIsMobileLayout] = useState<boolean>(false);
 
 	// 悬浮按钮动画状态
@@ -359,7 +358,6 @@ function App() {
 	useEffect(() => {
 		const handleResize = () => {
 			const width = window.innerWidth;
-			setWindowWidth(width);
 			setIsMobileLayout(width < 768); // 768px 作为断点
 		};
 
@@ -545,7 +543,7 @@ function App() {
 					{/* 悬浮按钮 - 仅在仪表板(计时页面)显示 */}
 					{activeView === "timing" && (
 						<div
-							className={`fixed right-6 z-50 ${
+							className={`fixed right-6 z-40 ${
 								isMobileLayout ? "bottom-20" : "bottom-6" // 移动端避开底部菜单栏
 							}`}
 						>
