@@ -8,8 +8,19 @@ interface TitleBarProps {
 const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 	const [isMaximized, setIsMaximized] = useState(false);
 
+	// 检测是否为移动端环境
+	const isMobile =
+		typeof window !== "undefined" &&
+		(/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+			navigator.userAgent,
+		) ||
+			window.innerWidth < 768);
+
 	// 检查窗口是否最大化
 	const checkMaximized = useCallback(async () => {
+		// 移动端跳过 API 调用
+		if (isMobile) return;
+
 		try {
 			const { getCurrentWindow } = await import("@tauri-apps/api/window");
 			const currentWindow = getCurrentWindow();
@@ -18,33 +29,44 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 		} catch (error) {
 			console.error("检查窗口状态失败:", error);
 		}
-	}, []);
+	}, [isMobile]);
 
 	// 监听窗口状态变化
 	useEffect(() => {
-		checkMaximized();
-	}, [checkMaximized]);
+		if (!isMobile) {
+			checkMaximized();
+		}
+	}, [checkMaximized, isMobile]);
 
 	// 最小化窗口
-	const minimizeWindow = useCallback(async (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
+	const minimizeWindow = useCallback(
+		async (e: React.MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-		try {
-			const { getCurrentWindow } = await import("@tauri-apps/api/window");
-			const currentWindow = getCurrentWindow();
-			await currentWindow.minimize();
-			console.log("窗口已最小化");
-		} catch (error) {
-			console.error("最小化窗口失败:", error);
-		}
-	}, []);
+			// 移动端跳过 API 调用
+			if (isMobile) return;
+
+			try {
+				const { getCurrentWindow } = await import("@tauri-apps/api/window");
+				const currentWindow = getCurrentWindow();
+				await currentWindow.minimize();
+				console.log("窗口已最小化");
+			} catch (error) {
+				console.error("最小化窗口失败:", error);
+			}
+		},
+		[isMobile],
+	);
 
 	// 最大化/还原窗口
 	const toggleMaximize = useCallback(
 		async (e: React.MouseEvent) => {
 			e.preventDefault();
 			e.stopPropagation();
+
+			// 移动端跳过 API 调用
+			if (isMobile) return;
 
 			try {
 				const { getCurrentWindow } = await import("@tauri-apps/api/window");
@@ -57,24 +79,35 @@ const TitleBar: React.FC<TitleBarProps> = ({ title = "LifeTracker" }) => {
 				console.error("切换窗口状态失败:", error);
 			}
 		},
-		[checkMaximized],
+		[checkMaximized, isMobile],
 	);
 
 	// 关闭窗口（现在改为最小化到托盘，不直接退出应用）
-	const closeWindow = useCallback(async (e: React.MouseEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
+	const closeWindow = useCallback(
+		async (e: React.MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-		try {
-			const { getCurrentWindow } = await import("@tauri-apps/api/window");
-			const currentWindow = getCurrentWindow();
-			// 隐藏窗口到托盘
-			await currentWindow.hide();
-			console.log("窗口已隐藏到托盘");
-		} catch (error) {
-			console.error("隐藏到托盘失败:", error);
-		}
-	}, []);
+			// 移动端跳过 API 调用
+			if (isMobile) return;
+
+			try {
+				const { getCurrentWindow } = await import("@tauri-apps/api/window");
+				const currentWindow = getCurrentWindow();
+				// 隐藏窗口到托盘
+				await currentWindow.hide();
+				console.log("窗口已隐藏到托盘");
+			} catch (error) {
+				console.error("隐藏到托盘失败:", error);
+			}
+		},
+		[isMobile],
+	);
+
+	// 移动端直接不渲染
+	if (isMobile) {
+		return null;
+	}
 
 	return (
 		<div className="flex items-center justify-between h-8 surface-adaptive border-b border-gray-200 dark:border-gray-700 select-none">

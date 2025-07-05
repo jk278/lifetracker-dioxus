@@ -35,9 +35,29 @@ fn add_system_tray(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri:
         log::info!("桌面端应用初始化开始");
 
         // 基础应用初始化逻辑
-        // 显示主窗口
+        // 检测系统主题并设置正确的窗口背景色（与Tailwind颜色完全一致）
+        let is_dark_theme =
+            life_tracker::config::theme::ThemeConfig::get_initial_theme_class() == "dark";
+        let bg_color = if is_dark_theme {
+            tauri::window::Color(15, 20, 25, 255) // 暗色模式背景 #0f1419
+        } else {
+            tauri::window::Color(249, 250, 251, 255) // 亮色模式背景 #f9fafb (gray-50)
+        };
+
         if let Some(window) = app.get_webview_window("main") {
-            let _ = window.show();
+            // 设置背景色避免启动闪烁和拖拽残影
+            if let Err(e) = window.set_background_color(Some(bg_color)) {
+                log::warn!("设置窗口背景色失败: {}", e);
+            } else {
+                log::info!("窗口背景色已设置为: {:?}", bg_color);
+            }
+
+            // 显示窗口
+            if let Err(e) = window.show() {
+                log::warn!("显示窗口失败: {}", e);
+            } else {
+                log::info!("窗口已显示");
+            }
         }
 
         // 初始化应用状态，使用应用句柄来获取正确的数据目录
