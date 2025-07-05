@@ -11,6 +11,10 @@ keywords = ["life", "tracker", "productivity", "finance", "diary", "rust", "gui"
 categories = ["command-line-utilities", "gui"]
 build = "build.rs"
 
+[lib]
+name = "life_tracker"
+crate-type = ["cdylib", "rlib"]
+
 # 打包元数据
 [package.metadata]
 # Windows 特定配置
@@ -67,6 +71,7 @@ tauri = { version = "2.6.2", features = ["tray-icon"], optional = true }
 tauri-plugin-shell = { version = "2.0", optional = true }
 tauri-plugin-notification = { version = "2.0", optional = true }
 tauri-plugin-dialog = { version = "2.0", optional = true }
+tauri-plugin-fs = { version = "2.0", optional = true }
 
 
 [dev-dependencies]
@@ -80,7 +85,7 @@ tauri-build = { version = "2.1.0", features = ["codegen"] }
 
 [features]
 default = ["tauri"]
-tauri = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-plugin-notification", "dep:tauri-plugin-dialog"]
+tauri = ["dep:tauri", "dep:tauri-plugin-shell", "dep:tauri-plugin-notification", "dep:tauri-plugin-dialog", "dep:tauri-plugin-fs"]
 
 [[bin]]
 name = "life_tracker"

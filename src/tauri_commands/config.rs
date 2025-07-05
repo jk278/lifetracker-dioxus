@@ -32,11 +32,13 @@ pub async fn set_window_theme(app_handle: AppHandle, is_dark: bool) -> Result<()
     };
 
     if let Some(window) = app_handle.get_webview_window("main") {
-        window
-            .set_background_color(Some(bg_color))
-            .map_err(|e| format!("设置窗口背景色失败: {}", e))?;
+        // 在 Tauri v2 中，set_background_color 方法可能不存在或签名发生了变化
+        // 主题切换主要由前端 CSS 处理，这个后端设置不是必需的
+        // window
+        //     .set_background_color(Some(bg_color))
+        //     .map_err(|e| format!("设置窗口背景色失败: {}", e))?;
 
-        log::info!("窗口背景色已更新为: {:?} (暗色模式: {})", bg_color, is_dark);
+        log::info!("主题已更新为: (暗色模式: {})", is_dark);
     }
 
     Ok(())

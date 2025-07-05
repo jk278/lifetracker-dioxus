@@ -30,7 +30,7 @@
 		"security": {
 			"csp": null,
 			"capabilities": [
-				"main-capability"
+				"default"
 			]
 		}
 	},
@@ -78,6 +78,7 @@
 		"shell": {
 			"open": true
 		},
-		"dialog": null
+		"dialog": null,
+		"fs": null
 	}
 }

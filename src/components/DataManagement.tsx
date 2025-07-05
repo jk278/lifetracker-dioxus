@@ -1,10 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import {
-	appDataDir,
-	join,
-	isAbsolute as pathIsAbsolute,
-	resolve as pathResolve,
-} from "@tauri-apps/api/path";
+import { appDataDir, join, resolve as pathResolve } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
 	AlertCircle,
@@ -18,7 +13,7 @@ import {
 	Settings,
 	Upload,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface ExportOptions {
 	include_categories?: boolean;

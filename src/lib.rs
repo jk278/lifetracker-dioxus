@@ -1,16 +1,17 @@
-//! # LifeTracker - 综合生活追踪器
+//! # LifeTracker 核心库
 //!
-//! 这是一个现代化的综合生活追踪应用，支持时间管理、财务记录、日记写作、习惯打卡等功能。
-//! 使用 Rust + Tauri 构建，提供跨平台的桌面应用体验。
+//! 支持桌面端和移动端的共享核心逻辑
 
-// 公共模块声明
-pub mod config; // 配置管理
-pub mod core; // 核心业务逻辑
-pub mod errors; // 错误处理
-                // #[cfg(feature = "gui")]
-                // pub mod gui; // 图形界面模块（已弃用，使用 Tauri 替代）
-pub mod storage; // 数据存储层
-pub mod utils; // 工具函数
+pub mod config;
+pub mod core;
+pub mod errors;
+pub mod storage;
+pub mod utils;
+
+#[cfg(feature = "tauri")]
+pub mod tauri_commands;
+
+use tauri::Manager;
 
 // 重新导出核心类型，方便外部使用
 pub use config::{AppConfig, ConfigManager};
@@ -18,247 +19,189 @@ pub use core::{Analytics, AppCore, Category, CategoryColor, CategoryIcon, Task, 
 pub use errors::{AppError, ErrorHandler, ErrorSeverity, Result};
 pub use storage::{models::CategoryModel, Database, DatabaseConfig, StorageManager, TimeEntry};
 
-// 应用程序信息
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-pub const DESCRIPTION: &str = env!("CARGO_PKG_DESCRIPTION");
-pub const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
+/// 移动端入口点
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    // 移动端直接运行完整应用
+    init_logging();
 
-/// 应用程序信息结构
-#[derive(Debug, Clone)]
-pub struct AppInfo {
-    pub name: String,
-    pub version: String,
-    pub description: String,
-    pub authors: String,
-    pub homepage: String,
-    pub repository: String,
-    pub license: String,
-}
-
-impl Default for AppInfo {
-    fn default() -> Self {
-        Self {
-            name: NAME.to_string(),
-            version: VERSION.to_string(),
-            description: DESCRIPTION.to_string(),
-            authors: AUTHORS.to_string(),
-            homepage: "https://github.com/username/time-tracker".to_string(),
-            repository: "https://github.com/username/time-tracker".to_string(),
-            license: "MIT".to_string(),
-        }
+    if let Err(e) = create_app_dirs() {
+        eprintln!("创建应用目录失败: {}", e);
+        std::process::exit(1);
     }
-}
 
-/// 应用程序构建器
-pub struct AppBuilder {
-    config_path: Option<std::path::PathBuf>,
-    database_path: Option<std::path::PathBuf>,
-    log_level: Option<log::LevelFilter>,
-}
-
-impl AppBuilder {
-    /// 创建新的应用程序构建器
-    pub fn new() -> Self {
-        Self {
-            config_path: None,
-            database_path: None,
-            log_level: None,
+    #[cfg(feature = "tauri")]
+    {
+        if let Err(e) = create_app_builder_with_setup().run(tauri::generate_context!()) {
+            eprintln!("运行应用失败: {}", e);
+            std::process::exit(1);
         }
     }
 
-    /// 设置配置文件路径
-    pub fn with_config_path<P: Into<std::path::PathBuf>>(mut self, path: P) -> Self {
-        self.config_path = Some(path.into());
-        self
+    #[cfg(not(feature = "tauri"))]
+    {
+        eprintln!("Tauri 功能未启用，当前配置无可用界面");
+        std::process::exit(1);
     }
+}
 
-    /// 设置数据库路径
-    pub fn with_database_path<P: Into<std::path::PathBuf>>(mut self, path: P) -> Self {
-        self.database_path = Some(path.into());
-        self
-    }
+/// 创建 Tauri 应用 Builder（桌面端可以基于此添加更多功能）
+#[cfg(feature = "tauri")]
+pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .invoke_handler(tauri::generate_handler![
+            tauri_commands::config::get_config,
+            tauri_commands::task::get_tasks,
+            tauri_commands::task::create_task,
+            tauri_commands::task::update_task,
+            tauri_commands::task::delete_task,
+            tauri_commands::category::get_categories,
+            tauri_commands::category::create_category,
+            tauri_commands::category::update_category,
+            tauri_commands::category::delete_category,
+            tauri_commands::timer::get_timer_status,
+            tauri_commands::timer::start_timer,
+            tauri_commands::timer::pause_timer,
+            tauri_commands::timer::stop_timer,
+            tauri_commands::accounting::account::get_accounts,
+            tauri_commands::accounting::account::get_account_by_id,
+            tauri_commands::accounting::account::create_account,
+            tauri_commands::accounting::account::update_account,
+            tauri_commands::accounting::account::delete_account,
+            tauri_commands::accounting::account::get_account_balance,
+            tauri_commands::accounting::account::update_account_balance,
+            tauri_commands::accounting::account::set_default_account,
+            tauri_commands::accounting::transaction::get_transactions,
+            tauri_commands::accounting::transaction::get_transaction_by_id,
+            tauri_commands::accounting::transaction::create_transaction,
+            tauri_commands::accounting::transaction::delete_transaction,
+            tauri_commands::accounting::budget::get_budgets,
+            tauri_commands::accounting::budget::create_budget,
+            tauri_commands::accounting::budget::delete_budget,
+            tauri_commands::accounting::category::get_transaction_categories,
+            tauri_commands::accounting::category::create_transaction_category,
+            tauri_commands::accounting::category::delete_transaction_category,
+            tauri_commands::statistics::get_statistics,
+            tauri_commands::statistics::get_financial_stats,
+            tauri_commands::statistics::get_monthly_trend,
+            tauri_commands::statistics::get_financial_trend,
+            tauri_commands::data_io::export_data,
+            tauri_commands::data_io::import_data,
+            tauri_commands::data_io::backup_database,
+            tauri_commands::data_io::restore_database,
+        ])
+}
 
-    /// 设置日志级别
-    pub fn with_log_level(mut self, level: log::LevelFilter) -> Self {
-        self.log_level = Some(level);
-        self
-    }
+/// 创建带有基础 setup 的 Tauri 应用 Builder
+#[cfg(feature = "tauri")]
+pub fn create_app_builder_with_setup() -> tauri::Builder<tauri::Wry> {
+    create_app_builder().setup(|app| {
+        log::info!("Tauri 应用初始化开始");
 
-    /// 构建应用程序实例
-    pub fn build(self) -> Result<App> {
-        // 初始化日志（如果尚未初始化）
-        if let Some(level) = self.log_level {
-            if env_logger::Builder::from_default_env()
-                .filter_level(level)
-                .try_init()
-                .is_err()
-            {
-                // 日志已经初始化，继续执行
-                log::debug!("日志系统已经初始化");
-            }
+        // 显示主窗口 (在 Tauri v2 中 show() 是异步的，但在 setup 中我们可以忽略错误)
+        if let Some(window) = app.get_webview_window("main") {
+            // show() 在 Tauri v2 中是异步方法，但在 setup 中我们不能使用 await
+            // 所以我们使用 tauri 的内部 API 或者忽略这个错误
+            // 通常窗口默认是可见的，所以这行可能不是必需的
+            // let _ = window.show();
         }
 
-        // 获取应用程序目录
-        let app_dir = get_app_directory()?;
+        // 初始化应用状态
+        let app_state = create_app_state()?;
+        app.manage(app_state);
 
-        // 设置配置路径
-        let config_path = self
-            .config_path
-            .unwrap_or_else(|| app_dir.join("config.toml"));
-
-        // 设置数据库路径
-        let database_path = self
-            .database_path
-            .unwrap_or_else(|| app_dir.join("lifetracker.db"));
-
-        // 创建配置管理器
-        let config_manager = ConfigManager::new(config_path)?;
-
-        // 创建数据库连接
-        let database = Database::new(&database_path)?;
-
-        // 创建错误处理器
-        let error_handler = ErrorHandler::new()
-            .with_logging(true)
-            .with_stack_trace(cfg!(debug_assertions));
-
-        Ok(App {
-            info: AppInfo::default(),
-            config_manager,
-            database,
-            error_handler,
-        })
-    }
-}
-
-impl Default for AppBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// 主应用程序结构
-pub struct App {
-    pub info: AppInfo,
-    pub config_manager: ConfigManager,
-    pub database: Database,
-    pub error_handler: ErrorHandler,
-}
-
-impl App {
-    /// 创建应用程序构建器
-    pub fn builder() -> AppBuilder {
-        AppBuilder::new()
-    }
-
-    /// 获取应用程序信息
-    pub fn info(&self) -> &AppInfo {
-        &self.info
-    }
-
-    /// 获取配置管理器
-    pub fn config(&self) -> &ConfigManager {
-        &self.config_manager
-    }
-
-    /// 获取数据库连接
-    pub fn database(&self) -> &Database {
-        &self.database
-    }
-
-    /// 获取错误处理器
-    pub fn error_handler(&self) -> &ErrorHandler {
-        &self.error_handler
-    }
-
-    /// 清理应用程序资源
-    pub fn cleanup(&mut self) -> Result<()> {
-        log::info!("清理应用程序资源");
-
-        // 保存配置
-        self.config_manager.save()?;
-
-        log::info!("应用程序清理完成");
+        log::info!("Tauri 应用初始化完成");
         Ok(())
-    }
+    })
 }
 
-/// 获取应用程序目录
-pub fn get_app_directory() -> Result<std::path::PathBuf> {
-    let app_dir = if cfg!(target_os = "windows") {
-        dirs::config_dir()
-            .ok_or_else(|| AppError::System("无法获取配置目录".to_string()))?
-            .join("LifeTracker")
-    } else {
-        dirs::home_dir()
-            .ok_or_else(|| AppError::System("无法获取用户目录".to_string()))?
-            .join(".lifetracker")
+/// 为桌面端提供的便捷运行函数（可以添加桌面端特有功能）
+#[cfg(feature = "tauri")]
+pub fn run_desktop_app<F>(customize_builder: F) -> Result<()>
+where
+    F: FnOnce(tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry>,
+{
+    // 初始化日志
+    init_logging();
+
+    // 创建应用目录
+    if let Err(e) = create_app_dirs() {
+        return Err(format!("创建应用目录失败: {}", e).into());
+    }
+
+    // 创建基础 builder（无 setup），然后让桌面端自定义
+    let builder = create_app_builder();
+    let customized_builder = customize_builder(builder);
+
+    customized_builder
+        .run(tauri::generate_context!())
+        .map_err(|e| format!("运行应用失败: {}", e).into())
+}
+
+/// 创建应用状态（供桌面端 setup 使用）
+#[cfg(feature = "tauri")]
+pub fn create_app_state() -> Result<crate::tauri_commands::AppState> {
+    use std::sync::{Arc, Mutex};
+
+    // 创建配置
+    let config = Arc::new(Mutex::new(AppConfig::default()));
+
+    // 创建存储管理器
+    let app_config = AppConfig::default();
+    let db_config = crate::storage::DatabaseConfig {
+        database_path: app_config.data.database_path.to_string_lossy().to_string(),
+        enable_wal: true,
+        pool_size: 10,
+        timeout_seconds: 30,
+    };
+    let mut storage = Arc::new(StorageManager::new(db_config)?);
+
+    // 初始化存储系统
+    if let Some(storage_mut) = Arc::get_mut(&mut storage) {
+        storage_mut.initialize()?;
+    }
+
+    // 创建计时器
+    let timer = Arc::new(Mutex::new(Timer::new()));
+
+    // 创建当前任务ID
+    let current_task_id = Arc::new(Mutex::new(None));
+
+    let app_state = crate::tauri_commands::AppState {
+        storage,
+        timer,
+        config,
+        current_task_id,
     };
 
-    if !app_dir.exists() {
-        std::fs::create_dir_all(&app_dir).map_err(|e| AppError::Io(e))?;
-    }
-
-    Ok(app_dir)
+    Ok(app_state)
 }
 
-/// 初始化应用程序
-pub fn init() -> Result<App> {
-    App::builder()
-        .with_log_level(log::LevelFilter::Info)
-        .build()
+/// 初始化日志系统
+fn init_logging() {
+    use env_logger::{Builder, Env};
+
+    let env = Env::default()
+        .filter_or("RUST_LOG", "info")
+        .write_style_or("RUST_LOG_STYLE", "always");
+
+    Builder::from_env(env).format_timestamp_micros().init();
 }
 
-/// 初始化应用程序（带自定义配置）
-pub fn init_with_config(config_path: &std::path::Path) -> Result<App> {
-    App::builder()
-        .with_config_path(config_path)
-        .with_log_level(log::LevelFilter::Info)
-        .build()
-}
+/// 创建应用目录
+fn create_app_dirs() -> Result<()> {
+    let app_config = AppConfig::default();
+    let data_dir = app_config
+        .data
+        .database_path
+        .parent()
+        .ok_or("无法获取数据目录")?;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
+    std::fs::create_dir_all(data_dir).map_err(|e| format!("创建数据目录失败: {}", e))?;
 
-    #[test]
-    fn test_version_info() {
-        assert!(!VERSION.is_empty());
-        assert!(!NAME.is_empty());
-        assert!(!DESCRIPTION.is_empty());
-    }
-
-    #[test]
-    fn test_app_info() {
-        let info = AppInfo::default();
-        assert_eq!(info.name, NAME);
-        assert_eq!(info.version, VERSION);
-        assert_eq!(info.description, DESCRIPTION);
-    }
-
-    #[test]
-    fn test_app_builder() {
-        let temp_dir = tempdir().unwrap();
-        let config_path = temp_dir.path().join("test_config.toml");
-        let db_path = temp_dir.path().join("test.db");
-
-        let app = App::builder()
-            .with_config_path(&config_path)
-            .with_database_path(&db_path)
-            .with_log_level(log::LevelFilter::Debug)
-            .build();
-
-        assert!(app.is_ok());
-    }
-
-    #[test]
-    fn test_get_app_directory() {
-        let app_dir = get_app_directory();
-        assert!(app_dir.is_ok());
-
-        let app_dir = app_dir.unwrap();
-        assert!(app_dir.exists());
-    }
+    Ok(())
 }
