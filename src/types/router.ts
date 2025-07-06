@@ -1,5 +1,5 @@
 // 路由ID类型定义
-export type RouteId = 'timing' | 'accounting' | 'notes' | 'data' | 'settings' | 'about' | 'system';
+export type RouteId = 'timing' | 'accounting' | 'notes' | 'data' | 'settings' | 'about' | 'system' | 'data-export' | 'data-import' | 'data-backup' | 'data-sync' | 'data-cleanup';
 
 // 导航来源类型
 export type NavigationSource = 'direct' | 'system';

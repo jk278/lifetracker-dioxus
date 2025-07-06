@@ -15,15 +15,22 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
-import { DataManagement } from "./components/DataManagement";
+import {
+	DataBackup,
+	DataCleanup,
+	DataExport,
+	DataImport,
+	DataManagement,
+	DataSync,
+} from "./components/DataManagement";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import NotesPage from "./components/NotesPage";
 import SettingsComponent from "./components/Settings";
 import SystemPage from "./components/SystemPage";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
-import { ThemeProvider } from "./hooks/useTheme";
 import { RouterProvider, useNavigation } from "./hooks/useRouter";
+import { ThemeProvider } from "./hooks/useTheme";
 import type { Task, TimerStatus } from "./types";
 import type { RouteId } from "./types/router";
 
@@ -65,7 +72,7 @@ const getNavItems = (isMobileLayout: boolean) => {
 // 主应用组件（现在使用路由系统）
 function AppContent() {
 	const { currentRoute, navigate } = useNavigation();
-	
+
 	const [timerStatus, setTimerStatus] = useState<TimerStatus>({
 		state: "stopped",
 		elapsed_seconds: 0,
@@ -454,7 +461,7 @@ function AppContent() {
 										<div key={id} className="relative h-12">
 											{/* 背景层 - 完整宽度的点击区域 */}
 											<button
-												onClick={() => navigate(id as RouteId, 'direct')}
+												onClick={() => navigate(id as RouteId, "direct")}
 												className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
 													currentRoute === id
 														? "bg-theme-primary/10 hover:bg-theme-primary/15"
@@ -534,6 +541,13 @@ function AppContent() {
 								{currentRoute === "settings" && <SettingsComponent />}
 								{currentRoute === "about" && <About />}
 								{currentRoute === "data" && <DataManagement />}
+
+								{/* 数据管理子页面 */}
+								{currentRoute === "data-export" && <DataExport />}
+								{currentRoute === "data-import" && <DataImport />}
+								{currentRoute === "data-backup" && <DataBackup />}
+								{currentRoute === "data-sync" && <DataSync />}
+								{currentRoute === "data-cleanup" && <DataCleanup />}
 							</ErrorBoundary>
 						</div>
 					</div>
@@ -546,7 +560,7 @@ function AppContent() {
 							{navItems.map(({ id, name, icon: Icon }) => (
 								<button
 									key={id}
-									onClick={() => navigate(id as RouteId, 'direct')}
+									onClick={() => navigate(id as RouteId, "direct")}
 									className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 ${
 										currentRoute === id
 											? "text-theme-primary bg-theme-primary/5"
