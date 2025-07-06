@@ -112,82 +112,183 @@ const StatsTab: React.FC<StatsTabProps> = ({
 					<div className="space-y-4">
 						{/* 图表控制选项 */}
 						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4">
-							<div className="flex items-center justify-between">
+							<div className="space-y-4">
 								<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 									收支趋势 (过去12个月)
 								</h4>
-								<div className="flex items-center space-x-4">
-									<label className="flex items-center">
-										<input
-											type="radio"
-											checked={trendType === "month"}
-											onChange={() => setTrendType("month")}
-											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
-										/>
-										<span className="text-sm text-gray-700 dark:text-gray-300">
-											月度
-										</span>
-									</label>
-									<label className="flex items-center">
-										<input
-											type="radio"
-											checked={trendType === "week"}
-											onChange={() => setTrendType("week")}
-											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
-										/>
-										<span className="text-sm text-gray-700 dark:text-gray-300">
-											周度
-										</span>
-									</label>
-									<label className="flex items-center">
-										<input
-											type="radio"
-											checked={trendType === "day"}
-											onChange={() => setTrendType("day")}
-											className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
-										/>
-										<span className="text-sm text-gray-700 dark:text-gray-300">
-											日度
-										</span>
-									</label>
+								
+								{/* 大屏：横向布局 */}
+								<div className="hidden md:flex items-center justify-between">
+									<div className="flex items-center space-x-4">
+										<label className="flex items-center">
+											<input
+												type="radio"
+												checked={trendType === "month"}
+												onChange={() => setTrendType("month")}
+												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
+											/>
+											<span className="text-sm text-gray-700 dark:text-gray-300">
+												月度
+											</span>
+										</label>
+										<label className="flex items-center">
+											<input
+												type="radio"
+												checked={trendType === "week"}
+												onChange={() => setTrendType("week")}
+												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
+											/>
+											<span className="text-sm text-gray-700 dark:text-gray-300">
+												周度
+											</span>
+										</label>
+										<label className="flex items-center">
+											<input
+												type="radio"
+												checked={trendType === "day"}
+												onChange={() => setTrendType("day")}
+												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
+											/>
+											<span className="text-sm text-gray-700 dark:text-gray-300">
+												日度
+											</span>
+										</label>
+									</div>
+									
+									{/* 收入/支出切换 */}
+									<div className="flex items-center space-x-4">
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={showIncome}
+												onChange={(e) => setShowIncome(e.target.checked)}
+												className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
+											/>
+											<span className="text-sm text-gray-700 dark:text-gray-300">
+												显示收入
+											</span>
+										</label>
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={showExpense}
+												onChange={(e) => setShowExpense(e.target.checked)}
+												className="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500"
+											/>
+											<span className="text-sm text-gray-700 dark:text-gray-300">
+												显示支出
+											</span>
+										</label>
+									</div>
 								</div>
-								{/* 收入/支出切换 */}
-								<div className="flex items-center space-x-4 mt-2">
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={showIncome}
-											onChange={(e) => setShowIncome(e.target.checked)}
-											className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
-										/>
-										<span className="text-sm text-gray-700 dark:text-gray-300">
-											显示收入
-										</span>
-									</label>
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={showExpense}
-											onChange={(e) => setShowExpense(e.target.checked)}
-											className="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500"
-										/>
-										<span className="text-sm text-gray-700 dark:text-gray-300">
-											显示支出
-										</span>
-									</label>
+
+								{/* 小屏：纵向布局 */}
+								<div className="md:hidden space-y-4">
+									{/* 时间粒度选择 */}
+									<div>
+										<div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											时间粒度
+										</div>
+										<div className="grid grid-cols-3 gap-2">
+											<label className="flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<input
+													type="radio"
+													checked={trendType === "month"}
+													onChange={() => setTrendType("month")}
+													className="sr-only"
+												/>
+												<span className={`text-sm font-medium ${
+													trendType === "month"
+														? "text-theme-primary"
+														: "text-gray-700 dark:text-gray-300"
+												}`}>
+													月度
+												</span>
+											</label>
+											<label className="flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<input
+													type="radio"
+													checked={trendType === "week"}
+													onChange={() => setTrendType("week")}
+													className="sr-only"
+												/>
+												<span className={`text-sm font-medium ${
+													trendType === "week"
+														? "text-theme-primary"
+														: "text-gray-700 dark:text-gray-300"
+												}`}>
+													周度
+												</span>
+											</label>
+											<label className="flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<input
+													type="radio"
+													checked={trendType === "day"}
+													onChange={() => setTrendType("day")}
+													className="sr-only"
+												/>
+												<span className={`text-sm font-medium ${
+													trendType === "day"
+														? "text-theme-primary"
+														: "text-gray-700 dark:text-gray-300"
+												}`}>
+													日度
+												</span>
+											</label>
+										</div>
+									</div>
+
+									{/* 收入/支出切换 */}
+									<div>
+										<div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+											显示内容
+										</div>
+										<div className="grid grid-cols-2 gap-2">
+											<label className="flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<input
+													type="checkbox"
+													checked={showIncome}
+													onChange={(e) => setShowIncome(e.target.checked)}
+													className="sr-only"
+												/>
+												<span className={`text-sm font-medium ${
+													showIncome
+														? "text-green-600 dark:text-green-400"
+														: "text-gray-700 dark:text-gray-300"
+												}`}>
+													💰 收入
+												</span>
+											</label>
+											<label className="flex items-center justify-center p-2 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+												<input
+													type="checkbox"
+													checked={showExpense}
+													onChange={(e) => setShowExpense(e.target.checked)}
+													className="sr-only"
+												/>
+												<span className={`text-sm font-medium ${
+													showExpense
+														? "text-red-600 dark:text-red-400"
+														: "text-gray-700 dark:text-gray-300"
+												}`}>
+													💸 支出
+												</span>
+											</label>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
 
 						{/* 趋势图表 - 使用固定高度容器防止跳动 */}
 						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 transition-all duration-200 ease-in-out">
-							<div className="p-6">
+							<div className="p-4 md:p-6">
 								<h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
 									收支趋势
 								</h4>
 
-								{/* 固定高度的内容区域 */}
-								<div className="h-80 relative">
+								{/* 固定高度的内容区域 - 小屏调整高度 */}
+								<div className="h-48 md:h-80 relative">
 									{trendLoading ? (
 										<div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
 											<div className="text-center">

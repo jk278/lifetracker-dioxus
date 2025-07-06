@@ -8,6 +8,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { useEffect, useState } from "react";
 import type { TrendData, TrendGranularity } from "../../types";
 
 interface FinancialTrendChartProps {
@@ -25,6 +26,24 @@ const FinancialTrendChart: React.FC<FinancialTrendChartProps> = ({
 	granularity,
 	formatAmount,
 }) => {
+	// 响应式检测
+	const [isMobile, setIsMobile] = useState(false);
+	
+	useEffect(() => {
+		const checkScreenSize = () => {
+			if (typeof window !== 'undefined') {
+				setIsMobile(window.innerWidth < 768);
+			}
+		};
+		
+		checkScreenSize();
+		
+		if (typeof window !== 'undefined') {
+			window.addEventListener('resize', checkScreenSize);
+			return () => window.removeEventListener('resize', checkScreenSize);
+		}
+	}, []);
+
 	// 如果没有数据，显示空状态
 	if (!data || data.length === 0) {
 		return (
@@ -74,30 +93,41 @@ const FinancialTrendChart: React.FC<FinancialTrendChartProps> = ({
 		return null;
 	};
 
+	// 根据屏幕宽度调整图表配置
+	const chartMargin = isMobile 
+		? { top: 5, right: 5, left: 5, bottom: 5 }
+		: { top: 15, right: 15, left: 15, bottom: 15 };
+	
+	const tickFontSize = isMobile ? 9 : 12;
+	const legendFontSize = isMobile ? 9 : 12;
+
 	return (
 		<div className="h-full">
 			<ResponsiveContainer width="100%" height="100%">
 				<BarChart
 					data={data}
-					margin={{
-						top: 20,
-						right: 30,
-						left: 20,
-						bottom: 5,
-					}}
+					margin={chartMargin}
+					barCategoryGap={isMobile ? "10%" : "20%"}
 				>
-					<CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+					<CartesianGrid strokeDasharray="3 3" className={isMobile ? "opacity-20" : "opacity-30"} />
 					<XAxis
 						dataKey="label"
 						tickFormatter={formatLabel}
 						className="text-gray-600 dark:text-gray-400"
+						tick={{ fontSize: tickFontSize }}
+						height={isMobile ? 20 : 30}
 					/>
 					<YAxis
-						tickFormatter={(value) => formatAmount(value).replace("￥", "")}
+						tickFormatter={(value) => Math.round(value).toString()}
 						className="text-gray-600 dark:text-gray-400"
+						tick={{ fontSize: tickFontSize }}
+						width={isMobile ? 30 : 40}
 					/>
 					<Tooltip content={<CustomTooltip />} />
-					<Legend />
+					<Legend 
+						wrapperStyle={{ fontSize: `${legendFontSize}px` }}
+						height={isMobile ? 20 : 30}
+					/>
 
 					{showIncome && (
 						<Bar
