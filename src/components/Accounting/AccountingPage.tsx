@@ -288,7 +288,7 @@ const AccountingPage: React.FC = () => {
 	return (
 		<div className="flex flex-col h-full">
 			{/* 标签与内容区域保留原结构，但移除多余边距 */}
-			<div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
+			<div className="flex-shrink-0 surface-adaptive border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
 				<div className="flex px-0 md:px-6">
 					{[
 						{ key: "overview", label: "总览概览" },

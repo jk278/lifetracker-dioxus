@@ -515,7 +515,7 @@ function App() {
 
 					{/* 底部菜单栏 - 移动端显示 */}
 					{isMobileLayout && (
-						<div className="fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40">
+						<div className="fixed bottom-0 left-0 right-0 h-16 surface-adaptive border-t border-gray-200 dark:border-gray-700 z-40">
 							<div className="flex h-full">
 								{NAV_ITEMS.map(({ id, name, icon: Icon }) => (
 									<button
