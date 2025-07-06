@@ -22,11 +22,36 @@ const StatsTab: React.FC<StatsTabProps> = ({
 	const [trendError, setTrendError] = useState<string | null>(null);
 
 	// 图表显示控制
-	const [showIncome, setShowIncome] = useState(true);
-	const [showExpense, setShowExpense] = useState(true);
+	const [showIncome, setShowIncome] = useState(() => {
+		const saved = localStorage.getItem('financial-trend-show-income');
+		return saved !== null ? JSON.parse(saved) : true;
+	});
+	const [showExpense, setShowExpense] = useState(() => {
+		const saved = localStorage.getItem('financial-trend-show-expense');
+		return saved !== null ? JSON.parse(saved) : true;
+	});
 
 	// 趋势类型
-	const [trendType, setTrendType] = useState<TrendGranularity>("month");
+	const [trendType, setTrendType] = useState<TrendGranularity>(() => {
+		const saved = localStorage.getItem('financial-trend-granularity');
+		return saved !== null ? JSON.parse(saved) : "month";
+	});
+
+	// 保存设置到本地存储
+	const handleShowIncomeChange = useCallback((checked: boolean) => {
+		setShowIncome(checked);
+		localStorage.setItem('financial-trend-show-income', JSON.stringify(checked));
+	}, []);
+
+	const handleShowExpenseChange = useCallback((checked: boolean) => {
+		setShowExpense(checked);
+		localStorage.setItem('financial-trend-show-expense', JSON.stringify(checked));
+	}, []);
+
+	const handleTrendTypeChange = useCallback((type: TrendGranularity) => {
+		setTrendType(type);
+		localStorage.setItem('financial-trend-granularity', JSON.stringify(type));
+	}, []);
 
 	// 获取月度趋势数据
 	const fetchTrendData = useCallback(async () => {
@@ -124,7 +149,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											<input
 												type="radio"
 												checked={trendType === "month"}
-												onChange={() => setTrendType("month")}
+												onChange={() => handleTrendTypeChange("month")}
 												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 											/>
 											<span className="text-sm text-gray-700 dark:text-gray-300">
@@ -135,7 +160,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											<input
 												type="radio"
 												checked={trendType === "week"}
-												onChange={() => setTrendType("week")}
+												onChange={() => handleTrendTypeChange("week")}
 												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 											/>
 											<span className="text-sm text-gray-700 dark:text-gray-300">
@@ -146,7 +171,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											<input
 												type="radio"
 												checked={trendType === "day"}
-												onChange={() => setTrendType("day")}
+												onChange={() => handleTrendTypeChange("day")}
 												className="mr-2 rounded border-gray-300 text-theme-primary focus:ring-theme-primary"
 											/>
 											<span className="text-sm text-gray-700 dark:text-gray-300">
@@ -161,7 +186,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											<input
 												type="checkbox"
 												checked={showIncome}
-												onChange={(e) => setShowIncome(e.target.checked)}
+												onChange={(e) => handleShowIncomeChange(e.target.checked)}
 												className="mr-2 rounded border-gray-300 text-green-600 focus:ring-green-500"
 											/>
 											<span className="text-sm text-gray-700 dark:text-gray-300">
@@ -172,7 +197,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 											<input
 												type="checkbox"
 												checked={showExpense}
-												onChange={(e) => setShowExpense(e.target.checked)}
+												onChange={(e) => handleShowExpenseChange(e.target.checked)}
 												className="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500"
 											/>
 											<span className="text-sm text-gray-700 dark:text-gray-300">
@@ -194,7 +219,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 												<input
 													type="radio"
 													checked={trendType === "month"}
-													onChange={() => setTrendType("month")}
+													onChange={() => handleTrendTypeChange("month")}
 													className="sr-only"
 												/>
 												<span className={`text-sm font-medium ${
@@ -209,7 +234,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 												<input
 													type="radio"
 													checked={trendType === "week"}
-													onChange={() => setTrendType("week")}
+													onChange={() => handleTrendTypeChange("week")}
 													className="sr-only"
 												/>
 												<span className={`text-sm font-medium ${
@@ -224,7 +249,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 												<input
 													type="radio"
 													checked={trendType === "day"}
-													onChange={() => setTrendType("day")}
+													onChange={() => handleTrendTypeChange("day")}
 													className="sr-only"
 												/>
 												<span className={`text-sm font-medium ${
@@ -248,7 +273,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 												<input
 													type="checkbox"
 													checked={showIncome}
-													onChange={(e) => setShowIncome(e.target.checked)}
+													onChange={(e) => handleShowIncomeChange(e.target.checked)}
 													className="sr-only"
 												/>
 												<span className={`text-sm font-medium ${
@@ -263,7 +288,7 @@ const StatsTab: React.FC<StatsTabProps> = ({
 												<input
 													type="checkbox"
 													checked={showExpense}
-													onChange={(e) => setShowExpense(e.target.checked)}
+													onChange={(e) => handleShowExpenseChange(e.target.checked)}
 													className="sr-only"
 												/>
 												<span className={`text-sm font-medium ${
