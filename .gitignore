@@ -35,6 +35,10 @@ dist-ssr/
 *.sqlite
 *.sqlite3
 
+# Android 签名文件
+*.keystore
+*.jks
+
 # 日志文件
 /logs/
 *.log

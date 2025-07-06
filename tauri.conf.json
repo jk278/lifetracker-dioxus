@@ -72,6 +72,9 @@
 			"frameworks": [],
 			"minimumSystemVersion": "10.11",
 			"exceptionDomain": ""
+		},
+		"android": {
+			"minSdkVersion": 24
 		}
 	},
 	"plugins": {
