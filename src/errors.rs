@@ -74,6 +74,10 @@ pub enum AppError {
     TimerState(String),
     /// 存储层错误
     Storage(String),
+    /// 加密错误
+    Crypto(String),
+    /// 同步错误
+    Sync(String),
 }
 
 impl fmt::Display for AppError {
@@ -102,6 +106,8 @@ impl fmt::Display for AppError {
             AppError::GuiError(msg) => write!(f, "GUI错误: {}", msg),
             AppError::TimerState(msg) => write!(f, "计时器状态错误: {}", msg),
             AppError::Storage(msg) => write!(f, "存储层错误: {}", msg),
+            AppError::Crypto(msg) => write!(f, "加密错误: {}", msg),
+            AppError::Sync(msg) => write!(f, "同步错误: {}", msg),
         }
     }
 }
@@ -272,6 +278,8 @@ impl ErrorHandler {
             AppError::InvalidInput(_) => "输入内容无效，请重新输入".to_string(),
             AppError::TimerState(_) => "计时器状态错误，请重新开始计时".to_string(),
             AppError::GuiError(_) => "界面显示错误，请重启应用程序".to_string(),
+            AppError::Crypto(_) => "加密操作失败，请检查配置或重试".to_string(),
+            AppError::Sync(_) => "数据同步失败，请检查网络连接和同步设置".to_string(),
             _ => format!("操作失败: {}", error),
         }
     }
@@ -285,6 +293,8 @@ impl ErrorHandler {
             AppError::TaskNotFound(_) | AppError::CategoryNotFound(_) => ErrorSeverity::Info,
             AppError::TimerState(_) => ErrorSeverity::Warning,
             AppError::GuiError(_) => ErrorSeverity::Error,
+            AppError::Crypto(_) => ErrorSeverity::Error,
+            AppError::Sync(_) => ErrorSeverity::Warning,
             _ => ErrorSeverity::Error,
         }
     }
@@ -358,6 +368,8 @@ impl ErrorRecovery {
             AppError::Database(_) => "database",
             AppError::Network(_) => "network",
             AppError::Timeout(_) => "timeout",
+            AppError::Crypto(_) => "crypto",
+            AppError::Sync(_) => "sync",
             _ => "unknown",
         };
 
@@ -389,6 +401,14 @@ impl Default for ErrorRecovery {
             RecoveryStrategy::Retry {
                 max_attempts: 2,
                 delay_ms: 500,
+            },
+        );
+        recovery.register_strategy("crypto", RecoveryStrategy::Skip);
+        recovery.register_strategy(
+            "sync",
+            RecoveryStrategy::Retry {
+                max_attempts: 3,
+                delay_ms: 2000,
             },
         );
 

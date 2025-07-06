@@ -7,6 +7,7 @@ use chrono::{DateTime, Duration, Local};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+pub mod crypto;
 pub mod date;
 pub mod export;
 pub mod format;

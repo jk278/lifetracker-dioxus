@@ -11,7 +11,6 @@ use std::path::PathBuf;
 
 use crate::errors::Result;
 
-
 /// 应用程序配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -125,6 +124,39 @@ pub struct DataConfig {
     pub auto_cleanup: bool,
     /// 数据保留天数
     pub data_retention_days: Option<u32>,
+    /// 同步配置
+    pub sync: SyncConfig,
+}
+
+/// 同步配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyncConfig {
+    /// 启用同步
+    pub enabled: bool,
+    /// 同步提供者 ("webdav", "github", "local")
+    pub provider: String,
+    /// 自动同步
+    pub auto_sync: bool,
+    /// 同步间隔（分钟）
+    pub sync_interval: u32,
+    /// WebDAV 服务器URL
+    pub webdav_url: Option<String>,
+    /// WebDAV 用户名
+    pub webdav_username: Option<String>,
+    /// WebDAV 密码（加密存储）
+    pub webdav_password_encrypted: Option<String>,
+    /// 同步目录路径
+    pub sync_directory: String,
+    /// 最后同步时间
+    pub last_sync_time: Option<DateTime<Local>>,
+    /// 同步时忽略的文件类型
+    pub ignore_patterns: Vec<String>,
+    /// 冲突解决策略 ("manual", "local_wins", "remote_wins")
+    pub conflict_strategy: String,
+    /// 启用数据压缩
+    pub enable_compression: bool,
+    /// 最大同步文件大小（MB）
+    pub max_sync_file_size: u32,
 }
 
 /// 快捷键配置
@@ -253,6 +285,32 @@ impl Default for DataConfig {
             export_format: "json".to_string(),
             auto_cleanup: false,
             data_retention_days: None,
+            sync: SyncConfig::default(),
+        }
+    }
+}
+
+impl Default for SyncConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: "webdav".to_string(),
+            auto_sync: false,
+            sync_interval: 30, // 30分钟
+            webdav_url: None,
+            webdav_username: None,
+            webdav_password_encrypted: None,
+            sync_directory: "LifeTracker".to_string(),
+            last_sync_time: None,
+            ignore_patterns: vec![
+                "*.tmp".to_string(),
+                "*.log".to_string(),
+                ".DS_Store".to_string(),
+                "Thumbs.db".to_string(),
+            ],
+            conflict_strategy: "manual".to_string(),
+            enable_compression: true,
+            max_sync_file_size: 10, // 10MB
         }
     }
 }

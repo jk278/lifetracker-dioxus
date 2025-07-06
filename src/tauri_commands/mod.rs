@@ -181,6 +181,7 @@ pub mod category;
 pub mod config;
 pub mod data_io;
 pub mod statistics;
+pub mod sync;
 pub mod task;
 pub mod timer;
 

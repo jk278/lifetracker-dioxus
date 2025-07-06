@@ -360,6 +360,85 @@ impl SettingsManager {
             allowed_values: None,
             validation_fn: None,
         });
+
+        // 同步设置
+        self.register_setting(SettingDefinition {
+            key: "sync.enabled".to_string(),
+            name: "启用同步".to_string(),
+            description: "启用多端数据同步".to_string(),
+            setting_type: SettingType::Boolean,
+            default_value: SettingValue::Boolean(false),
+            category: "同步".to_string(),
+            requires_restart: false,
+            min_value: None,
+            max_value: None,
+            allowed_values: None,
+            validation_fn: None,
+        });
+
+        self.register_setting(SettingDefinition {
+            key: "sync.provider".to_string(),
+            name: "同步提供者".to_string(),
+            description: "选择同步服务提供者".to_string(),
+            setting_type: SettingType::String,
+            default_value: SettingValue::String("webdav".to_string()),
+            category: "同步".to_string(),
+            requires_restart: false,
+            min_value: None,
+            max_value: None,
+            allowed_values: Some(vec![
+                SettingValue::String("webdav".to_string()),
+                SettingValue::String("github".to_string()),
+                SettingValue::String("local".to_string()),
+            ]),
+            validation_fn: None,
+        });
+
+        self.register_setting(SettingDefinition {
+            key: "sync.auto_sync".to_string(),
+            name: "自动同步".to_string(),
+            description: "自动进行数据同步".to_string(),
+            setting_type: SettingType::Boolean,
+            default_value: SettingValue::Boolean(false),
+            category: "同步".to_string(),
+            requires_restart: false,
+            min_value: None,
+            max_value: None,
+            allowed_values: None,
+            validation_fn: None,
+        });
+
+        self.register_setting(SettingDefinition {
+            key: "sync.sync_interval".to_string(),
+            name: "同步间隔".to_string(),
+            description: "自动同步间隔（分钟）".to_string(),
+            setting_type: SettingType::Integer,
+            default_value: SettingValue::Integer(30),
+            min_value: Some(SettingValue::Integer(5)),
+            max_value: Some(SettingValue::Integer(1440)),
+            category: "同步".to_string(),
+            requires_restart: false,
+            allowed_values: None,
+            validation_fn: None,
+        });
+
+        self.register_setting(SettingDefinition {
+            key: "sync.conflict_strategy".to_string(),
+            name: "冲突解决策略".to_string(),
+            description: "数据冲突时的解决方式".to_string(),
+            setting_type: SettingType::String,
+            default_value: SettingValue::String("manual".to_string()),
+            category: "同步".to_string(),
+            requires_restart: false,
+            min_value: None,
+            max_value: None,
+            allowed_values: Some(vec![
+                SettingValue::String("manual".to_string()),
+                SettingValue::String("local_wins".to_string()),
+                SettingValue::String("remote_wins".to_string()),
+            ]),
+            validation_fn: None,
+        });
     }
 
     /// 注册设置项
@@ -531,6 +610,15 @@ impl SettingsManager {
             "data.backup_retention" => {
                 Some(SettingValue::Integer(config.data.backup_retention as i64))
             }
+            "sync.enabled" => Some(SettingValue::Boolean(config.data.sync.enabled)),
+            "sync.provider" => Some(SettingValue::String(config.data.sync.provider.clone())),
+            "sync.auto_sync" => Some(SettingValue::Boolean(config.data.sync.auto_sync)),
+            "sync.sync_interval" => {
+                Some(SettingValue::Integer(config.data.sync.sync_interval as i64))
+            }
+            "sync.conflict_strategy" => Some(SettingValue::String(
+                config.data.sync.conflict_strategy.clone(),
+            )),
             _ => None,
         }
     }
@@ -618,6 +706,31 @@ impl SettingsManager {
             "data.backup_retention" => {
                 if let Some(i) = value.as_i64() {
                     config.data.backup_retention = i as u32;
+                }
+            }
+            "sync.enabled" => {
+                if let Some(b) = value.as_bool() {
+                    config.data.sync.enabled = b;
+                }
+            }
+            "sync.provider" => {
+                if let Some(s) = value.as_string() {
+                    config.data.sync.provider = s.clone();
+                }
+            }
+            "sync.auto_sync" => {
+                if let Some(b) = value.as_bool() {
+                    config.data.sync.auto_sync = b;
+                }
+            }
+            "sync.sync_interval" => {
+                if let Some(i) = value.as_i64() {
+                    config.data.sync.sync_interval = i as u32;
+                }
+            }
+            "sync.conflict_strategy" => {
+                if let Some(s) = value.as_string() {
+                    config.data.sync.conflict_strategy = s.clone();
                 }
             }
             _ => return Err(format!("不支持的设置项: {}", key).into()),

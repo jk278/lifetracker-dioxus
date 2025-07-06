@@ -6,6 +6,7 @@ pub mod config;
 pub mod core;
 pub mod errors;
 pub mod storage;
+pub mod sync;
 pub mod utils;
 
 #[cfg(feature = "tauri")]
@@ -97,6 +98,19 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             tauri_commands::data_io::import_data,
             tauri_commands::data_io::backup_database,
             tauri_commands::data_io::restore_database,
+            tauri_commands::sync::get_sync_config,
+            tauri_commands::sync::save_sync_config,
+            tauri_commands::sync::test_sync_connection,
+            tauri_commands::sync::start_sync,
+            tauri_commands::sync::get_sync_status,
+            tauri_commands::sync::stop_sync,
+            tauri_commands::sync::get_sync_history,
+            tauri_commands::sync::clear_sync_history,
+            tauri_commands::sync::get_sync_conflicts,
+            tauri_commands::sync::resolve_sync_conflict,
+            tauri_commands::sync::validate_sync_settings,
+            tauri_commands::sync::clear_webdav_password,
+            tauri_commands::sync::debug_webdav_config,
         ])
 }
 
@@ -203,8 +217,26 @@ pub fn create_app_state_with_handle(
         std::fs::create_dir_all(&data_dir)?;
     }
 
-    // 创建配置，使用正确的数据目录
-    let mut app_config = AppConfig::default();
+    // 创建配置，首先尝试从配置文件加载
+    let config_path = data_dir.join("config.toml");
+    let mut app_config = if config_path.exists() {
+        // 如果配置文件存在，从文件加载
+        match crate::config::ConfigManager::new(config_path.clone()) {
+            Ok(config_manager) => {
+                log::info!("从配置文件加载配置: {:?}", config_path);
+                config_manager.config().clone()
+            }
+            Err(e) => {
+                log::warn!("加载配置文件失败，使用默认配置: {}", e);
+                AppConfig::default()
+            }
+        }
+    } else {
+        log::info!("配置文件不存在，使用默认配置: {:?}", config_path);
+        AppConfig::default()
+    };
+
+    // 确保数据目录路径正确
     app_config.data.database_path = data_dir.join("timetracker.db");
     app_config.data.backup_directory = data_dir.join("backups");
 
