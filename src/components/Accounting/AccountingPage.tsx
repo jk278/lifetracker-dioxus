@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useScrollbarHiding } from "../../hooks/useScrollbarHiding";
 import type {
 	AccountDto,
 	AccountType,
@@ -54,9 +53,6 @@ const AccountingPage: React.FC = () => {
 
 	// 金额输入框ref
 	const amountInputRef = useRef<HTMLInputElement>(null);
-
-	// 滚动条隐藏hook
-	const scrollRef = useScrollbarHiding<HTMLDivElement>();
 
 	// 当前正在编辑的交易（为空表示创建模式）
 	const [editingTransaction, setEditingTransaction] =
@@ -323,10 +319,7 @@ const AccountingPage: React.FC = () => {
 			)}
 
 			{/* 内容区域 - 可滚动 */}
-			<div
-				ref={scrollRef}
-				className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container"
-			>
+			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
 				{renderActiveTab()}
 			</div>
 

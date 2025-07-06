@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useScrollbarHiding } from "../hooks/useScrollbarHiding";
 import { THEME_COLORS, type ThemeColor, useTheme } from "../hooks/useTheme";
 
 type SettingsProps = {};
@@ -29,9 +28,6 @@ interface AppConfig {
 
 const Settings: React.FC<SettingsProps> = () => {
 	const { theme, setTheme, themeColor, setThemeColor } = useTheme();
-	
-	// 滚动条隐藏hook
-	const scrollRef = useScrollbarHiding<HTMLDivElement>();
 	
 	const [config, setConfig] = useState<AppConfig>({
 		theme: "system",
@@ -85,10 +81,7 @@ const Settings: React.FC<SettingsProps> = () => {
 	}
 
 	return (
-		<div
-			ref={scrollRef}
-			className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container"
-		>
+		<div className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
 			<div className="space-y-6">
 				{/* 页面标题 */}
 				<div className="flex items-center justify-between">
@@ -107,7 +100,7 @@ const Settings: React.FC<SettingsProps> = () => {
 
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 					{/* 界面设置 */}
-					<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<div className="flex items-center mb-4">
 							<Palette className="h-5 w-5 text-theme-primary mr-2" />
 							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -188,7 +181,7 @@ const Settings: React.FC<SettingsProps> = () => {
 					</div>
 
 					{/* 通知设置 */}
-					<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<div className="flex items-center mb-4">
 							<Bell className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
 							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -231,7 +224,7 @@ const Settings: React.FC<SettingsProps> = () => {
 					</div>
 
 					{/* 计时设置 */}
-					<div className="surface-adaptive rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<div className="flex items-center mb-4">
 							<SettingsIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
 							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">

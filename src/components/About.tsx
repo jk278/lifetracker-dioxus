@@ -1,11 +1,8 @@
 import { Clock, Github, Globe, Heart, Mail } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useScrollbarHiding } from "../hooks/useScrollbarHiding";
 
 const About: React.FC = () => {
-	// 滚动条隐藏hook
-	const scrollRef = useScrollbarHiding<HTMLDivElement>();
 	
 	const [showDetails, setShowDetails] = useState(false);
 	const [showSystemInfo, setShowSystemInfo] = useState(false);
@@ -32,19 +29,7 @@ const About: React.FC = () => {
 		console.log("About: App info initialized");
 	}, [appInfoData]);
 
-	// 使用 useCallback 缓存 ref 监控逻辑
-	const handleRefChange = useCallback(() => {
-		if (scrollRef.current) {
-			console.log("About: ScrollRef attached", {
-				hasScrollbar: scrollRef.current.scrollHeight > scrollRef.current.clientHeight
-			});
-		}
-	}, [scrollRef.current]);
 
-	// 监控scrollRef的变化
-	useEffect(() => {
-		handleRefChange();
-	}, [handleRefChange]);
 
 	// 使用 useMemo 缓存静态数据
 	const features = useMemo(() => [
@@ -88,8 +73,7 @@ const About: React.FC = () => {
 	}), []);
 
 	return (
-		<div
-		ref={scrollRef} className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
+		<div className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
 			{!appInfo ? (
 				<div className="flex items-center justify-center h-64">
 					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
@@ -167,7 +151,7 @@ const About: React.FC = () => {
 					</div>
 
 					{/* 基本信息 */}
-					<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 							基本信息
 						</h3>
@@ -224,7 +208,7 @@ const About: React.FC = () => {
 					</div>
 
 					{/* 相关链接 */}
-					<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 							相关链接
 						</h3>
@@ -258,7 +242,7 @@ const About: React.FC = () => {
 					</div>
 
 					{/* 主要功能 */}
-					<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 						<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 							主要功能
 						</h3>
@@ -281,7 +265,7 @@ const About: React.FC = () => {
 
 					{/* 系统信息 */}
 					{showSystemInfo && (
-						<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 								系统信息
 							</h3>
@@ -328,7 +312,7 @@ const About: React.FC = () => {
 
 					{/* 许可证信息 */}
 					{showLicense && (
-						<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 								许可证信息
 							</h3>
@@ -365,7 +349,7 @@ const About: React.FC = () => {
 
 					{/* 版本历史 */}
 					{showDetails && (
-						<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
 								版本历史
 							</h3>
@@ -415,7 +399,7 @@ const About: React.FC = () => {
 
 					{/* 致谢 */}
 					{showDetails && (
-						<div className="bg-surface rounded-lg shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
 							<h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center space-x-2">
 								<Heart className="h-5 w-5 text-red-500" />
 								<span>致谢</span>

@@ -88,7 +88,7 @@ life-tracker/
 │   │   └── ErrorBoundary.tsx
 │   ├── hooks/              # 自定义 React Hooks
 │   │   ├── useTheme.tsx    # 主题管理
-│   │   └── useScrollbarHiding.tsx
+
 │   ├── types/              # TypeScript 类型定义
 │   │   └── index.ts        # 核心数据类型
 │   ├── core/               # Rust 核心业务逻辑

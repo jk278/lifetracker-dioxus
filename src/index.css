@@ -158,13 +158,16 @@ code {
 	}
 }
 
+
+
 /* ==================================
-   自定义滚动条样式 (闲时自动隐藏)
+   简洁的原生滚动条样式
    ================================== */
 
+/* Webkit浏览器滚动条样式 - thin风格 */
 ::-webkit-scrollbar {
-	width: 10px;
-	height: 10px;
+	width: 6px;
+	height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -172,28 +175,58 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-	border-radius: 4px;
-	background-color: transparent;
+	background-color: rgba(0, 0, 0, 0.3);
+	border-radius: 3px;
 	transition: background-color 200ms ease;
 }
 
-/* 当滚动时 (由JS添加 .is-scrolling 类)，显示滚动条拇指 */
-.scroll-container.is-scrolling::-webkit-scrollbar-thumb {
-	background-color: rgba(0, 0, 0, 0.35);
-}
-
-/* 暗色模式下，滚动时显示不同的颜色 */
-.dark .scroll-container.is-scrolling::-webkit-scrollbar-thumb {
-	background-color: rgba(255, 255, 255, 0.25);
-}
-
-/* 鼠标悬停在可见的滚动条拇指上时，颜色加深，提供交互反馈 */
-.scroll-container::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
 	background-color: rgba(0, 0, 0, 0.5);
 }
 
-.dark .scroll-container::-webkit-scrollbar-thumb:hover {
-	background-color: rgba(255, 255, 255, 0.4);
+/* 隐藏滚动条上下的箭头按钮 */
+::-webkit-scrollbar-button {
+	display: none;
+}
+
+/* 暗色模式下的滚动条 */
+.dark ::-webkit-scrollbar-thumb {
+	background-color: rgba(255, 255, 255, 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+	background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* 
+ * 滚动容器类 - 解决布局不对称问题
+ * 
+ * 使用要点：
+ * 1. 添加 scroll-container 类名到可滚动元素
+ * 2. 水平padding必须符合标准：窄屏 px-4(1rem)，中屏及以上 px-6(1.5rem)
+ * 
+ * 工作原理：
+ * - scrollbar-gutter: stable 预留6px空间（匹配滚动条宽度）
+ * - 相应减少右侧padding 6px来保持左右对称
+ * 
+ * 适用场景：
+ * - 主要界面的可滚动区域
+ * - 需要保持左右布局对称的场景
+ * 
+ * 限制：
+ * - 仅适用于符合标准padding的布局
+ * - 不适用于自定义padding的特殊场景
+ */
+.scroll-container {
+	scrollbar-gutter: stable;
+	padding-right: calc(1rem - 6px) !important; /* 窄屏：16px -> 10px */
+}
+
+/* 中等及以上屏幕的右侧padding调整 */
+@media (min-width: 768px) {
+	.scroll-container {
+		padding-right: calc(1.5rem - 6px) !important; /* 中屏：24px -> 18px */
+	}
 }
 
 /* 核心性能优化 - 这是解决脏帧问题的关键 */

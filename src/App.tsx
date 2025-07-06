@@ -480,7 +480,7 @@ function App() {
 						{/* 主内容区 - 移除双重高度限制 */}
 						<div
 							className={`flex-1 bg-adaptive relative ${
-								isMobileLayout ? "pb-20" : "" // 移动端底部留出底部菜单栏空间
+								isMobileLayout ? "pb-16" : "" // 移动端底部留出底部菜单栏空间，使用 pb-16 匹配菜单栏高度 h-16
 							}`}
 						>
 							<div className="h-full">

@@ -14,7 +14,6 @@ import {
 	Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useScrollbarHiding } from "../hooks/useScrollbarHiding";
 
 interface ExportOptions {
 	include_categories?: boolean;
@@ -34,8 +33,6 @@ async function getAppDataDir(): Promise<string> {
 }
 
 export function DataManagement() {
-	// 滚动条隐藏hook
-	const scrollRef = useScrollbarHiding<HTMLDivElement>();
 	
 	const [isExporting, setIsExporting] = useState(false);
 	const [isImporting, setIsImporting] = useState(false);
@@ -345,10 +342,7 @@ export function DataManagement() {
 	}, [getEffectiveBackupDir]);
 
 	return (
-		<div
-			ref={scrollRef}
-			className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container"
-		>
+		<div className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
 			<div className="space-y-6">
 				{/* 页面标题 */}
 				<h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
