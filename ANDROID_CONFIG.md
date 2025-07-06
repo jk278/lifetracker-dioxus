@@ -2,7 +2,7 @@
 
 ## Theme
 
-- 同时应用到 `res/values/themes.xml` 和 `res/values-night/themes.xml`
+- 亮色模式 `res/values/themes.xml` 和
 ```xml
 <!-- 状态栏透明 -->
 <item name="android:statusBarColor">@android:color/transparent</item>
@@ -10,6 +10,16 @@
 <item name="android:navigationBarColor">@android:color/transparent</item>
 <!-- 状态栏图标颜色适配 -->
 <item name="android:windowLightStatusBar">true</item>
+```
+
+- 暗色模式 `res/values-night/themes.xml`
+```xml
+<!-- 状态栏透明 -->
+<item name="android:statusBarColor">@android:color/transparent</item>
+<!-- 导航栏透明 -->
+<item name="android:navigationBarColor">@android:color/transparent</item>
+<!-- 状态栏图标颜色适配 -->
+<item name="android:windowLightStatusBar">false</item>
 ```
 
 ---
