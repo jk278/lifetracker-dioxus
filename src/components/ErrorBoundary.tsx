@@ -1,12 +1,12 @@
 import { AlertTriangle, RefreshCw } from "lucide-react";
-import React, { Component, type ReactNode } from "react";
+import React, { Component } from "react";
 
 /**
  * 错误边界组件的 Props
  */
 interface ErrorBoundaryProps {
-	children: ReactNode;
-	fallback?: ReactNode;
+	children: React.ReactNode;
+	fallback?: React.ReactNode;
 	onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 	resetOnPropsChange?: boolean;
 	resetKeys?: Array<string | number>;

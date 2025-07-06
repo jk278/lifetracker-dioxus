@@ -92,6 +92,7 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             tauri_commands::statistics::get_financial_stats,
             tauri_commands::statistics::get_monthly_trend,
             tauri_commands::statistics::get_financial_trend,
+            tauri_commands::statistics::get_data_statistics,
             tauri_commands::data_io::export_data,
             tauri_commands::data_io::import_data,
             tauri_commands::data_io::backup_database,

@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import type {
 	FinancialStatsDto,

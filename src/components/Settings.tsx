@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+	ArrowLeft,
 	Bell,
 	Monitor,
 	Moon,
@@ -9,10 +10,9 @@ import {
 	Settings as SettingsIcon,
 	Sun,
 } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
-import { THEME_COLORS, type ThemeColor, useTheme } from "../hooks/useTheme";
 import { useRouter } from "../hooks/useRouter";
+import { THEME_COLORS, type ThemeColor, useTheme } from "../hooks/useTheme";
 
 type SettingsProps = {};
 
@@ -30,8 +30,16 @@ interface AppConfig {
 
 const Settings: React.FC<SettingsProps> = () => {
 	const { theme, setTheme, themeColor, setThemeColor } = useTheme();
-	const { config: routerConfig, updateConfig: updateRouterConfig } = useRouter();
-	
+	const {
+		config: routerConfig,
+		updateConfig: updateRouterConfig,
+		state,
+		actions,
+	} = useRouter();
+
+	// 判断是否从系统页面进入
+	const isFromSystemPage = state.source === "system";
+
 	const [config, setConfig] = useState<AppConfig>({
 		theme: "system",
 		auto_save: true,
@@ -84,13 +92,25 @@ const Settings: React.FC<SettingsProps> = () => {
 	}
 
 	return (
-		<div className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-			<div className="space-y-6">
-				{/* 页面标题 */}
+		<div className="h-full flex flex-col">
+			{/* 固定顶部导航栏 */}
+			<div className="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700 surface-adaptive">
 				<div className="flex items-center justify-between">
-					<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-						设置
-					</h2>
+					<div className="flex items-center space-x-3">
+						{/* 仅在从系统页面进入时显示返回按钮 */}
+						{isFromSystemPage && (
+							<button
+								onClick={actions.goBack}
+								className="flex items-center justify-center w-8 h-8 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+								title="返回"
+							>
+								<ArrowLeft className="w-5 h-5" />
+							</button>
+						)}
+						<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+							设置
+						</h2>
+					</div>
 					<button
 						onClick={saveConfig}
 						disabled={saving}
@@ -100,260 +120,265 @@ const Settings: React.FC<SettingsProps> = () => {
 						{saving ? "保存中..." : "保存设置"}
 					</button>
 				</div>
+			</div>
 
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-					{/* 界面设置 */}
-					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-						<div className="flex items-center mb-4">
-							<Palette className="h-5 w-5 text-theme-primary mr-2" />
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								界面设置
-							</h3>
-						</div>
-
-						<div className="space-y-4">
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-									明暗模式
-								</label>
-								<div className="grid grid-cols-3 gap-3">
-									{[
-										{ value: "system", label: "跟随系统", icon: Monitor },
-										{ value: "light", label: "浅色", icon: Sun },
-										{ value: "dark", label: "深色", icon: Moon },
-									].map(({ value, label, icon: Icon }) => (
-										<button
-											key={value}
-											onClick={() => setTheme(value as any)}
-											className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
-												theme === value
-													? "border-theme-primary bg-theme-primary-light text-gray-900 dark:bg-theme-primary-dark dark:text-white"
-													: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500 text-gray-900 dark:text-gray-100"
-											}`}
-										>
-											<Icon className="h-5 w-5 mb-1" />
-											<span className="text-sm font-medium">{label}</span>
-										</button>
-									))}
-								</div>
+			{/* 可滚动内容区域 */}
+			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
+				<div className="space-y-6">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						{/* 界面设置 */}
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
+							<div className="flex items-center mb-4">
+								<Palette className="h-5 w-5 text-theme-primary mr-2" />
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+									界面设置
+								</h3>
 							</div>
 
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-									主题色彩
-								</label>
-								<div className="grid grid-cols-3 gap-3">
-									{Object.entries(THEME_COLORS).map(([key, colorConfig]) => (
-										<button
-											key={key}
-											onClick={() => setThemeColor(key as ThemeColor)}
-											className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
-												themeColor === key
-													? "border-gray-400 dark:border-gray-300 bg-gray-50 dark:bg-gray-700"
-													: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500"
-											}`}
-										>
-											<div
-												className="w-6 h-6 rounded-full mb-2 border-2 border-white dark:border-gray-800 shadow-sm"
-												style={{ backgroundColor: colorConfig.colors[500] }}
-											/>
-											<span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-												{colorConfig.name}
-											</span>
-										</button>
-									))}
-								</div>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									语言
-								</label>
-								<select
-									value={config.language}
-									onChange={(e) =>
-										setConfig({ ...config, language: e.target.value })
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								>
-									<option value="zh-CN">简体中文</option>
-									<option value="en-US">English</option>
-								</select>
-							</div>
-						</div>
-					</div>
-
-					{/* 导航设置 */}
-					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-						<div className="flex items-center mb-4">
-							<Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								导航设置
-							</h3>
-						</div>
-
-						<div className="space-y-4">
-							<div className="flex items-center justify-between">
-								<div className="flex-1">
-									<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-										记忆导航状态
+							<div className="space-y-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+										明暗模式
 									</label>
+									<div className="grid grid-cols-3 gap-3">
+										{[
+											{ value: "system", label: "跟随系统", icon: Monitor },
+											{ value: "light", label: "浅色", icon: Sun },
+											{ value: "dark", label: "深色", icon: Moon },
+										].map(({ value, label, icon: Icon }) => (
+											<button
+												key={value}
+												onClick={() => setTheme(value as any)}
+												className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
+													theme === value
+														? "border-theme-primary bg-theme-primary-light text-gray-900 dark:bg-theme-primary-dark dark:text-white"
+														: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500 text-gray-900 dark:text-gray-100"
+												}`}
+											>
+												<Icon className="h-5 w-5 mb-1" />
+												<span className="text-sm font-medium">{label}</span>
+											</button>
+										))}
+									</div>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+										主题色彩
+									</label>
+									<div className="grid grid-cols-3 gap-3">
+										{Object.entries(THEME_COLORS).map(([key, colorConfig]) => (
+											<button
+												key={key}
+												onClick={() => setThemeColor(key as ThemeColor)}
+												className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all theme-transition ${
+													themeColor === key
+														? "border-gray-400 dark:border-gray-300 bg-gray-50 dark:bg-gray-700"
+														: "border-gray-200 dark:border-gray-600 bg-surface hover:border-gray-300 dark:hover:border-gray-500"
+												}`}
+											>
+												<div
+													className="w-6 h-6 rounded-full mb-2 border-2 border-white dark:border-gray-800 shadow-sm"
+													style={{ backgroundColor: colorConfig.colors[500] }}
+												/>
+												<span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+													{colorConfig.name}
+												</span>
+											</button>
+										))}
+									</div>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										语言
+									</label>
+									<select
+										value={config.language}
+										onChange={(e) =>
+											setConfig({ ...config, language: e.target.value })
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									>
+										<option value="zh-CN">简体中文</option>
+										<option value="en-US">English</option>
+									</select>
+								</div>
+							</div>
+						</div>
+
+						{/* 导航设置 */}
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
+							<div className="flex items-center mb-4">
+								<Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+									导航设置
+								</h3>
+							</div>
+
+							<div className="space-y-4">
+								<div className="flex items-center justify-between">
+									<div className="flex-1">
+										<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+											记忆导航状态
+										</label>
+										<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+											重新启动应用时恢复到上次关闭时的页面
+										</p>
+									</div>
+									<input
+										type="checkbox"
+										checked={routerConfig.rememberNavigation}
+										onChange={(e) =>
+											updateRouterConfig({
+												rememberNavigation: e.target.checked,
+											})
+										}
+										className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										默认启动页面
+									</label>
+									<select
+										value={routerConfig.defaultRoute}
+										onChange={(e) =>
+											updateRouterConfig({
+												defaultRoute: e.target.value as any,
+											})
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									>
+										<option value="timing">计时</option>
+										<option value="accounting">记账</option>
+										<option value="notes">笔记</option>
+										<option value="system">系统</option>
+									</select>
 									<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-										重新启动应用时恢复到上次关闭时的页面
+										{routerConfig.rememberNavigation
+											? "仅在未启用导航记忆时生效"
+											: "应用启动时显示的默认页面"}
 									</p>
 								</div>
-								<input
-									type="checkbox"
-									checked={routerConfig.rememberNavigation}
-									onChange={(e) =>
-										updateRouterConfig({
-											rememberNavigation: e.target.checked,
-										})
-									}
-									className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									默认启动页面
-								</label>
-								<select
-									value={routerConfig.defaultRoute}
-									onChange={(e) =>
-										updateRouterConfig({
-											defaultRoute: e.target.value as any,
-										})
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								>
-									<option value="timing">计时</option>
-									<option value="accounting">记账</option>
-									<option value="notes">笔记</option>
-									<option value="system">系统</option>
-								</select>
-								<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-									{routerConfig.rememberNavigation
-										? "仅在未启用导航记忆时生效"
-										: "应用启动时显示的默认页面"}
-								</p>
 							</div>
 						</div>
+
+						{/* 通知设置 */}
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
+							<div className="flex items-center mb-4">
+								<Bell className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+									通知设置
+								</h3>
+							</div>
+
+							<div className="space-y-4">
+								<div className="flex items-center justify-between">
+									<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										启用通知
+									</label>
+									<input
+										type="checkbox"
+										checked={config.notification_enabled}
+										onChange={(e) =>
+											setConfig({
+												...config,
+												notification_enabled: e.target.checked,
+											})
+										}
+										className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
+									/>
+								</div>
+
+								<div className="flex items-center justify-between">
+									<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										自动保存
+									</label>
+									<input
+										type="checkbox"
+										checked={config.auto_save}
+										onChange={(e) =>
+											setConfig({ ...config, auto_save: e.target.checked })
+										}
+										className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* 计时设置 */}
+						<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
+							<div className="flex items-center mb-4">
+								<SettingsIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+									计时设置
+								</h3>
+							</div>
+
+							<div className="space-y-4">
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										工作时长 (分钟)
+									</label>
+									<input
+										type="number"
+										min="1"
+										max="120"
+										value={config.work_session_duration}
+										onChange={(e) =>
+											setConfig({
+												...config,
+												work_session_duration: Number.parseInt(e.target.value),
+											})
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										短休息时长 (分钟)
+									</label>
+									<input
+										type="number"
+										min="1"
+										max="30"
+										value={config.break_duration}
+										onChange={(e) =>
+											setConfig({
+												...config,
+												break_duration: Number.parseInt(e.target.value),
+											})
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									/>
+								</div>
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										长休息时长 (分钟)
+									</label>
+									<input
+										type="number"
+										min="1"
+										max="60"
+										value={config.long_break_duration}
+										onChange={(e) =>
+											setConfig({
+												...config,
+												long_break_duration: Number.parseInt(e.target.value),
+											})
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* 数据管理卡片已移至单独页面 */}
 					</div>
-
-					{/* 通知设置 */}
-					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-						<div className="flex items-center mb-4">
-							<Bell className="h-5 w-5 text-green-600 dark:text-green-400 mr-2" />
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								通知设置
-							</h3>
-						</div>
-
-						<div className="space-y-4">
-							<div className="flex items-center justify-between">
-								<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-									启用通知
-								</label>
-								<input
-									type="checkbox"
-									checked={config.notification_enabled}
-									onChange={(e) =>
-										setConfig({
-											...config,
-											notification_enabled: e.target.checked,
-										})
-									}
-									className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
-								/>
-							</div>
-
-							<div className="flex items-center justify-between">
-								<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-									自动保存
-								</label>
-								<input
-									type="checkbox"
-									checked={config.auto_save}
-									onChange={(e) =>
-										setConfig({ ...config, auto_save: e.target.checked })
-									}
-									className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
-								/>
-							</div>
-						</div>
-					</div>
-
-					{/* 计时设置 */}
-					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
-						<div className="flex items-center mb-4">
-							<SettingsIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mr-2" />
-							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-								计时设置
-							</h3>
-						</div>
-
-						<div className="space-y-4">
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									工作时长 (分钟)
-								</label>
-								<input
-									type="number"
-									min="1"
-									max="120"
-									value={config.work_session_duration}
-									onChange={(e) =>
-										setConfig({
-											...config,
-											work_session_duration: Number.parseInt(e.target.value),
-										})
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									短休息时长 (分钟)
-								</label>
-								<input
-									type="number"
-									min="1"
-									max="30"
-									value={config.break_duration}
-									onChange={(e) =>
-										setConfig({
-											...config,
-											break_duration: Number.parseInt(e.target.value),
-										})
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									长休息时长 (分钟)
-								</label>
-								<input
-									type="number"
-									min="1"
-									max="60"
-									value={config.long_break_duration}
-									onChange={(e) =>
-										setConfig({
-											...config,
-											long_break_duration: Number.parseInt(e.target.value),
-										})
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								/>
-							</div>
-						</div>
-					</div>
-
-					{/* 数据管理卡片已移至单独页面 */}
 				</div>
 			</div>
 		</div>

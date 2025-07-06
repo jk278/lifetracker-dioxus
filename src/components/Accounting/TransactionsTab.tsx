@@ -1,4 +1,3 @@
-import type React from "react";
 import type { TransactionDto } from "../../types";
 
 interface TransactionsTabProps {

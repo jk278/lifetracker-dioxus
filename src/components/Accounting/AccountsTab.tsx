@@ -1,4 +1,3 @@
-import type React from "react";
 import type { AccountDto } from "../../types";
 
 interface AccountsTabProps {

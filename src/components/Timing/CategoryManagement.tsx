@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Edit, Folder, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
-import type React from "react";
 import { useEffect, useState } from "react";
 import type { Category } from "../../types";
 

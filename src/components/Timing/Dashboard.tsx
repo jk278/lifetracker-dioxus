@@ -14,7 +14,6 @@ import {
 	TrendingUp,
 	X,
 } from "lucide-react";
-import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import type { Category, Task, TimeEntry, TimerStatus } from "../../types";
 

@@ -29,7 +29,6 @@ export interface RouterConfig {
 export interface RouterActions {
   navigate: (route: RouteId, source?: NavigationSource) => void;
   goBack: () => void;
-  canGoBack: () => boolean;
   reset: () => void;
 }
 

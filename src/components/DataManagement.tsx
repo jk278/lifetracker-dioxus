@@ -3,6 +3,7 @@ import { appDataDir, join, resolve as pathResolve } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
 	AlertCircle,
+	ArrowLeft,
 	Calendar,
 	CheckCircle,
 	Cloud,
@@ -14,6 +15,7 @@ import {
 	Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "../hooks/useRouter";
 
 interface ExportOptions {
 	include_categories?: boolean;
@@ -33,7 +35,11 @@ async function getAppDataDir(): Promise<string> {
 }
 
 export function DataManagement() {
-	
+	const { state, actions } = useRouter();
+
+	// 判断是否从系统页面进入
+	const isFromSystemPage = state.source === "system";
+
 	const [isExporting, setIsExporting] = useState(false);
 	const [isImporting, setIsImporting] = useState(false);
 	const [exportFormat, setExportFormat] = useState<string>("json");
@@ -59,6 +65,28 @@ export function DataManagement() {
 		backupRetention: 30,
 		backupDirectory: "",
 	});
+
+	const [statistics, setStatistics] = useState<{
+		total_tasks: number;
+		total_time_spent: number;
+		total_transactions: number;
+		total_notes: number;
+		database_size: string;
+		last_backup: string;
+	}>({
+		total_tasks: 0,
+		total_time_spent: 0,
+		total_transactions: 0,
+		total_notes: 0,
+		database_size: "未知",
+		last_backup: "从未",
+	});
+
+	const [loading, setLoading] = useState(false);
+	const [operationStatus, setOperationStatus] = useState<{
+		type: "success" | "error" | null;
+		message: string;
+	}>({ type: null, message: "" });
 
 	// 初始化时加载配置中的备份设置，并确保目录为绝对路径
 	useEffect(() => {
@@ -341,534 +369,701 @@ export function DataManagement() {
 		}
 	}, [getEffectiveBackupDir]);
 
+	// 获取数据统计信息
+	const fetchStatistics = async () => {
+		setLoading(true);
+		try {
+			const stats = await invoke<{
+				total_tasks: number;
+				total_time_spent: number;
+				total_transactions: number;
+				total_notes: number;
+				database_size: string;
+				last_backup: string;
+			}>("get_data_statistics");
+			setStatistics(stats);
+		} catch (error) {
+			console.error("获取数据统计失败:", error);
+			setOperationStatus({
+				type: "error",
+				message: "获取数据统计失败，请重试。",
+			});
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		fetchStatistics();
+	}, []);
+
+	// 自动清除状态消息
+	useEffect(() => {
+		if (operationStatus.type) {
+			const timer = setTimeout(
+				() => setOperationStatus({ type: null, message: "" }),
+				5000,
+			);
+			return () => clearTimeout(timer);
+		}
+	}, [operationStatus]);
+
 	return (
-		<div className="h-full overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-			<div className="space-y-6">
-				{/* 页面标题 */}
-				<h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-					数据管理
-				</h1>
-
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-					{/* 数据导出 */}
-					<details
-						className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6"
-						open={false}
-					>
-						<summary className="flex items-center outline-none cursor-pointer select-none">
-							<Download className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 flex-shrink-0" />
-							<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-								数据导出
-							</span>
-						</summary>
-						<div className="mt-4 space-y-6">
-							{/* 导出格式选择 */}
-							<div className="mb-6">
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									<FileText className="h-4 w-4 inline mr-1" />
-									导出格式
-								</label>
-								<select
-									value={exportFormat}
-									onChange={(e) => {
-										const newFormat = e.target.value;
-										setExportFormat(newFormat);
-									}}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-								>
-									<option value="json">JSON - 结构化数据</option>
-									<option value="csv">CSV - 表格数据</option>
-									<option value="xml">XML - 标记语言</option>
-									<option value="html">HTML - 网页格式</option>
-									<option value="markdown">Markdown - 文档格式</option>
-								</select>
-							</div>
-
-							{/* 日期范围选择 */}
-							<div className="mb-6">
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-									<Calendar className="h-4 w-4 inline mr-1" />
-									日期范围（可选）
-								</label>
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-											开始日期
-										</label>
-										<input
-											type="date"
-											value={dateRange.start}
-											onChange={(e) =>
-												setDateRange((prev) => ({
-													...prev,
-													start: e.target.value,
-												}))
-											}
-											className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-										/>
-									</div>
-									<div>
-										<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-											结束日期
-										</label>
-										<input
-											type="date"
-											value={dateRange.end}
-											onChange={(e) =>
-												setDateRange((prev) => ({
-													...prev,
-													end: e.target.value,
-												}))
-											}
-											className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-										/>
-									</div>
-								</div>
-							</div>
-
-							{/* 导出选项 */}
-							<div className="mb-6">
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-									<Settings className="h-4 w-4 inline mr-1" />
-									导出选项
-								</label>
-								<div className="space-y-3">
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={exportOptions.include_categories ?? true}
-											onChange={(e) =>
-												handleOptionChange(
-													"include_categories",
-													e.target.checked,
-												)
-											}
-											className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-										/>
-										<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-											包含分类信息
-										</span>
-									</label>
-
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={exportOptions.include_statistics ?? true}
-											onChange={(e) =>
-												handleOptionChange(
-													"include_statistics",
-													e.target.checked,
-												)
-											}
-											className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-										/>
-										<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-											包含统计数据
-										</span>
-									</label>
-
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={exportOptions.include_metadata ?? true}
-											onChange={(e) =>
-												handleOptionChange("include_metadata", e.target.checked)
-											}
-											className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-										/>
-										<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-											包含元数据
-										</span>
-									</label>
-
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={exportOptions.group_by_date ?? false}
-											onChange={(e) =>
-												handleOptionChange("group_by_date", e.target.checked)
-											}
-											className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-										/>
-										<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-											按日期分组
-										</span>
-									</label>
-
-									<label className="flex items-center">
-										<input
-											type="checkbox"
-											checked={exportOptions.group_by_category ?? false}
-											onChange={(e) =>
-												handleOptionChange(
-													"group_by_category",
-													e.target.checked,
-												)
-											}
-											className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-										/>
-										<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-											按分类分组
-										</span>
-									</label>
-								</div>
-							</div>
-
-							{/* 导出按钮 */}
+		<div className="h-full flex flex-col">
+			{/* 固定顶部导航栏 */}
+			<div className="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700 surface-adaptive">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center space-x-3">
+						{/* 仅在从系统页面进入时显示返回按钮 */}
+						{isFromSystemPage && (
 							<button
-								onClick={handleExport}
-								disabled={isExporting}
-								className={`w-full px-4 py-2 rounded-md font-medium text-white transition-colors ${
-									isExporting
-										? "bg-gray-400 cursor-not-allowed"
-										: "bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-								}`}
+								onClick={actions.goBack}
+								className="flex items-center justify-center w-8 h-8 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+								title="返回"
 							>
-								{isExporting ? (
-									<span className="flex items-center justify-center">
-										<svg
-											className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-											xmlns="http://www.w3.org/2000/svg"
-											fill="none"
-											viewBox="0 0 24 24"
-										>
-											<circle
-												className="opacity-25"
-												cx="12"
-												cy="12"
-												r="10"
-												stroke="currentColor"
-												strokeWidth="4"
-											/>
-											<path
-												className="opacity-75"
-												fill="currentColor"
-												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-											/>
-										</svg>
-										导出中...
-									</span>
-								) : (
-									<span className="flex items-center justify-center">
-										<Download className="h-4 w-4 mr-2" />
-										开始导出
-									</span>
-								)}
+								<ArrowLeft className="w-5 h-5" />
 							</button>
-
-							{/* 导出结果 */}
-							{lastExportResult && (
-								<div
-									className={`mt-4 p-3 rounded-md ${
-										lastExportResult.includes("失败")
-											? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-											: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-									}`}
-								>
-									<div className="flex items-start">
-										{lastExportResult.includes("失败") ? (
-											<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-										) : (
-											<CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-										)}
-										<p
-											className={`text-sm ${
-												lastExportResult.includes("失败")
-													? "text-red-700 dark:text-red-300"
-													: "text-green-700 dark:text-green-300"
-											}`}
-										>
-											{lastExportResult}
-										</p>
-									</div>
-								</div>
-							)}
-						</div>
-					</details>
-
-					{/* 数据导入 */}
-					<details
-						className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6"
-						open={false}
-					>
-						<summary className="flex items-center outline-none cursor-pointer select-none">
-							<Upload className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0" />
-							<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-								数据导入
-							</span>
-						</summary>
-						<div className="mt-4 space-y-6">
-							<div className="mt-2">
-								<div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
-									<div className="flex items-start">
-										<Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-2 mt-0.5 flex-shrink-0" />
-										<div className="text-sm text-yellow-700 dark:text-yellow-300">
-											<p className="font-medium mb-1">导入注意事项：</p>
-											<ul className="list-disc list-inside space-y-1">
-												<li>导入操作将覆盖现有数据</li>
-												<li>支持 JSON、CSV、XML 格式</li>
-												<li>建议在导入前先导出备份</li>
-												<li>大文件导入可能需要较长时间</li>
-											</ul>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							<button
-								onClick={handleImport}
-								disabled={isImporting}
-								className={`w-full px-4 py-2 rounded-md font-medium text-white transition-colors ${
-									isImporting
-										? "bg-gray-400 cursor-not-allowed"
-										: "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-								}`}
-							>
-								{isImporting ? (
-									<span className="flex items-center justify-center">
-										<svg
-											className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-											xmlns="http://www.w3.org/2000/svg"
-											fill="none"
-											viewBox="0 0 24 24"
-										>
-											<circle
-												className="opacity-25"
-												cx="12"
-												cy="12"
-												r="10"
-												stroke="currentColor"
-												strokeWidth="4"
-											/>
-											<path
-												className="opacity-75"
-												fill="currentColor"
-												d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-											/>
-										</svg>
-										导入中...
-									</span>
-								) : (
-									<span className="flex items-center justify-center">
-										<Upload className="h-4 w-4 mr-2" />
-										选择文件导入
-									</span>
-								)}
-							</button>
-
-							{/* 导入结果 */}
-							{lastImportResult && (
-								<div
-									className={`mt-4 p-3 rounded-md ${
-										lastImportResult.includes("失败")
-											? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-											: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
-									}`}
-								>
-									<div className="flex items-start">
-										{lastImportResult.includes("失败") ? (
-											<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-										) : (
-											<CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-										)}
-										<p
-											className={`text-sm ${
-												lastImportResult.includes("失败")
-													? "text-red-700 dark:text-red-300"
-													: "text-green-700 dark:text-green-300"
-											}`}
-										>
-											{lastImportResult}
-										</p>
-									</div>
-								</div>
-							)}
-						</div>
-					</details>
-				</div>
-
-				{/* 数据清理 */}
-				<details
-					className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
-					open={false}
-				>
-					<summary className="flex items-center outline-none cursor-pointer select-none">
-						<RefreshCw className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0" />
-						<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-							数据清理
-						</span>
-					</summary>
-					<div className="mt-4 space-y-6">
-						<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mt-2">
-							<div className="flex items-start">
-								<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
-								<div className="text-sm text-red-700 dark:text-red-300">
-									<p className="font-medium mb-1">危险操作警告：</p>
-									<p>
-										此操作将永久删除所有数据，包括任务记录、分类信息和统计数据。操作不可恢复，请谨慎使用。
-									</p>
-								</div>
-							</div>
-						</div>
-
-						<button
-							onClick={handleClearData}
-							className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
-						>
-							<RefreshCw className="h-4 w-4 inline mr-2" />
-							清除所有数据
-						</button>
+						)}
+						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+							数据
+						</h1>
 					</div>
-				</details>
+				</div>
+			</div>
 
-				{/* 备份与恢复 */}
-				<details
-					className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
-					open={false}
-				>
-					<summary className="flex items-center outline-none cursor-pointer select-none">
-						<RefreshCw className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2 flex-shrink-0" />
-						<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-							备份与恢复
-						</span>
-					</summary>
-
-					<div className="mt-4 space-y-6">
-						{/* 自动备份设置 */}
-						<label className="flex items-center">
-							<input
-								type="checkbox"
-								checked={backupSettings.autoBackup}
-								onChange={(e) =>
-									setBackupSettings((prev) => ({
-										...prev,
-										autoBackup: e.target.checked,
-									}))
-								}
-								className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-							/>
-							<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-								启用自动备份
-							</span>
-						</label>
-
-						<div className="grid grid-cols-2 gap-4">
-							<div>
-								<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-									备份间隔（天）
-								</label>
-								<input
-									type="number"
-									min={1}
-									value={backupSettings.backupInterval}
-									onChange={(e) =>
-										setBackupSettings((prev) => ({
-											...prev,
-											backupInterval: Number(e.target.value),
-										}))
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
-							</div>
-							<div>
-								<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-									保留备份数量
-								</label>
-								<input
-									type="number"
-									min={1}
-									value={backupSettings.backupRetention}
-									onChange={(e) =>
-										setBackupSettings((prev) => ({
-											...prev,
-											backupRetention: Number(e.target.value),
-										}))
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
-							</div>
-						</div>
-
-						{/* 备份目录选择 */}
-						<div>
-							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-								备份目录
-							</label>
-							<div className="flex items-center space-x-2">
-								<input
-									type="text"
-									readOnly
-									value={backupSettings.backupDirectory}
-									className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
-								/>
+			{/* 可滚动内容区域 */}
+			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
+				<div className="space-y-6">
+					{/* 状态消息 */}
+					{operationStatus.type && (
+						<div
+							className={`p-4 rounded-lg border ${
+								operationStatus.type === "success"
+									? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
+									: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+							}`}
+						>
+							<div className="flex justify-between items-center">
+								<span>{operationStatus.message}</span>
 								<button
-									onClick={chooseBackupDirectory}
-									className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-sm"
+									onClick={() =>
+										setOperationStatus({ type: null, message: "" })
+									}
+									className="text-sm underline hover:no-underline"
 								>
-									选择
+									关闭
 								</button>
 							</div>
 						</div>
+					)}
 
-						{/* 保存设置 */}
-						<button
-							onClick={handleSaveBackupSettings}
-							className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
-						>
-							保存备份设置
-						</button>
+					{loading && (
+						<div className="flex items-center justify-center py-8">
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+							<span className="ml-3 text-gray-600 dark:text-gray-400">
+								处理中...
+							</span>
+						</div>
+					)}
 
-						<hr className="border-gray-200 dark:border-gray-700" />
-
-						{/* 手动备份与恢复 */}
-						<div className="space-y-4">
+					{/* 数据统计概览 */}
+					<div className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+						<div className="flex items-center mb-4">
+							<Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+							<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+								数据统计概览
+							</h2>
 							<button
-								onClick={handleBackup}
-								className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+								onClick={fetchStatistics}
+								className="ml-auto p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+								title="刷新统计数据"
 							>
-								立即备份
+								<RefreshCw className="h-4 w-4" />
 							</button>
+						</div>
 
-							<button
-								onClick={handleRestore}
-								className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-							>
-								从备份恢复
-							</button>
+						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									任务总数
+								</div>
+								<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+									{statistics.total_tasks}
+								</div>
+							</div>
 
-							{backupPath && (
-								<p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-									最近备份文件: {backupPath}
-								</p>
-							)}
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									累计时长
+								</div>
+								<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+									{Math.floor(statistics.total_time_spent / 3600)}h{" "}
+									{Math.floor((statistics.total_time_spent % 3600) / 60)}m
+								</div>
+							</div>
+
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									财务记录
+								</div>
+								<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+									{statistics.total_transactions}
+								</div>
+							</div>
+
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									日记数量
+								</div>
+								<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+									{statistics.total_notes}
+								</div>
+							</div>
+
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									数据库大小
+								</div>
+								<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+									{statistics.database_size}
+								</div>
+							</div>
+
+							<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									最后备份
+								</div>
+								<div className="text-lg font-bold text-gray-900 dark:text-gray-100">
+									{statistics.last_backup}
+								</div>
+							</div>
 						</div>
 					</div>
-				</details>
 
-				{/* 同步（占位） */}
-				<details
-					className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
-					open={false}
-				>
-					<summary className="flex items-center outline-none cursor-pointer select-none">
-						<Cloud className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2 flex-shrink-0" />
-						<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-							多端同步 (开发中)
-						</span>
-					</summary>
-					<div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-						<p className="mb-4">
-							未来版本将支持将数据同步至云端（GitHub / WebDAV / Supabase
-							等）。敬请期待！
-						</p>
-						<button
-							disabled
-							className="px-4 py-2 bg-indigo-400/60 text-white rounded-md cursor-not-allowed"
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						{/* 数据导出 */}
+						<details
+							className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+							open={false}
 						>
-							功能开发中
-						</button>
+							<summary className="flex items-center outline-none cursor-pointer select-none">
+								<Download className="h-5 w-5 text-green-600 dark:text-green-400 mr-2 flex-shrink-0" />
+								<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+									数据导出
+								</span>
+							</summary>
+							<div className="mt-4 space-y-6">
+								{/* 导出格式选择 */}
+								<div className="mb-6">
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										<FileText className="h-4 w-4 inline mr-1" />
+										导出格式
+									</label>
+									<select
+										value={exportFormat}
+										onChange={(e) => {
+											const newFormat = e.target.value;
+											setExportFormat(newFormat);
+										}}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									>
+										<option value="json">JSON - 结构化数据</option>
+										<option value="csv">CSV - 表格数据</option>
+										<option value="xml">XML - 标记语言</option>
+										<option value="html">HTML - 网页格式</option>
+										<option value="markdown">Markdown - 文档格式</option>
+									</select>
+								</div>
+
+								{/* 日期范围选择 */}
+								<div className="mb-6">
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+										<Calendar className="h-4 w-4 inline mr-1" />
+										日期范围（可选）
+									</label>
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+												开始日期
+											</label>
+											<input
+												type="date"
+												value={dateRange.start}
+												onChange={(e) =>
+													setDateRange((prev) => ({
+														...prev,
+														start: e.target.value,
+													}))
+												}
+												className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+												结束日期
+											</label>
+											<input
+												type="date"
+												value={dateRange.end}
+												onChange={(e) =>
+													setDateRange((prev) => ({
+														...prev,
+														end: e.target.value,
+													}))
+												}
+												className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+											/>
+										</div>
+									</div>
+								</div>
+
+								{/* 导出选项 */}
+								<div className="mb-6">
+									<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+										<Settings className="h-4 w-4 inline mr-1" />
+										导出选项
+									</label>
+									<div className="space-y-3">
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={exportOptions.include_categories ?? true}
+												onChange={(e) =>
+													handleOptionChange(
+														"include_categories",
+														e.target.checked,
+													)
+												}
+												className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												包含分类信息
+											</span>
+										</label>
+
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={exportOptions.include_statistics ?? true}
+												onChange={(e) =>
+													handleOptionChange(
+														"include_statistics",
+														e.target.checked,
+													)
+												}
+												className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												包含统计数据
+											</span>
+										</label>
+
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={exportOptions.include_metadata ?? true}
+												onChange={(e) =>
+													handleOptionChange(
+														"include_metadata",
+														e.target.checked,
+													)
+												}
+												className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												包含元数据
+											</span>
+										</label>
+
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={exportOptions.group_by_date ?? false}
+												onChange={(e) =>
+													handleOptionChange("group_by_date", e.target.checked)
+												}
+												className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												按日期分组
+											</span>
+										</label>
+
+										<label className="flex items-center">
+											<input
+												type="checkbox"
+												checked={exportOptions.group_by_category ?? false}
+												onChange={(e) =>
+													handleOptionChange(
+														"group_by_category",
+														e.target.checked,
+													)
+												}
+												className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+											/>
+											<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+												按分类分组
+											</span>
+										</label>
+									</div>
+								</div>
+
+								{/* 导出按钮 */}
+								<button
+									onClick={handleExport}
+									disabled={isExporting}
+									className={`w-full px-4 py-2 rounded-md font-medium text-white transition-colors ${
+										isExporting
+											? "bg-gray-400 cursor-not-allowed"
+											: "bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+									}`}
+								>
+									{isExporting ? (
+										<span className="flex items-center justify-center">
+											<svg
+												className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													className="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													strokeWidth="4"
+												/>
+												<path
+													className="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												/>
+											</svg>
+											导出中...
+										</span>
+									) : (
+										<span className="flex items-center justify-center">
+											<Download className="h-4 w-4 mr-2" />
+											开始导出
+										</span>
+									)}
+								</button>
+
+								{/* 导出结果 */}
+								{lastExportResult && (
+									<div
+										className={`mt-4 p-3 rounded-md ${
+											lastExportResult.includes("失败")
+												? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+												: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+										}`}
+									>
+										<div className="flex items-start">
+											{lastExportResult.includes("失败") ? (
+												<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+											) : (
+												<CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+											)}
+											<p
+												className={`text-sm ${
+													lastExportResult.includes("失败")
+														? "text-red-700 dark:text-red-300"
+														: "text-green-700 dark:text-green-300"
+												}`}
+											>
+												{lastExportResult}
+											</p>
+										</div>
+									</div>
+								)}
+							</div>
+						</details>
+
+						{/* 数据导入 */}
+						<details
+							className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+							open={false}
+						>
+							<summary className="flex items-center outline-none cursor-pointer select-none">
+								<Upload className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0" />
+								<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+									数据导入
+								</span>
+							</summary>
+							<div className="mt-4 space-y-6">
+								<div className="mt-2">
+									<div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
+										<div className="flex items-start">
+											<Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-2 mt-0.5 flex-shrink-0" />
+											<div className="text-sm text-yellow-700 dark:text-yellow-300">
+												<p className="font-medium mb-1">导入注意事项：</p>
+												<ul className="list-disc list-inside space-y-1">
+													<li>导入操作将覆盖现有数据</li>
+													<li>支持 JSON、CSV、XML 格式</li>
+													<li>建议在导入前先导出备份</li>
+													<li>大文件导入可能需要较长时间</li>
+												</ul>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<button
+									onClick={handleImport}
+									disabled={isImporting}
+									className={`w-full px-4 py-2 rounded-md font-medium text-white transition-colors ${
+										isImporting
+											? "bg-gray-400 cursor-not-allowed"
+											: "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+									}`}
+								>
+									{isImporting ? (
+										<span className="flex items-center justify-center">
+											<svg
+												className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+												xmlns="http://www.w3.org/2000/svg"
+												fill="none"
+												viewBox="0 0 24 24"
+											>
+												<circle
+													className="opacity-25"
+													cx="12"
+													cy="12"
+													r="10"
+													stroke="currentColor"
+													strokeWidth="4"
+												/>
+												<path
+													className="opacity-75"
+													fill="currentColor"
+													d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+												/>
+											</svg>
+											导入中...
+										</span>
+									) : (
+										<span className="flex items-center justify-center">
+											<Upload className="h-4 w-4 mr-2" />
+											选择文件导入
+										</span>
+									)}
+								</button>
+
+								{/* 导入结果 */}
+								{lastImportResult && (
+									<div
+										className={`mt-4 p-3 rounded-md ${
+											lastImportResult.includes("失败")
+												? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+												: "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800"
+										}`}
+									>
+										<div className="flex items-start">
+											{lastImportResult.includes("失败") ? (
+												<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+											) : (
+												<CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+											)}
+											<p
+												className={`text-sm ${
+													lastImportResult.includes("失败")
+														? "text-red-700 dark:text-red-300"
+														: "text-green-700 dark:text-green-300"
+												}`}
+											>
+												{lastImportResult}
+											</p>
+										</div>
+									</div>
+								)}
+							</div>
+						</details>
 					</div>
-				</details>
+
+					{/* 数据清理 */}
+					<details
+						className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
+						open={false}
+					>
+						<summary className="flex items-center outline-none cursor-pointer select-none">
+							<RefreshCw className="h-5 w-5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0" />
+							<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+								数据清理
+							</span>
+						</summary>
+						<div className="mt-4 space-y-6">
+							<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mt-2">
+								<div className="flex items-start">
+									<AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2 mt-0.5 flex-shrink-0" />
+									<div className="text-sm text-red-700 dark:text-red-300">
+										<p className="font-medium mb-1">危险操作警告：</p>
+										<p>
+											此操作将永久删除所有数据，包括任务记录、分类信息和统计数据。操作不可恢复，请谨慎使用。
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<button
+								onClick={handleClearData}
+								className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+							>
+								<RefreshCw className="h-4 w-4 inline mr-2" />
+								清除所有数据
+							</button>
+						</div>
+					</details>
+
+					{/* 备份与恢复 */}
+					<details
+						className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
+						open={false}
+					>
+						<summary className="flex items-center outline-none cursor-pointer select-none">
+							<RefreshCw className="h-5 w-5 text-orange-600 dark:text-orange-400 mr-2 flex-shrink-0" />
+							<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+								备份与恢复
+							</span>
+						</summary>
+
+						<div className="mt-4 space-y-6">
+							{/* 自动备份设置 */}
+							<label className="flex items-center">
+								<input
+									type="checkbox"
+									checked={backupSettings.autoBackup}
+									onChange={(e) =>
+										setBackupSettings((prev) => ({
+											...prev,
+											autoBackup: e.target.checked,
+										}))
+									}
+									className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+								/>
+								<span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+									启用自动备份
+								</span>
+							</label>
+
+							<div className="grid grid-cols-2 gap-4">
+								<div>
+									<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+										备份间隔（天）
+									</label>
+									<input
+										type="number"
+										min={1}
+										value={backupSettings.backupInterval}
+										onChange={(e) =>
+											setBackupSettings((prev) => ({
+												...prev,
+												backupInterval: Number(e.target.value),
+											}))
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+										保留备份数量
+									</label>
+									<input
+										type="number"
+										min={1}
+										value={backupSettings.backupRetention}
+										onChange={(e) =>
+											setBackupSettings((prev) => ({
+												...prev,
+												backupRetention: Number(e.target.value),
+											}))
+										}
+										className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
+								</div>
+							</div>
+
+							{/* 备份目录选择 */}
+							<div>
+								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+									备份目录
+								</label>
+								<div className="flex items-center space-x-2">
+									<input
+										type="text"
+										readOnly
+										value={backupSettings.backupDirectory}
+										className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+									/>
+									<button
+										onClick={chooseBackupDirectory}
+										className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md text-sm"
+									>
+										选择
+									</button>
+								</div>
+							</div>
+
+							{/* 保存设置 */}
+							<button
+								onClick={handleSaveBackupSettings}
+								className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors"
+							>
+								保存备份设置
+							</button>
+
+							<hr className="border-gray-200 dark:border-gray-700" />
+
+							{/* 手动备份与恢复 */}
+							<div className="space-y-4">
+								<button
+									onClick={handleBackup}
+									className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+								>
+									立即备份
+								</button>
+
+								<button
+									onClick={handleRestore}
+									className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+								>
+									从备份恢复
+								</button>
+
+								{backupPath && (
+									<p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+										最近备份文件: {backupPath}
+									</p>
+								)}
+							</div>
+						</div>
+					</details>
+
+					{/* 同步（占位） */}
+					<details
+						className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6 mt-6"
+						open={false}
+					>
+						<summary className="flex items-center outline-none cursor-pointer select-none">
+							<Cloud className="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-2 flex-shrink-0" />
+							<span className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+								多端同步 (开发中)
+							</span>
+						</summary>
+						<div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
+							<p className="mb-4">
+								未来版本将支持将数据同步至云端（GitHub / WebDAV / Supabase
+								等）。敬请期待！
+							</p>
+							<button
+								disabled
+								className="px-4 py-2 bg-indigo-400/60 text-white rounded-md cursor-not-allowed"
+							>
+								功能开发中
+							</button>
+						</div>
+					</details>
+				</div>
 			</div>
 		</div>
 	);
