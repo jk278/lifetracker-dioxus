@@ -29,7 +29,8 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 				</button>
 			</div>
 
-			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 overflow-hidden">
+			{/* 大屏表格布局 */}
+			<div className="hidden md:block bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 overflow-hidden">
 				<div className="overflow-x-auto">
 					<table className="w-full">
 						<thead className="bg-gray-50 dark:bg-gray-800">
@@ -123,6 +124,85 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
 					</table>
 				</div>
 			</div>
+
+			{/* 小屏卡片布局 */}
+			<div className="md:hidden space-y-4">
+				{transactions.map((transaction) => (
+					<div
+						key={transaction.id}
+						className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4"
+					>
+						{/* 第一行：类型标签 + 金额 + 编辑按钮 */}
+						<div className="flex justify-between items-center mb-2">
+							<div className="flex items-center space-x-3">
+								<span
+									className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+										transaction.transaction_type === "income"
+											? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+											: transaction.transaction_type === "expense"
+												? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+												: "bg-theme-primary-light dark:bg-theme-primary-dark text-theme-primary-dark dark:text-theme-primary-lighter"
+									}`}
+								>
+									{getTransactionTypeLabel(transaction.transaction_type)}
+								</span>
+								<div
+									className={`text-lg font-semibold ${
+										transaction.transaction_type === "income"
+											? "text-green-600 dark:text-green-400"
+											: transaction.transaction_type === "expense"
+												? "text-red-600 dark:text-red-400"
+												: "text-theme-primary text-theme-primary-hover"
+									}`}
+								>
+									{transaction.transaction_type === "income"
+										? "+"
+										: transaction.transaction_type === "expense"
+											? "-"
+											: ""}
+									{formatAmount(transaction.amount, transaction.currency)}
+								</div>
+							</div>
+							<button
+								onClick={() => onEditTransaction(transaction)}
+								className="text-theme-primary text-theme-primary-hover text-sm theme-transition px-3 py-1 rounded-md hover:bg-theme-primary-light dark:hover:bg-theme-primary-dark"
+							>
+								编辑
+							</button>
+						</div>
+						
+						{/* 第二行：描述 + 账户信息 + 日期 */}
+						<div className="flex justify-between items-center text-sm">
+							<div className="flex items-center space-x-2 flex-1 min-w-0">
+								<span className="font-medium text-gray-900 dark:text-gray-100 truncate">
+									{transaction.description}
+								</span>
+								<span className="text-gray-500 dark:text-gray-400">•</span>
+								<span className="text-gray-700 dark:text-gray-300">
+									{transaction.account_name}
+								</span>
+								{transaction.to_account_name && (
+									<span className="text-gray-500 dark:text-gray-400">
+										→ {transaction.to_account_name}
+									</span>
+								)}
+							</div>
+							<div className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+								{transaction.transaction_date}
+							</div>
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* 无数据状态 */}
+			{transactions.length === 0 && (
+				<div className="text-center py-12">
+					<div className="text-gray-500 dark:text-gray-400">
+						暂无交易记录
+					</div>
+				</div>
+			)}
 		</div>
 	);
 };
