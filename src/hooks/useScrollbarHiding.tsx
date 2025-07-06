@@ -1,18 +1,28 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 /**
  * 一个自定义 React Hook，用于在元素滚动时显示滚动条，
  * 并在滚动停止后的一段时间内自动隐藏滚动条。
- * @param {number} [hideDelay=1500] - 滚动停止后隐藏滚动条的延迟时间（毫秒）。
- * @returns {React.RefObject<T>} - 一个应附加到目标滚动元素的 ref 对象。
+ * @param hideDelay - 滚动停止后隐藏滚动条的延迟时间（毫秒）。
+ * @returns 一个应附加到目标滚动元素的 ref 对象。
  */
 export function useScrollbarHiding<T extends HTMLElement>(hideDelay = 1500) {
 	const elementRef = useRef<T>(null);
 	const hideTimerRef = useRef<number | null>(null);
 
-	useEffect(() => {
+	// 使用 useLayoutEffect 确保DOM更新后立即执行
+	useLayoutEffect(() => {
 		const element = elementRef.current;
-		if (!element) return;
+		if (!element) {
+			console.log("useScrollbarHiding: Element not found");
+			return;
+		}
+
+		console.log("useScrollbarHiding: Initialized for element", {
+			hasScrollbar: element.scrollHeight > element.clientHeight,
+			scrollHeight: element.scrollHeight,
+			clientHeight: element.clientHeight
+		});
 
 		const handleScroll = () => {
 			// 当滚动时，为元素添加 'is-scrolling' 类
@@ -39,7 +49,7 @@ export function useScrollbarHiding<T extends HTMLElement>(hideDelay = 1500) {
 				window.clearTimeout(hideTimerRef.current);
 			}
 		};
-	}, [hideDelay]);
+	}, [hideDelay]); // 移除对 elementRef.current 的依赖
 
 	return elementRef;
 }

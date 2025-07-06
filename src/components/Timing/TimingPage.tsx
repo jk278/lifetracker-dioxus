@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState } from "react";
+import { useScrollbarHiding } from "../../hooks/useScrollbarHiding";
 import type { Task, TimerStatus } from "../../types";
 import CategoryManagement from "./CategoryManagement";
 import Dashboard from "./Dashboard";
@@ -50,6 +51,9 @@ const TimingPage: React.FC<TimingPageProps> = ({
 		"dashboard" | "tasks" | "categories" | "statistics"
 	>("dashboard");
 
+	// 滚动条隐藏hook
+	const scrollRef = useScrollbarHiding<HTMLDivElement>();
+
 	const tabs = [
 		{ key: "dashboard", label: "仪表板" },
 		{ key: "tasks", label: "任务管理" },
@@ -58,10 +62,10 @@ const TimingPage: React.FC<TimingPageProps> = ({
 	];
 
 	return (
-		<div className="flex flex-col h-full px-2">
+		<div className="flex flex-col h-full">
 			{/* 内部标签导航 - 固定在顶部 */}
 			<div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
-				<div className="flex">
+				<div className="flex px-0 md:px-6">
 					{tabs.map((tab) => (
 						<button
 							key={tab.key}
@@ -79,7 +83,10 @@ const TimingPage: React.FC<TimingPageProps> = ({
 			</div>
 
 			{/* 对应内容 - 可滚动区域 */}
-			<div className="flex-1 overflow-y-auto py-4">
+			<div
+				ref={scrollRef}
+				className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container"
+			>
 				{activeTab === "dashboard" && (
 					<Dashboard
 						timerStatus={timerStatus}

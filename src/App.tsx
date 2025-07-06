@@ -18,7 +18,6 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import SettingsComponent from "./components/Settings";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
-import { useScrollbarHiding } from "./hooks/useScrollbarHiding";
 import { ThemeProvider } from "./hooks/useTheme";
 import type { Task, TimerStatus } from "./types";
 
@@ -63,8 +62,6 @@ function App() {
 		"stopped" | "running" | "paused"
 	>("stopped");
 
-	const navRef = useScrollbarHiding<HTMLElement>();
-	const mainContentRef = useScrollbarHiding<HTMLDivElement>();
 
 	const [todayStats, setTodayStats] = useState({
 		totalSeconds: 0,
@@ -427,7 +424,6 @@ function App() {
 
 								{/* 导航菜单 */}
 								<nav
-									ref={navRef}
 									className="flex-1 overflow-y-auto scroll-container"
 								>
 									<div className="p-2 space-y-1">
@@ -481,14 +477,13 @@ function App() {
 							</div>
 						)}
 
-						{/* 主内容区 - 简化为直接使用 Tailwind 类 */}
+						{/* 主内容区 - 移除双重高度限制 */}
 						<div
-							ref={mainContentRef}
-							className={`flex-1 overflow-y-auto bg-adaptive relative scroll-container ${
+							className={`flex-1 bg-adaptive relative ${
 								isMobileLayout ? "pb-20" : "" // 移动端底部留出底部菜单栏空间
 							}`}
 						>
-							<div className={`${isMobileLayout ? "px-4 pb-4" : "px-6 pb-6"}`}>
+							<div className="h-full">
 								<ErrorBoundary resetKeys={[activeView]}>
 									{activeView === "timing" && (
 										<TimingPage
