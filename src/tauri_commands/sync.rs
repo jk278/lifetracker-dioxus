@@ -306,6 +306,27 @@ pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<Strin
         .map_err(|e| format!("同步执行失败: {}", e))?;
 
     if result.success {
+        // 同步成功后更新最后同步时间
+        let mut updated_config = config.clone();
+        updated_config.data.sync.last_sync_time = Some(chrono::Local::now());
+
+        // 保存配置到内存
+        {
+            let mut config_guard = state.config.lock().unwrap();
+            *config_guard = updated_config.clone();
+        }
+
+        // 保存配置到文件
+        let mut config_manager = crate::config::create_config_manager()
+            .map_err(|e| format!("创建配置管理器失败: {}", e))?;
+
+        *config_manager.config_mut() = updated_config;
+        config_manager
+            .save()
+            .map_err(|e| format!("保存配置文件失败: {}", e))?;
+
+        log::info!("同步成功，已更新最后同步时间");
+
         Ok(format!(
             "同步完成：上传 {} 个文件，下载 {} 个文件",
             result.uploaded_count, result.downloaded_count
