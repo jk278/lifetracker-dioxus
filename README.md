@@ -1,6 +1,6 @@
-# LifeTracker - 综合生活追踪应用程序
+# LifeTracker - 跨平台生活追踪应用
 
-> 🚀 使用 Tauri + React + TypeScript + Rust 构建的现代化综合生活追踪桌面应用
+> 🚀 使用 Tauri + React + TypeScript + Rust 构建的跨平台生活追踪应用
 
 LifeTracker 是一个功能强大的综合生活追踪工具，帮助您管理生活的各个方面：时间追踪、财务记录、日记写作、习惯打卡等。让您的生活更有条理，提高效率。
 
