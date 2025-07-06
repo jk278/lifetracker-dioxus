@@ -1,9 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
 	Clock,
+	Cog,
 	Database,
 	Info,
 	Menu,
+	NotebookPen,
 	Pause,
 	Play,
 	Settings,
@@ -15,7 +17,9 @@ import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
 import { DataManagement } from "./components/DataManagement";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import NotesPage from "./components/NotesPage";
 import SettingsComponent from "./components/Settings";
+import SystemPage from "./components/SystemPage";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
 import { ThemeProvider } from "./hooks/useTheme";
@@ -29,14 +33,32 @@ const formatDuration = (seconds: number): string => {
 	return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
-// 导航菜单项配置
-const NAV_ITEMS = [
-	{ id: "timing", name: "计时", icon: Clock },
-	{ id: "accounting", name: "记账", icon: Wallet },
-	{ id: "data", name: "数据", icon: Database },
-	{ id: "settings", name: "设置", icon: Settings },
-	{ id: "about", name: "关于", icon: Info },
-] as const;
+// 导航菜单项配置 - 根据屏幕宽度自适应
+const getNavItems = (isMobileLayout: boolean) => {
+	const CORE_ITEMS = [
+		{ id: "timing", name: "计时", icon: Clock },
+		{ id: "accounting", name: "记账", icon: Wallet },
+		{ id: "notes", name: "笔记", icon: NotebookPen },
+		{ id: "system", name: "系统", icon: Cog },
+	] as const;
+
+	// 窄屏：显示核心菜单（带系统选项）
+	if (isMobileLayout) {
+		return CORE_ITEMS;
+	}
+
+	// 宽屏：展开系统选项，隐藏系统菜单
+	const EXPANDED_ITEMS = [
+		{ id: "timing", name: "计时", icon: Clock },
+		{ id: "accounting", name: "记账", icon: Wallet },
+		{ id: "notes", name: "笔记", icon: NotebookPen },
+		{ id: "data", name: "数据", icon: Database },
+		{ id: "settings", name: "设置", icon: Settings },
+		{ id: "about", name: "关于", icon: Info },
+	] as const;
+
+	return EXPANDED_ITEMS;
+};
 
 function App() {
 	const [timerStatus, setTimerStatus] = useState<TimerStatus>({
@@ -47,7 +69,7 @@ function App() {
 
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [activeView, setActiveView] = useState<
-		"timing" | "settings" | "about" | "accounting" | "data"
+		"timing" | "accounting" | "notes" | "system" | "data" | "settings" | "about"
 	>("timing");
 	const [selectedTaskId, setSelectedTaskId] = useState<string>("");
 
@@ -373,6 +395,9 @@ function App() {
 		}
 	}, [isMobileLayout]);
 
+	// 获取当前导航菜单项
+	const navItems = getNavItems(isMobileLayout);
+
 	return (
 		<ErrorBoundary
 			onError={handleError}
@@ -424,10 +449,10 @@ function App() {
 
 								{/* 导航菜单 */}
 								<nav
-									className="flex-1 overflow-y-auto scroll-container"
+									className="flex-1 overflow-y-auto"
 								>
 									<div className="p-2 space-y-1">
-										{NAV_ITEMS.map(({ id, name, icon: Icon }) => (
+										{navItems.map(({ id, name, icon: Icon }) => (
 											<div key={id} className="relative h-12">
 												{/* 背景层 - 完整宽度的点击区域 */}
 												<button
@@ -501,12 +526,15 @@ function App() {
 										/>
 									)}
 
-									{activeView === "settings" && <SettingsComponent />}
-
-									{activeView === "about" && <About />}
-
 									{activeView === "accounting" && <AccountingPage />}
 
+									{activeView === "notes" && <NotesPage />}
+
+									{activeView === "system" && <SystemPage />}
+
+									{/* 直接访问的页面（兼容性） */}
+									{activeView === "settings" && <SettingsComponent />}
+									{activeView === "about" && <About />}
 									{activeView === "data" && <DataManagement />}
 								</ErrorBoundary>
 							</div>
@@ -517,7 +545,7 @@ function App() {
 					{isMobileLayout && (
 						<div className="fixed bottom-0 left-0 right-0 h-16 surface-adaptive border-t border-gray-200 dark:border-gray-700 z-40">
 							<div className="flex h-full">
-								{NAV_ITEMS.map(({ id, name, icon: Icon }) => (
+								{navItems.map(({ id, name, icon: Icon }) => (
 									<button
 										key={id}
 										onClick={() => setActiveView(id as any)}
