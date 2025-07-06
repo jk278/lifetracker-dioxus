@@ -1,8 +1,9 @@
 import { ArrowLeft, Database, Info, Settings } from "lucide-react";
-import { useState } from "react";
 import About from "./About";
 import { DataManagement } from "./DataManagement";
 import SettingsComponent from "./Settings";
+import { useNavigation } from "../hooks/useRouter";
+import type { RouteId } from "../types/router";
 
 // 系统页面的子选项配置
 const SYSTEM_ITEMS = [
@@ -11,14 +12,25 @@ const SYSTEM_ITEMS = [
 	{ id: "about", name: "关于应用", icon: Info, description: "版本信息、许可证" },
 ] as const;
 
-type SystemView = "overview" | "data" | "settings" | "about";
-
 function SystemPage() {
-	const [activeView, setActiveView] = useState<SystemView>("overview");
+	const { currentRoute, currentSource, canGoBack, navigate, goBack } = useNavigation();
 
-	// 返回到系统页面概览
+	// 判断当前是否在系统页面的二级页面
+	const isInSubPage = currentRoute !== 'system' && currentSource === 'system';
+
+	// 返回到系统页面概览或上一级
 	const handleBackToOverview = () => {
-		setActiveView("overview");
+		if (canGoBack) {
+			goBack();
+		} else {
+			// 如果无法返回，直接导航到系统页面
+			navigate('system', 'direct');
+		}
+	};
+
+	// 导航到系统子页面
+	const handleNavigateToSubPage = (subPageId: RouteId) => {
+		navigate(subPageId, 'system');
 	};
 
 	// 渲染系统页面概览
@@ -40,7 +52,7 @@ function SystemPage() {
 					{SYSTEM_ITEMS.map(({ id, name, icon: Icon, description }) => (
 						<button
 							key={id}
-							onClick={() => setActiveView(id as SystemView)}
+							onClick={() => handleNavigateToSubPage(id as RouteId)}
 							className="p-6 surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 hover:border-theme-primary dark:hover:border-theme-primary transition-all duration-200 text-left group"
 						>
 							<div className="flex items-center mb-3">
@@ -63,7 +75,7 @@ function SystemPage() {
 
 	// 渲染具体功能页面（带返回按钮）
 	const renderDetailView = () => {
-		const currentItem = SYSTEM_ITEMS.find(item => item.id === activeView);
+		const currentItem = SYSTEM_ITEMS.find(item => item.id === currentRoute);
 		
 		return (
 			<div className="h-full flex flex-col">
@@ -88,9 +100,9 @@ function SystemPage() {
 
 				{/* 具体页面内容 */}
 				<div className="flex-1 overflow-hidden">
-					{activeView === "data" && <DataManagement />}
-					{activeView === "settings" && <SettingsComponent />}
-					{activeView === "about" && <About />}
+					{currentRoute === "data" && <DataManagement />}
+					{currentRoute === "settings" && <SettingsComponent />}
+					{currentRoute === "about" && <About />}
 				</div>
 			</div>
 		);
@@ -98,7 +110,8 @@ function SystemPage() {
 
 	return (
 		<div className="h-full bg-adaptive">
-			{activeView === "overview" ? renderOverview() : renderDetailView()}
+			{/* 判断显示内容：系统页面概览 vs 二级页面 */}
+			{currentRoute === 'system' ? renderOverview() : isInSubPage ? renderDetailView() : renderOverview()}
 		</div>
 	);
 }

@@ -3,6 +3,7 @@ import {
 	Bell,
 	Monitor,
 	Moon,
+	Navigation,
 	Palette,
 	Save,
 	Settings as SettingsIcon,
@@ -11,6 +12,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { THEME_COLORS, type ThemeColor, useTheme } from "../hooks/useTheme";
+import { useRouter } from "../hooks/useRouter";
 
 type SettingsProps = {};
 
@@ -28,6 +30,7 @@ interface AppConfig {
 
 const Settings: React.FC<SettingsProps> = () => {
 	const { theme, setTheme, themeColor, setThemeColor } = useTheme();
+	const { config: routerConfig, updateConfig: updateRouterConfig } = useRouter();
 	
 	const [config, setConfig] = useState<AppConfig>({
 		theme: "system",
@@ -176,6 +179,64 @@ const Settings: React.FC<SettingsProps> = () => {
 									<option value="zh-CN">简体中文</option>
 									<option value="en-US">English</option>
 								</select>
+							</div>
+						</div>
+					</div>
+
+					{/* 导航设置 */}
+					<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-6">
+						<div className="flex items-center mb-4">
+							<Navigation className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+							<h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+								导航设置
+							</h3>
+						</div>
+
+						<div className="space-y-4">
+							<div className="flex items-center justify-between">
+								<div className="flex-1">
+									<label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+										记忆导航状态
+									</label>
+									<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										重新启动应用时恢复到上次关闭时的页面
+									</p>
+								</div>
+								<input
+									type="checkbox"
+									checked={routerConfig.rememberNavigation}
+									onChange={(e) =>
+										updateRouterConfig({
+											rememberNavigation: e.target.checked,
+										})
+									}
+									className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded"
+								/>
+							</div>
+
+							<div>
+								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+									默认启动页面
+								</label>
+								<select
+									value={routerConfig.defaultRoute}
+									onChange={(e) =>
+										updateRouterConfig({
+											defaultRoute: e.target.value as any,
+										})
+									}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
+								>
+									<option value="timing">计时</option>
+									<option value="accounting">记账</option>
+									<option value="notes">笔记</option>
+									<option value="system">系统</option>
+								</select>
+								<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+									{routerConfig.rememberNavigation
+										? "仅在未启用导航记忆时生效"
+										: "应用启动时显示的默认页面"}
+								</p>
 							</div>
 						</div>
 					</div>
