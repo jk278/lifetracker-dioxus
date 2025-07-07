@@ -3,7 +3,7 @@ import type { Task, TimerStatus } from "../../types";
 import CategoryManagement from "./CategoryManagement";
 import Dashboard from "./Dashboard";
 import Statistics from "./Statistics";
-import TaskManagement from "./TaskManagement";
+import { TaskManagement } from "./TaskManagement";
 
 interface TimingPageProps {
 	timerStatus: TimerStatus;
@@ -95,7 +95,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 				)}
 
 				{activeTab === "tasks" && (
-					<TaskManagement tasks={tasks} onTasksUpdate={onTasksUpdate} />
+					<TaskManagement />
 				)}
 
 				{activeTab === "categories" && (

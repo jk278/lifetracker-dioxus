@@ -8,7 +8,6 @@ import {
 	Download,
 	GitMerge,
 	Upload,
-	XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "../../hooks/useRouter";
