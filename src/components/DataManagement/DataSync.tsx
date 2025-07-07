@@ -167,13 +167,7 @@ export function DataSync() {
 		}
 	}, [syncConfig.enabled, fetchSyncStatus, checkConflicts]);
 
-	// 检查冲突并自动显示解决界面
-	useEffect(() => {
-		if (conflictCount > 0 && !showConflictResolution) {
-			// 有冲突但没有显示冲突解决界面，自动显示
-			setShowConflictResolution(true);
-		}
-	}, [conflictCount, showConflictResolution]);
+	// 不再自动显示冲突解决界面，由用户主动触发
 
 	// 处理冲突解决完成
 	const handleConflictResolutionComplete = useCallback(() => {
