@@ -236,11 +236,55 @@ pub async fn restore_database(
     match storage.restore_database_from_backup(&src_path) {
         Ok(_) => {
             log::info!("数据库恢复完成");
-            Ok("数据库恢复完成".to_string())
+            Ok(format!("数据库已从 {} 恢复", src_path))
         }
         Err(e) => {
             log::error!("数据库恢复失败: {}", e);
             Err(e.to_string())
+        }
+    }
+}
+
+/// 清除所有数据
+#[tauri::command]
+pub async fn clear_all_data(state: State<'_, AppState>) -> Result<String, String> {
+    log::info!("开始清除所有数据");
+
+    let storage = &state.storage;
+
+    // 直接调用数据库的清理方法
+    match storage.get_database().get_connection() {
+        Ok(conn) => {
+            let conn = conn.get_raw_connection();
+            let conn = conn.lock().unwrap();
+
+            // 按依赖关系顺序删除所有数据
+            let tables = [
+                "time_entries",
+                "transactions",
+                "tasks",
+                "categories",
+                "accounts",
+            ];
+            for table in &tables {
+                if let Err(e) = conn.execute(&format!("DELETE FROM {}", table), rusqlite::params![])
+                {
+                    log::error!("清除表 {} 失败: {}", table, e);
+                    return Err(format!("清除失败，请重试: {}", e));
+                }
+            }
+
+            // 重置自增ID
+            if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", rusqlite::params![]) {
+                log::debug!("清理sqlite_sequence表失败（可能不存在）: {}", e);
+            }
+
+            log::info!("所有数据已成功清除");
+            Ok("数据已清除！".to_string())
+        }
+        Err(e) => {
+            log::error!("获取数据库连接失败: {}", e);
+            Err("清除失败，请重试。".to_string())
         }
     }
 }

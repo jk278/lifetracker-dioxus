@@ -98,6 +98,7 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             tauri_commands::data_io::import_data,
             tauri_commands::data_io::backup_database,
             tauri_commands::data_io::restore_database,
+            tauri_commands::data_io::clear_all_data,
             tauri_commands::sync::get_sync_config,
             tauri_commands::sync::save_sync_config,
             tauri_commands::sync::test_sync_connection,

@@ -6,36 +6,43 @@ import { useNavigation } from "../../hooks/useRouter";
 export function DataCleanup() {
 	const { canGoBack, goBack } = useNavigation();
 	const [isClearing, setIsClearing] = useState(false);
+	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+	const [confirmInput, setConfirmInput] = useState("");
 
 	// 数据清理操作
 	const handleClearData = useCallback(async () => {
-		if (
-			!confirm(
-				"这将删除所有数据，包括任务、分类和计时记录。此操作不可恢复，确定要继续吗？",
-			)
-		) {
-			return;
-		}
+		setShowConfirmDialog(true);
+	}, []);
 
-		// 二次确认
-		if (
-			!confirm(
-				"再次确认：您即将删除所有数据！\n\n这包括：\n- 所有任务和计时记录\n- 所有分类信息\n- 所有财务记录\n- 所有日记和笔记\n- 所有统计数据\n\n此操作不可恢复，确定要继续吗？",
-			)
-		) {
+	// 确认清除操作
+	const handleConfirmClear = useCallback(async () => {
+		if (confirmInput !== "DELETE") {
 			return;
 		}
 
 		setIsClearing(true);
+		setShowConfirmDialog(false);
+		setConfirmInput("");
+
 		try {
 			await invoke("clear_all_data");
-			alert("数据已清除！应用将重新启动以生效。");
+			alert("数据已清除！所有记录已从数据库中删除。");
+			// 清除成功后导航回数据管理页面
+			if (canGoBack) {
+				goBack();
+			}
 		} catch (error) {
 			console.error("清除数据失败:", error);
 			alert("清除失败，请重试。");
 		} finally {
 			setIsClearing(false);
 		}
+	}, [confirmInput]);
+
+	// 取消清除操作
+	const handleCancelClear = useCallback(() => {
+		setShowConfirmDialog(false);
+		setConfirmInput("");
 	}, []);
 
 	// 返回处理
@@ -47,6 +54,61 @@ export function DataCleanup() {
 
 	return (
 		<div className="h-full flex flex-col">
+			{/* 确认对话框 */}
+			{showConfirmDialog && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+						<div className="flex items-start mb-4">
+							<AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400 mr-3 mt-0.5 flex-shrink-0" />
+							<div>
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+									确认删除所有数据
+								</h3>
+								<p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+									此操作将永久删除所有数据，包括任务、分类、财务记录、日记和统计数据。
+								</p>
+								<p className="text-sm text-red-600 dark:text-red-400 mb-4">
+									<strong>此操作不可恢复！</strong>
+								</p>
+								<p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+									请输入 <strong>DELETE</strong> 来确认删除：
+								</p>
+								<input
+									type="text"
+									value={confirmInput}
+									onChange={(e) => setConfirmInput(e.target.value)}
+									placeholder="输入 DELETE"
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md 
+										focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent
+										bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									autoFocus
+								/>
+							</div>
+						</div>
+						<div className="flex justify-end space-x-3">
+							<button
+								onClick={handleCancelClear}
+								className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 
+									dark:hover:text-white transition-colors"
+							>
+								取消
+							</button>
+							<button
+								onClick={handleConfirmClear}
+								disabled={confirmInput !== "DELETE"}
+								className={`px-4 py-2 rounded-md font-medium text-white transition-colors ${
+									confirmInput === "DELETE"
+										? "bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+										: "bg-gray-400 cursor-not-allowed"
+								}`}
+							>
+								确认删除
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* 固定顶部导航栏 */}
 			<div className="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700 surface-adaptive">
 				<div className="flex items-center justify-between">
@@ -147,7 +209,7 @@ export function DataCleanup() {
 								<div className="flex items-center">
 									<AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
 									<span className="text-sm text-red-700 dark:text-red-300">
-										点击下方按钮将永久删除所有数据
+										点击下方按钮将要求您输入"DELETE"来确认清除所有数据
 									</span>
 								</div>
 							</div>
