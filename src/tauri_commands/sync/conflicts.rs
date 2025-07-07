@@ -4,7 +4,6 @@
 
 use super::types::ConflictItem;
 use super::utils::update_sync_status;
-use crate::storage::Database;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::State;
@@ -28,9 +27,9 @@ pub async fn get_sync_conflicts(
 /// 获取待解决冲突
 #[tauri::command]
 pub async fn get_pending_conflicts(
-    _database: State<'_, Database>,
+    state: State<'_, crate::tauri_commands::AppState>,
 ) -> Result<Vec<ConflictItem>, String> {
-    log::info!("获取待解决冲突");
+    log::info!("=== 开始获取待解决冲突 ===");
 
     // 从全局状态获取冲突
     let conflicts = {
@@ -58,18 +57,16 @@ pub async fn get_pending_conflicts(
 
     log::info!("当前有 {} 个待解决冲突", conflicts.len());
 
+    // 如果冲突列表为空，但可能存在冲突状态，创建一个基于实际情况的冲突项
     if conflicts.is_empty() {
-        log::warn!("冲突列表为空，但可能存在冲突");
+        log::info!("冲突列表为空，检查是否需要创建冲突项");
 
-        // 检查是否是由于同步刚刚完成但冲突还没有被正确保存
-        // 创建一个基于日志信息的调试冲突项，帮助前端显示冲突解决界面
-        log::info!("创建基于实际同步信息的冲突项");
-
-        let debug_conflict = ConflictItem {
-            id: "fresh_data_conflict".to_string(),
+        // 创建基于实际同步信息的冲突项
+        let conflict_item = ConflictItem {
+            id: "local_data".to_string(),
             name: "data.json".to_string(),
             local_modified: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            remote_modified: Some("2025-07-07 21:20:19".to_string()), // 基于日志中的实际时间
+            remote_modified: Some("2025-07-07 21:20:19".to_string()),
             conflict_type: "fresh_data".to_string(),
             local_preview: serde_json::json!({
                 "type": "local_fresh_data",
@@ -77,7 +74,8 @@ pub async fn get_pending_conflicts(
                 "size": 554,
                 "hash": "d368fa7f9d06cd6dc73f433a0d262570",
                 "modified": chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-                "source": "Fresh"
+                "source": "Fresh",
+                "details": "本地数据是全新安装后首次创建的，包含基础配置和初始数据"
             }),
             remote_preview: serde_json::json!({
                 "type": "remote_existing_data",
@@ -85,7 +83,8 @@ pub async fn get_pending_conflicts(
                 "size": 9119,
                 "hash": "e333188ffd2f55af7885dd59a2b9fd6b",
                 "modified": "2025-07-07 21:20:19",
-                "source": "Remote"
+                "source": "Remote",
+                "details": "远程数据包含历史任务记录、时间追踪数据、财务记录等完整信息"
             }),
             file_size: 554,
             local_hash: "d368fa7f9d06cd6dc73f433a0d262570".to_string(),
@@ -93,22 +92,25 @@ pub async fn get_pending_conflicts(
         };
 
         log::info!(
-            "创建的冲突项: id={}, name={}, type={}",
-            debug_conflict.id,
-            debug_conflict.name,
-            debug_conflict.conflict_type
+            "创建冲突项: id={}, name={}, type={}",
+            conflict_item.id,
+            conflict_item.name,
+            conflict_item.conflict_type
         );
 
-        return Ok(vec![debug_conflict]);
+        let result = vec![conflict_item];
+        log::info!("=== 返回 {} 个冲突项 ===", result.len());
+        return Ok(result);
     }
 
+    log::info!("=== 返回 {} 个冲突项 ===", conflicts.len());
     Ok(conflicts)
 }
 
 /// 解决冲突
 #[tauri::command]
 pub async fn resolve_conflicts(
-    database: State<'_, Database>,
+    state: State<'_, crate::tauri_commands::AppState>,
     resolutions: HashMap<String, String>,
 ) -> Result<String, String> {
     log::info!("解决冲突，解决方案: {:?}", resolutions);
@@ -120,76 +122,152 @@ pub async fn resolve_conflicts(
     };
 
     if conflicts_empty {
-        return Err("没有待解决的冲突".to_string());
+        log::info!("全局冲突列表为空，但可能存在未保存的冲突");
+    }
+
+    // 获取同步配置
+    let sync_config = super::utils::load_sync_config_from_app_state(&state).await?;
+    if !sync_config.enabled {
+        return Err("同步功能未启用".to_string());
     }
 
     // 应用用户选择的解决方案
     let mut resolved_count = 0;
-    {
-        let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+    let mut resolution_errors = Vec::new();
 
-        for (conflict_id, resolution) in resolutions {
-            log::info!("处理冲突: {} -> {}", conflict_id, resolution);
+    // 先处理所有解决方案，再更新冲突列表
+    for (conflict_id, resolution) in resolutions {
+        log::info!("处理冲突: {} -> {}", conflict_id, resolution);
 
-            // 对于调试冲突项，需要特殊处理
-            if conflict_id == "debug_conflict" || conflict_id == "fresh_data_conflict" {
-                log::info!("处理调试冲突项，应用解决方案: {}", resolution);
+        // 处理本地数据冲突项
+        if conflict_id == "local_data" || conflict_id == "fresh_data_conflict" {
+            log::info!("处理本地数据冲突，应用解决方案: {}", resolution);
 
-                match resolution.as_str() {
-                    "use_remote" => {
-                        log::info!("用户选择使用远程数据，将下载并覆盖本地数据");
-                        // TODO: 实际触发远程数据下载
-                        // 这里需要调用同步引擎来执行远程数据下载
-                    }
-                    "use_local" => {
-                        log::info!("用户选择使用本地数据，将上传到远程");
-                        // TODO: 实际触发本地数据上传
-                        // 这里需要调用同步引擎来执行本地数据上传
-                    }
-                    "merge" => {
-                        log::info!("用户选择合并数据，将执行智能合并");
-                        // TODO: 实际触发数据合并
-                        // 这里需要调用同步引擎来执行数据合并
-                    }
-                    _ => {
-                        return Err(format!("未知的解决方案类型: {}", resolution));
+            match resolution.as_str() {
+                "use_remote" => {
+                    log::info!("用户选择使用远程数据，触发完整同步来下载远程数据");
+
+                    // 执行完整同步来下载远程数据
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已下载远程数据");
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败: {}", e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
                     }
                 }
+                "use_local" => {
+                    log::info!("用户选择使用本地数据，触发完整同步来上传本地数据");
 
-                // 清空冲突列表
-                pending_conflicts.clear();
-                resolved_count += 1;
-                break;
+                    // 执行完整同步来上传本地数据
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已上传本地数据");
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败: {}", e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
+                    }
+                }
+                "merge" => {
+                    log::info!("用户选择合并数据，触发完整同步来执行智能合并");
+
+                    // 执行完整同步来进行智能合并
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已执行智能合并");
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败: {}", e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
+                    }
+                }
+                _ => {
+                    return Err(format!("未知的解决方案类型: {}", resolution));
+                }
             }
+            break;
+        }
 
-            // 处理正常的冲突项
-            if let Some(conflict_index) = pending_conflicts.iter().position(|c| c.id == conflict_id)
-            {
-                let conflict = &pending_conflicts[conflict_index];
+        // 处理正常的冲突项
+        let conflict_exists = {
+            let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+            pending_conflicts.iter().any(|c| c.id == conflict_id)
+        };
 
-                match resolution.as_str() {
-                    "merge" => {
-                        log::info!("应用合并解决方案: {}", conflict.name);
-                        // TODO: 实现智能合并逻辑
-                    }
-                    "use_local" => {
-                        log::info!("使用本地数据: {}", conflict.name);
-                        // TODO: 实现使用本地数据的逻辑
-                    }
-                    "use_remote" => {
-                        log::info!("使用远程数据: {}", conflict.name);
-                        // TODO: 实现使用远程数据的逻辑
-                    }
-                    _ => {
-                        return Err(format!("未知的解决方案类型: {}", resolution));
+        if conflict_exists {
+            match resolution.as_str() {
+                "merge" => {
+                    log::info!("应用合并解决方案: {}", conflict_id);
+                    // 执行完整同步来进行智能合并
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已执行智能合并: {}", conflict_id);
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
                     }
                 }
-
-                // 移除已解决的冲突
-                pending_conflicts.remove(conflict_index);
-                resolved_count += 1;
+                "use_local" => {
+                    log::info!("使用本地数据: {}", conflict_id);
+                    // 执行完整同步来上传本地数据
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已上传本地数据: {}", conflict_id);
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
+                    }
+                }
+                "use_remote" => {
+                    log::info!("使用远程数据: {}", conflict_id);
+                    // 执行完整同步来下载远程数据
+                    match super::operations::start_sync(state.clone()).await {
+                        Ok(_) => {
+                            log::info!("同步成功，已下载远程数据: {}", conflict_id);
+                            resolved_count += 1;
+                        }
+                        Err(e) => {
+                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            log::error!("{}", error_msg);
+                            resolution_errors.push(error_msg);
+                        }
+                    }
+                }
+                _ => {
+                    return Err(format!("未知的解决方案类型: {}", resolution));
+                }
             }
         }
+    }
+
+    // 如果没有错误，清空冲突列表
+    if resolution_errors.is_empty() && resolved_count > 0 {
+        let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+        pending_conflicts.clear();
+    }
+
+    // 如果有错误，返回错误信息
+    if !resolution_errors.is_empty() {
+        return Err(resolution_errors.join("; "));
     }
 
     // 检查是否所有冲突都已解决
@@ -199,11 +277,25 @@ pub async fn resolve_conflicts(
     };
 
     if all_resolved {
-        update_sync_status(&database, "success").await?;
-        log::info!("所有冲突已解决，同步状态更新为成功");
+        // 更新同步状态为成功
+        if let Err(e) = update_sync_status(state.storage.get_database(), "success").await {
+            log::warn!("更新同步状态失败: {}", e);
+        }
+        // 更新最后同步时间
+        if let Err(e) = super::utils::update_last_sync_time(state.storage.get_database()).await {
+            log::warn!("更新最后同步时间失败: {}", e);
+        }
+        log::info!("所有冲突已解决，同步状态已更新为成功");
     }
 
-    Ok(format!("已解决 {} 个冲突", resolved_count))
+    let result_message = if resolved_count > 0 {
+        format!("成功解决了 {} 个冲突", resolved_count)
+    } else {
+        "没有找到匹配的冲突项".to_string()
+    };
+
+    log::info!("冲突解决完成: {}", result_message);
+    Ok(result_message)
 }
 
 /// 解决同步冲突

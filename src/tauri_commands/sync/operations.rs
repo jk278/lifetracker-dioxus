@@ -130,7 +130,7 @@ pub async fn stop_sync(state: State<'_, AppState>) -> std::result::Result<String
 }
 
 /// 创建同步引擎
-async fn create_sync_engine(
+pub async fn create_sync_engine(
     sync_config: &SyncConfigRequest,
     storage: Arc<StorageManager>,
 ) -> Result<SyncEngine, String> {

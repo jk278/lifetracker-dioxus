@@ -13,6 +13,20 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "../../hooks/useRouter";
 import { ConflictResolution } from "./ConflictResolution";
 
+// 与 ConflictResolution 保持一致的冲突项接口（简化）
+interface ConflictItem {
+	id: string;
+	name: string;
+	local_modified: string;
+	remote_modified?: string;
+	conflict_type: string;
+	local_preview: any;
+	remote_preview: any;
+	file_size: number;
+	local_hash: string;
+	remote_hash?: string;
+}
+
 export function DataSync() {
 	const { canGoBack, goBack } = useNavigation();
 
@@ -44,6 +58,7 @@ export function DataSync() {
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConflictResolution, setShowConflictResolution] = useState(false);
 	const [conflictCount, setConflictCount] = useState(0);
+	const [pendingConflicts, setPendingConflicts] = useState<ConflictItem[]>([]);
 
 	// 获取同步配置
 	const fetchSyncConfig = useCallback(async () => {
@@ -68,7 +83,10 @@ export function DataSync() {
 	// 检查待解决冲突
 	const checkConflicts = useCallback(async () => {
 		try {
-			const conflicts = (await invoke("get_pending_conflicts")) as any[];
+			const conflicts = (await invoke(
+				"get_pending_conflicts",
+			)) as ConflictItem[];
+			setPendingConflicts(conflicts);
 			setConflictCount(conflicts.length);
 		} catch (error) {
 			console.error("检查冲突失败:", error);
@@ -161,6 +179,7 @@ export function DataSync() {
 	const handleConflictResolutionComplete = useCallback(() => {
 		setShowConflictResolution(false);
 		setConflictCount(0);
+		setPendingConflicts([]);
 		fetchSyncStatus();
 	}, [fetchSyncStatus]);
 
@@ -175,6 +194,7 @@ export function DataSync() {
 	if (showConflictResolution) {
 		return (
 			<ConflictResolution
+				conflicts={pendingConflicts}
 				onResolutionComplete={handleConflictResolutionComplete}
 			/>
 		);

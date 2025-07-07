@@ -18,9 +18,12 @@ interface ConflictItem {
 	name: string;
 	local_modified: string;
 	remote_modified?: string;
-	conflict_type: "content" | "timestamp" | "fresh_data";
+	conflict_type: string;
 	local_preview: any;
 	remote_preview: any;
+	file_size: number;
+	local_hash: string;
+	remote_hash?: string;
 }
 
 interface ConflictResolutionProps {
@@ -34,9 +37,12 @@ export function ConflictResolution({
 }: ConflictResolutionProps) {
 	const { canGoBack, goBack } = useNavigation();
 
+	// 冲突列表
 	const [conflicts, setConflicts] = useState<ConflictItem[]>(
 		propConflicts || [],
 	);
+	// 加载状态：如果 props 未提供冲突列表，则默认为加载中
+	const [isLoading, setIsLoading] = useState(!propConflicts);
 	const [selectedResolutions, setSelectedResolutions] = useState<
 		Record<string, string>
 	>({});
@@ -46,13 +52,20 @@ export function ConflictResolution({
 
 	// 获取待解决的冲突列表
 	const fetchConflicts = useCallback(async () => {
-		if (propConflicts) return;
+		if (propConflicts) {
+			// 如果通过 props 已经传入冲突列表，则不需要再加载
+			setIsLoading(false);
+			return;
+		}
 
 		try {
+			setIsLoading(true);
 			const result = await invoke<ConflictItem[]>("get_pending_conflicts");
 			setConflicts(result);
 		} catch (error) {
 			console.error("获取冲突列表失败:", error);
+		} finally {
+			setIsLoading(false);
 		}
 	}, [propConflicts]);
 
@@ -98,6 +111,20 @@ export function ConflictResolution({
 	const currentConflict = conflicts[currentConflictIndex];
 	const hasNextConflict = currentConflictIndex < conflicts.length - 1;
 	const hasPrevConflict = currentConflictIndex > 0;
+
+	// 加载中时显示指示器
+	if (isLoading) {
+		return (
+			<div className="h-full flex flex-col items-center justify-center">
+				<div className="flex flex-col items-center space-y-4">
+					<div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+					<span className="text-sm text-gray-600 dark:text-gray-400">
+						加载冲突列表...
+					</span>
+				</div>
+			</div>
+		);
+	}
 
 	// 如果没有冲突，显示无冲突状态
 	if (conflicts.length === 0) {
@@ -346,14 +373,14 @@ export function ConflictResolution({
 							<button
 								onClick={() => setCurrentConflictIndex((prev) => prev - 1)}
 								disabled={!hasPrevConflict}
-								className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								上一个
 							</button>
 							<button
 								onClick={() => setCurrentConflictIndex((prev) => prev + 1)}
 								disabled={!hasNextConflict}
-								className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="px-3 py-2 text-sm text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								下一个
 							</button>
@@ -365,11 +392,11 @@ export function ConflictResolution({
 								isResolving ||
 								Object.keys(selectedResolutions).length !== conflicts.length
 							}
-							className={`px-6 py-2 rounded-md font-medium text-white transition-colors ${
+							className={`px-6 py-2 rounded-md font-medium text-white theme-transition ${
 								isResolving ||
 								Object.keys(selectedResolutions).length !== conflicts.length
 									? "bg-gray-400 cursor-not-allowed"
-									: "bg-indigo-600 hover:bg-indigo-700"
+									: "bg-theme-primary hover:bg-theme-primary-hover"
 							}`}
 						>
 							{isResolving ? "解决中..." : "应用解决方案"}
