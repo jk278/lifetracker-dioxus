@@ -75,23 +75,23 @@ export function DataManagement() {
 
 	// 导航到子页面
 	const handleNavigateToExport = useCallback(() => {
-		navigate("data-export");
+		navigate("data-export", "system");
 	}, [navigate]);
 
 	const handleNavigateToImport = useCallback(() => {
-		navigate("data-import");
+		navigate("data-import", "system");
 	}, [navigate]);
 
 	const handleNavigateToBackup = useCallback(() => {
-		navigate("data-backup");
+		navigate("data-backup", "system");
 	}, [navigate]);
 
 	const handleNavigateToSync = useCallback(() => {
-		navigate("data-sync");
+		navigate("data-sync", "system");
 	}, [navigate]);
 
 	const handleNavigateToCleanup = useCallback(() => {
-		navigate("data-cleanup");
+		navigate("data-cleanup", "system");
 	}, [navigate]);
 
 	// 返回处理
