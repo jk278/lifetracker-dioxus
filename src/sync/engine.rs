@@ -596,32 +596,45 @@ impl SyncEngine {
             direction: super::SyncDirection::Upload,
         };
 
+        // 优先检查本地数据是否为空
+        let local_is_empty = self.is_empty_data(&local_json);
+
         // 查找远程的数据文件
         if let Some(remote_item) = remote_files.iter().find(|item| item.name == "data.json") {
-            // 比较数据差异
-            let comparison_result = self.compare_data_content(&local_json, remote_item).await?;
+            if local_is_empty {
+                // 本地数据为空，直接下载远程数据
+                log::info!("本地数据为空，直接从远程下载");
+                download_items.push(remote_item.clone());
+            } else {
+                // 本地有数据，进行正常比较
+                let comparison_result = self.compare_data_content(&local_json, remote_item).await?;
 
-            match comparison_result {
-                DataComparisonResult::LocalNewer => {
-                    log::info!("本地数据更新，需要上传");
-                    upload_items.push(local_item);
-                }
-                DataComparisonResult::RemoteNewer => {
-                    log::info!("远程数据更新，需要下载");
-                    download_items.push(remote_item.clone());
-                }
-                DataComparisonResult::Conflict => {
-                    log::warn!("发现数据冲突，需要处理");
-                    conflicts.push(local_item);
-                }
-                DataComparisonResult::Same => {
-                    log::info!("数据已同步，无需操作");
+                match comparison_result {
+                    DataComparisonResult::LocalNewer => {
+                        log::info!("本地数据更新，需要上传");
+                        upload_items.push(local_item);
+                    }
+                    DataComparisonResult::RemoteNewer => {
+                        log::info!("远程数据更新，需要下载");
+                        download_items.push(remote_item.clone());
+                    }
+                    DataComparisonResult::Conflict => {
+                        log::warn!("发现数据冲突，需要处理");
+                        conflicts.push(local_item);
+                    }
+                    DataComparisonResult::Same => {
+                        log::info!("数据已同步，无需操作");
+                    }
                 }
             }
         } else {
-            // 远程不存在，需要上传
-            log::info!("远程数据不存在，需要上传");
-            upload_items.push(local_item);
+            // 远程不存在
+            if local_is_empty {
+                log::info!("本地和远程都没有数据，无需操作");
+            } else {
+                log::info!("远程数据不存在，需要上传");
+                upload_items.push(local_item);
+            }
         }
 
         Ok((upload_items, download_items, conflicts))
@@ -1000,7 +1013,7 @@ impl SyncEngine {
             .and_then(|v| v.as_array())
             .map_or(0, |arr| arr.len());
 
-        // 检查分类数量（排除默认分类）
+        // 检查分类数量
         let category_count = data
             .get("categories")
             .and_then(|v| v.as_array())
@@ -1018,18 +1031,25 @@ impl SyncEngine {
             .and_then(|v| v.as_array())
             .map_or(0, |arr| arr.len());
 
-        // 如果所有主要数据都为空，认为是空数据
-        // 允许有少量分类（默认分类）
+        // 检查数据文件大小，如果很小（如148字节）也认为是空数据
+        let data_size = data.to_string().len();
+        let is_minimal_data = data_size < 500; // 小于500字节认为是空数据
+
+        // 判断是否为空数据的条件：
+        // 1. 所有主要业务数据都为空
+        // 2. 或者数据文件很小（只包含基本结构）
         let is_empty =
-            task_count == 0 && entry_count == 0 && account_count == 0 && transaction_count == 0;
+            (task_count == 0 && entry_count == 0 && account_count == 0 && transaction_count == 0)
+                || is_minimal_data;
 
         log::info!(
-            "数据统计 - 任务: {}, 时间记录: {}, 分类: {}, 账户: {}, 交易: {}, 判断为空: {}",
+            "数据统计 - 任务: {}, 时间记录: {}, 分类: {}, 账户: {}, 交易: {}, 数据大小: {} 字节, 判断为空: {}",
             task_count,
             entry_count,
             category_count,
             account_count,
             transaction_count,
+            data_size,
             is_empty
         );
 
