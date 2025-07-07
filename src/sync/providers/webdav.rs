@@ -119,11 +119,10 @@ impl WebDavProvider {
         if path.starts_with("http") {
             // 如果已经是完整URL，直接使用
             path.to_string()
-        } else {
+        } else if path.starts_with("/dav/") {
+            // 如果是WebDAV绝对路径，直接与域名组合
             // 从 base_url 中提取协议和域名
             // base_url 格式: https://dav.jianguoyun.com/dav/
-            // 我们需要: https://dav.jianguoyun.com + path
-
             if let Some(protocol_end) = self.base_url.find("://") {
                 let protocol = &self.base_url[..protocol_end];
                 let after_protocol = &self.base_url[protocol_end + 3..];
@@ -144,6 +143,9 @@ impl WebDavProvider {
                 // 回退到原来的方式
                 format!("{}{}", self.base_url.trim_end_matches('/'), path)
             }
+        } else {
+            // 相对路径，使用 build_remote_path
+            self.build_remote_path(path)
         }
     }
 

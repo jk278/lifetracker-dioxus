@@ -635,6 +635,12 @@ impl SyncEngine {
     ) -> Result<DataComparisonResult> {
         log::info!("比较本地和远程数据内容");
 
+        // 检查本地数据是否为空
+        if self.is_empty_data(local_data) {
+            log::info!("本地数据为空，需要从远程下载");
+            return Ok(DataComparisonResult::RemoteNewer);
+        }
+
         // 首先尝试下载远程数据进行内容比较
         let remote_data = match self.download_and_parse_remote_data(remote_item).await {
             Ok(data) => data,
@@ -644,6 +650,12 @@ impl SyncEngine {
                 return self.compare_by_timestamp(local_data, remote_item);
             }
         };
+
+        // 检查远程数据是否为空
+        if self.is_empty_data(&remote_data) {
+            log::info!("远程数据为空，需要上传本地数据");
+            return Ok(DataComparisonResult::LocalNewer);
+        }
 
         // 比较数据内容（排除时间戳字段）
         let local_content = self.extract_content_for_comparison(local_data)?;
@@ -972,6 +984,56 @@ impl SyncEngine {
     fn calculate_hash(&self, data: &[u8]) -> String {
         let crypto = crate::utils::crypto::CryptoManager::new();
         crypto.calculate_hash(data)
+    }
+
+    /// 检查数据是否为空（无有效记录）
+    fn is_empty_data(&self, data: &serde_json::Value) -> bool {
+        // 检查任务数量
+        let task_count = data
+            .get("tasks")
+            .and_then(|v| v.as_array())
+            .map_or(0, |arr| arr.len());
+
+        // 检查时间记录数量
+        let entry_count = data
+            .get("time_entries")
+            .and_then(|v| v.as_array())
+            .map_or(0, |arr| arr.len());
+
+        // 检查分类数量（排除默认分类）
+        let category_count = data
+            .get("categories")
+            .and_then(|v| v.as_array())
+            .map_or(0, |arr| arr.len());
+
+        // 检查账户数量
+        let account_count = data
+            .get("accounts")
+            .and_then(|v| v.as_array())
+            .map_or(0, |arr| arr.len());
+
+        // 检查交易数量
+        let transaction_count = data
+            .get("transactions")
+            .and_then(|v| v.as_array())
+            .map_or(0, |arr| arr.len());
+
+        // 如果所有主要数据都为空，认为是空数据
+        // 允许有少量分类（默认分类）
+        let is_empty =
+            task_count == 0 && entry_count == 0 && account_count == 0 && transaction_count == 0;
+
+        log::info!(
+            "数据统计 - 任务: {}, 时间记录: {}, 分类: {}, 账户: {}, 交易: {}, 判断为空: {}",
+            task_count,
+            entry_count,
+            category_count,
+            account_count,
+            transaction_count,
+            is_empty
+        );
+
+        is_empty
     }
 
     /// 获取远程目录路径
@@ -1354,27 +1416,28 @@ impl DataSerializer {
         // 首先清空当前数据
         self.clear_existing_data().await?;
 
-        // 恢复任务数据
-        if let Some(tasks) = backup_data.get("tasks") {
-            self.import_tasks(tasks, db).await?;
-        }
-
-        // 恢复分类数据
+        // 按正确的依赖顺序恢复数据
+        // 1. 先恢复分类数据（被任务引用）
         if let Some(categories) = backup_data.get("categories") {
             self.import_categories(categories, db).await?;
         }
 
-        // 恢复时间记录
-        if let Some(time_entries) = backup_data.get("time_entries") {
-            self.import_time_entries(time_entries, db).await?;
-        }
-
-        // 恢复账户数据
+        // 2. 恢复账户数据（被交易引用）
         if let Some(accounts) = backup_data.get("accounts") {
             self.import_accounts(accounts, db).await?;
         }
 
-        // 恢复交易数据
+        // 3. 恢复任务数据（引用分类）
+        if let Some(tasks) = backup_data.get("tasks") {
+            self.import_tasks(tasks, db).await?;
+        }
+
+        // 4. 恢复时间记录（引用任务）
+        if let Some(time_entries) = backup_data.get("time_entries") {
+            self.import_time_entries(time_entries, db).await?;
+        }
+
+        // 5. 恢复交易数据（引用账户）
         if let Some(transactions) = backup_data.get("transactions") {
             self.import_transactions(transactions, db).await?;
         }
@@ -1392,27 +1455,28 @@ impl DataSerializer {
         // 清空现有数据 (谨慎操作)
         self.clear_existing_data().await?;
 
-        // 导入任务数据
-        if let Some(tasks) = import_data.get("tasks") {
-            self.import_tasks(tasks, db).await?;
-        }
-
-        // 导入分类数据
+        // 按正确的依赖顺序导入数据
+        // 1. 先导入分类数据（被任务引用）
         if let Some(categories) = import_data.get("categories") {
             self.import_categories(categories, db).await?;
         }
 
-        // 导入时间记录
-        if let Some(time_entries) = import_data.get("time_entries") {
-            self.import_time_entries(time_entries, db).await?;
-        }
-
-        // 导入账户数据
+        // 2. 导入账户数据（被交易引用）
         if let Some(accounts) = import_data.get("accounts") {
             self.import_accounts(accounts, db).await?;
         }
 
-        // 导入交易数据
+        // 3. 导入任务数据（引用分类）
+        if let Some(tasks) = import_data.get("tasks") {
+            self.import_tasks(tasks, db).await?;
+        }
+
+        // 4. 导入时间记录（引用任务）
+        if let Some(time_entries) = import_data.get("time_entries") {
+            self.import_time_entries(time_entries, db).await?;
+        }
+
+        // 5. 导入交易数据（引用账户）
         if let Some(transactions) = import_data.get("transactions") {
             self.import_transactions(transactions, db).await?;
         }
