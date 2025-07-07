@@ -114,6 +114,39 @@ impl WebDavProvider {
         }
     }
 
+    /// 构建完整的URL（用于文件操作）
+    fn build_full_url(&self, path: &str) -> String {
+        if path.starts_with("http") {
+            // 如果已经是完整URL，直接使用
+            path.to_string()
+        } else {
+            // 从 base_url 中提取协议和域名
+            // base_url 格式: https://dav.jianguoyun.com/dav/
+            // 我们需要: https://dav.jianguoyun.com + path
+
+            if let Some(protocol_end) = self.base_url.find("://") {
+                let protocol = &self.base_url[..protocol_end];
+                let after_protocol = &self.base_url[protocol_end + 3..];
+
+                if let Some(domain_end) = after_protocol.find('/') {
+                    let domain = &after_protocol[..domain_end];
+                    format!("{}://{}{}", protocol, domain, path)
+                } else {
+                    // 没有路径部分，整个都是域名
+                    format!(
+                        "{}://{}{}",
+                        protocol,
+                        after_protocol.trim_end_matches('/'),
+                        path
+                    )
+                }
+            } else {
+                // 回退到原来的方式
+                format!("{}{}", self.base_url.trim_end_matches('/'), path)
+            }
+        }
+    }
+
     /// 发送 PROPFIND 请求
     async fn propfind(&self, path: &str) -> Result<String> {
         let url = self.build_remote_path(path);
@@ -402,8 +435,18 @@ impl SyncProvider for WebDavProvider {
     }
 
     async fn list_remote_files(&self, path: &str) -> Result<Vec<SyncItem>> {
+        log::info!("列出远程文件，路径: {}", path);
         let response_xml = self.propfind(path).await?;
-        WebDavResponseParser::parse_propfind_response(&response_xml)
+        log::info!("PROPFIND 响应内容: {}", response_xml);
+
+        let files = WebDavResponseParser::parse_propfind_response(&response_xml)?;
+        log::info!("解析到 {} 个远程文件", files.len());
+
+        for file in &files {
+            log::info!("远程文件: {} (大小: {} 字节)", file.name, file.size);
+        }
+
+        Ok(files)
     }
 
     async fn upload_file(&self, item: &SyncItem, data: &[u8]) -> Result<()> {
@@ -414,15 +457,81 @@ impl SyncProvider for WebDavProvider {
             }
         }
 
-        self.put_file(&item.remote_path, data).await
+        // 构建完整的 URL
+        let url = self.build_full_url(&item.remote_path);
+
+        log::info!("上传文件: {}", url);
+
+        let response = self
+            .client
+            .put(&url)
+            .basic_auth(&self.username, Some(&self.password))
+            .body(data.to_vec())
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("PUT 请求失败: {}", e)))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(AppError::Network(format!(
+                "上传文件失败，状态码: {}",
+                response.status()
+            )))
+        }
     }
 
     async fn download_file(&self, item: &SyncItem) -> Result<Vec<u8>> {
-        self.get_file(&item.remote_path).await
+        // 构建完整的 URL
+        let url = self.build_full_url(&item.remote_path);
+
+        log::info!("下载文件: {}", url);
+
+        let response = self
+            .client
+            .get(&url)
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("GET 请求失败: {}", e)))?;
+
+        if response.status().is_success() {
+            response
+                .bytes()
+                .await
+                .map(|bytes| bytes.to_vec())
+                .map_err(|e| AppError::Network(format!("读取文件内容失败: {}", e)))
+        } else {
+            Err(AppError::Network(format!(
+                "下载文件失败，状态码: {}",
+                response.status()
+            )))
+        }
     }
 
     async fn delete_remote_file(&self, item: &SyncItem) -> Result<()> {
-        self.delete_file(&item.remote_path).await
+        // 构建完整的 URL
+        let url = self.build_full_url(&item.remote_path);
+
+        log::info!("删除文件: {}", url);
+
+        let response = self
+            .client
+            .delete(&url)
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .await
+            .map_err(|e| AppError::Network(format!("DELETE 请求失败: {}", e)))?;
+
+        if response.status().is_success() || response.status() == 404 {
+            // 404 表示文件不存在，也算删除成功
+            Ok(())
+        } else {
+            Err(AppError::Network(format!(
+                "删除文件失败，状态码: {}",
+                response.status()
+            )))
+        }
     }
 
     async fn create_remote_directory(&self, path: &str) -> Result<()> {
@@ -461,18 +570,26 @@ impl WebDavResponseParser {
         // 这是一个简化的XML解析实现
         // 在实际应用中，应该使用专门的XML解析库如xml-rs或quick-xml
 
+        log::info!("开始解析 PROPFIND 响应");
         let mut items = Vec::new();
 
-        // 查找所有response元素
+        // 查找所有response元素 - 支持大小写不敏感
         let mut current_pos = 0;
-        while let Some(start) = xml[current_pos..].find("<D:response>") {
+        while let Some(start) = xml[current_pos..].find("<d:response>") {
             let start_pos = current_pos + start;
-            if let Some(end) = xml[start_pos..].find("</D:response>") {
-                let end_pos = start_pos + end + "</D:response>".len();
+            if let Some(end) = xml[start_pos..].find("</d:response>") {
+                let end_pos = start_pos + end + "</d:response>".len();
                 let response_xml = &xml[start_pos..end_pos];
 
-                if let Ok(item) = Self::parse_single_response(response_xml) {
-                    items.push(item);
+                log::info!("解析response块: {}", response_xml);
+                match Self::parse_single_response(response_xml) {
+                    Ok(item) => {
+                        log::info!("解析到文件: {} (href: {})", item.name, item.id);
+                        items.push(item);
+                    }
+                    Err(e) => {
+                        log::info!("解析response失败: {}", e);
+                    }
                 }
 
                 current_pos = end_pos;
@@ -481,30 +598,45 @@ impl WebDavResponseParser {
             }
         }
 
+        log::info!("解析完成，总共 {} 个项目", items.len());
         Ok(items)
     }
 
     /// 解析单个response元素
     fn parse_single_response(xml: &str) -> Result<SyncItem> {
-        // 提取href
-        let href = Self::extract_xml_value(xml, "D:href").unwrap_or_else(|| "unknown".to_string());
+        // 提取href - 支持小写标签
+        let href = Self::extract_xml_value(xml, "d:href").unwrap_or_else(|| "unknown".to_string());
+        log::info!("解析href: {}", href);
 
-        // 提取文件名
-        let name = std::path::Path::new(&href)
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or(&href)
-            .to_string();
+        // 检查是否是目录（通常以/结尾，或包含collection资源类型）
+        let is_collection = xml.contains("<d:collection/>") || href.ends_with('/');
+        if is_collection {
+            log::info!("跳过目录: {}", href);
+            return Err(AppError::Sync("这是一个目录，不是文件".to_string()));
+        }
 
-        // 提取大小
+        // 提取文件名 - 改进文件名提取逻辑
+        let name =
+            if let Some(filename) = std::path::Path::new(&href.trim_end_matches('/')).file_name() {
+                filename.to_string_lossy().to_string()
+            } else {
+                // 如果无法提取文件名，使用完整路径
+                href.clone()
+            };
+
+        log::info!("提取文件名: {}", name);
+
+        // 提取大小 - 支持小写标签
         let size_str =
-            Self::extract_xml_value(xml, "D:getcontentlength").unwrap_or_else(|| "0".to_string());
+            Self::extract_xml_value(xml, "d:getcontentlength").unwrap_or_else(|| "0".to_string());
         let size = size_str.parse::<u64>().unwrap_or(0);
+        log::info!("文件大小: {} 字节", size);
 
-        // 提取修改时间
+        // 提取修改时间 - 支持小写标签
         let last_modified_str =
-            Self::extract_xml_value(xml, "D:getlastmodified").unwrap_or_else(|| "".to_string());
+            Self::extract_xml_value(xml, "d:getlastmodified").unwrap_or_else(|| "".to_string());
         let remote_modified = Self::parse_http_date(&last_modified_str);
+        log::info!("修改时间: {:?}", remote_modified);
 
         // 生成简单的哈希值（实际应该从etag或其他方式获取）
         let hash = format!("{}-{}", name, size);
