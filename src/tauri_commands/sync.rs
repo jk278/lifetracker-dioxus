@@ -3,6 +3,7 @@
 //! 提供前端调用的同步功能接口
 
 use crate::errors::AppError;
+use crate::storage::database::Database;
 use crate::sync::engine::SyncEngine;
 use crate::sync::{validate_sync_config, ConflictStrategy, SyncConfig};
 use crate::tauri_commands::AppState;
@@ -633,6 +634,59 @@ fn create_sync_config_from_app_config(
         max_file_size: sync_config.max_sync_file_size,
         compression: sync_config.enable_compression,
     })
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConflictItem {
+    pub id: String,
+    pub name: String,
+    pub local_modified: String,
+    pub remote_modified: Option<String>,
+    pub conflict_type: String,
+    pub local_preview: serde_json::Value,
+    pub remote_preview: serde_json::Value,
+}
+
+#[tauri::command]
+pub async fn get_pending_conflicts(
+    database: State<'_, Database>,
+) -> Result<Vec<ConflictItem>, String> {
+    println!("Getting pending conflicts");
+
+    // 这里应该从数据库或缓存中获取待解决的冲突
+    // 暂时返回空数组，后续会在同步过程中填充
+    Ok(vec![])
+}
+
+#[tauri::command]
+pub async fn resolve_conflicts(
+    database: State<'_, Database>,
+    resolutions: HashMap<String, String>,
+) -> Result<String, String> {
+    println!("Resolving conflicts with resolutions: {:?}", resolutions);
+
+    // 应用用户选择的解决方案
+    for (conflict_id, resolution) in resolutions {
+        match resolution.as_str() {
+            "merge" => {
+                println!("Applying merge resolution for conflict: {}", conflict_id);
+                // 执行智能合并逻辑
+            }
+            "use_local" => {
+                println!("Using local data for conflict: {}", conflict_id);
+                // 保留本地数据
+            }
+            "use_remote" => {
+                println!("Using remote data for conflict: {}", conflict_id);
+                // 使用远程数据
+            }
+            _ => {
+                return Err(format!("Unknown resolution type: {}", resolution));
+            }
+        }
+    }
+
+    Ok("冲突解决成功".to_string())
 }
 
 #[cfg(test)]

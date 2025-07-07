@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 /// 数据库版本
-const CURRENT_DB_VERSION: i32 = 3;
+const CURRENT_DB_VERSION: i32 = 4;
 
 /// 迁移管理器
 ///
@@ -104,6 +104,7 @@ impl<'conn> MigrationManager<'conn> {
             1 => self.migration_v1(),
             2 => self.migration_v2(),
             3 => self.migration_v3(),
+            4 => self.migration_v4(),
             _ => {
                 warn!("未知的迁移版本: {}", version);
                 Err(AppError::InvalidInput(format!(
@@ -347,6 +348,57 @@ impl<'conn> MigrationManager<'conn> {
         tx.commit()?;
 
         info!("迁移 v3 完成");
+        Ok(())
+    }
+
+    /// 迁移到版本4：添加设置表
+    fn migration_v4(&self) -> Result<()> {
+        info!("运行迁移 v4: 添加设置表");
+
+        // 开始事务
+        let tx = self.connection.unchecked_transaction()?;
+
+        // 创建设置表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                description TEXT,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建设置表索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_settings_updated_at ON settings(updated_at)",
+            [],
+        )?;
+
+        // 插入一些默认设置
+        let default_settings = vec![
+            ("app_version", env!("CARGO_PKG_VERSION"), "应用程序版本"),
+            ("first_run", "true", "是否首次运行"),
+            ("sync_enabled", "false", "是否启用同步"),
+        ];
+
+        for (key, value, description) in default_settings {
+            tx.execute(
+                r#"
+                INSERT OR IGNORE INTO settings (key, value, description, created_at, updated_at)
+                VALUES (?1, ?2, ?3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                "#,
+                [key, value, description],
+            )?;
+        }
+
+        // 提交事务
+        tx.commit()?;
+
+        info!("迁移 v4 完成");
         Ok(())
     }
 

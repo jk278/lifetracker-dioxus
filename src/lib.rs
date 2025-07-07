@@ -112,6 +112,8 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             tauri_commands::sync::validate_sync_settings,
             tauri_commands::sync::clear_webdav_password,
             tauri_commands::sync::debug_webdav_config,
+            tauri_commands::sync::get_pending_conflicts,
+            tauri_commands::sync::resolve_conflicts,
         ])
 }
 

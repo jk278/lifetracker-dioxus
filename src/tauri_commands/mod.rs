@@ -193,5 +193,6 @@ pub use config::*;
 pub use data_io::*;
 pub use data_io::{backup_database, restore_database};
 pub use statistics::*;
+pub use sync::*;
 pub use task::*;
 pub use timer::*;

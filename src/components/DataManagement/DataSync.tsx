@@ -1,7 +1,17 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowLeft, Cloud, Info, RefreshCw, Save, Wifi } from "lucide-react";
+import {
+	AlertTriangle,
+	ArrowLeft,
+	Cloud,
+	GitMerge,
+	Info,
+	RefreshCw,
+	Save,
+	Wifi,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "../../hooks/useRouter";
+import { ConflictResolution } from "./ConflictResolution";
 
 export function DataSync() {
 	const { canGoBack, goBack } = useNavigation();
@@ -32,6 +42,8 @@ export function DataSync() {
 	const [isTesting, setIsTesting] = useState(false);
 	const [testResult, setTestResult] = useState("");
 	const [showPassword, setShowPassword] = useState(false);
+	const [showConflictResolution, setShowConflictResolution] = useState(false);
+	const [conflictCount, setConflictCount] = useState(0);
 
 	// 获取同步配置
 	const fetchSyncConfig = useCallback(async () => {
@@ -53,11 +65,22 @@ export function DataSync() {
 		}
 	}, []);
 
+	// 检查待解决冲突
+	const checkConflicts = useCallback(async () => {
+		try {
+			const conflicts = (await invoke("get_pending_conflicts")) as any[];
+			setConflictCount(conflicts.length);
+		} catch (error) {
+			console.error("检查冲突失败:", error);
+		}
+	}, []);
+
 	// 初始化
 	useEffect(() => {
 		fetchSyncConfig();
 		fetchSyncStatus();
-	}, [fetchSyncConfig, fetchSyncStatus]);
+		checkConflicts();
+	}, [fetchSyncConfig, fetchSyncStatus, checkConflicts]);
 
 	// 保存配置
 	const handleSaveConfig = useCallback(async () => {
@@ -110,12 +133,28 @@ export function DataSync() {
 		}
 	}, [syncConfig.enabled, fetchSyncStatus]);
 
+	// 处理冲突解决完成
+	const handleConflictResolutionComplete = useCallback(() => {
+		setShowConflictResolution(false);
+		setConflictCount(0);
+		fetchSyncStatus();
+	}, [fetchSyncStatus]);
+
 	// 返回处理
 	const handleBack = useCallback(() => {
 		if (canGoBack) {
 			goBack();
 		}
 	}, [canGoBack, goBack]);
+
+	// 如果显示冲突解决界面，渲染冲突解决组件
+	if (showConflictResolution) {
+		return (
+			<ConflictResolution
+				onResolutionComplete={handleConflictResolutionComplete}
+			/>
+		);
+	}
 
 	return (
 		<div className="h-full flex flex-col">
@@ -184,6 +223,27 @@ export function DataSync() {
 							<div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
 								<div className="text-sm text-red-700 dark:text-red-300">
 									{syncStatus.error_message}
+								</div>
+							</div>
+						)}
+
+						{/* 冲突提示 */}
+						{conflictCount > 0 && (
+							<div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+								<div className="flex items-center justify-between">
+									<div className="flex items-center">
+										<AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2" />
+										<div className="text-sm text-amber-700 dark:text-amber-300">
+											检测到 {conflictCount} 个同步冲突需要解决
+										</div>
+									</div>
+									<button
+										onClick={() => setShowConflictResolution(true)}
+										className="flex items-center px-3 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-800/30 hover:bg-amber-200 dark:hover:bg-amber-800/50 rounded-md transition-colors"
+									>
+										<GitMerge className="h-3 w-3 mr-1" />
+										解决冲突
+									</button>
 								</div>
 							</div>
 						)}

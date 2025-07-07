@@ -1727,6 +1727,64 @@ impl Database {
         }
     }
 
+    // ==================== 设置存储 ====================
+
+    /// 获取设置值
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+        let sql = "SELECT value FROM settings WHERE key = ?1";
+
+        match self
+            .connection
+            .query_row(sql, &[&key], |row| Ok(row.get::<_, String>("value")?))
+        {
+            Ok(value) => Ok(Some(value)),
+            Err(AppError::Database(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
+            Err(other) => Err(other),
+        }
+    }
+
+    /// 设置值
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let sql = r#"
+            INSERT OR REPLACE INTO settings (key, value, updated_at)
+            VALUES (?1, ?2, ?3)
+        "#;
+
+        self.connection
+            .execute(sql, &[&key, &value, &Local::now().to_rfc3339()])?;
+
+        log::debug!("设置存储: {} = {}", key, value);
+        Ok(())
+    }
+
+    /// 删除设置
+    pub fn delete_setting(&self, key: &str) -> Result<()> {
+        let sql = "DELETE FROM settings WHERE key = ?1";
+        self.connection.execute(sql, &[&key])?;
+        log::debug!("删除设置: {}", key);
+        Ok(())
+    }
+
+    /// 获取所有设置
+    pub fn get_all_settings(&self) -> Result<HashMap<String, String>> {
+        let sql = "SELECT key, value FROM settings";
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
+            let settings_iter = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>("key")?, row.get::<_, String>("value")?))
+            })?;
+
+            let mut settings = HashMap::new();
+            for setting in settings_iter {
+                let (key, value) = setting?;
+                settings.insert(key, value);
+            }
+
+            Ok(settings)
+        })
+    }
+
     // ==================== 统计查询 ====================
 
     /// 获取账户余额统计
