@@ -14,11 +14,14 @@ use crate::sync::validate_sync_config;
 use crate::tauri_commands::AppState;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 /// 开始同步
 #[tauri::command]
-pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<String, String> {
+pub async fn start_sync(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+) -> std::result::Result<String, String> {
     log::info!("开始手动同步");
 
     let storage = state.storage.clone();
@@ -65,6 +68,11 @@ pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<Strin
         update_sync_status(storage.get_database(), "conflict_pending").await?;
         super::utils::update_last_sync_time_in_config(&state).await?;
 
+        // 发送同步状态变化事件
+        if let Err(e) = app_handle.emit("sync_status_changed", "conflicts_detected") {
+            log::warn!("发送同步状态事件失败: {}", e);
+        }
+
         return Ok(format!(
             "同步检测到 {} 个冲突需要解决",
             sync_result.conflicts.len()
@@ -82,6 +90,11 @@ pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<Strin
     super::utils::update_last_sync_time_in_config(&state).await?;
 
     log::info!("同步成功，已更新最后同步时间");
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "sync_completed") {
+        log::warn!("发送数据变化事件失败: {}", e);
+    }
 
     Ok(result_message)
 }

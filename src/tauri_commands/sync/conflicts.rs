@@ -6,7 +6,7 @@ use super::types::ConflictItem;
 use super::utils::update_sync_status;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 /// 全局冲突存储
 pub static PENDING_CONFLICTS: Mutex<Vec<ConflictItem>> = Mutex::new(Vec::new());
@@ -74,31 +74,25 @@ pub async fn get_pending_conflicts(
 #[tauri::command]
 pub async fn resolve_conflicts(
     state: State<'_, crate::tauri_commands::AppState>,
+    app_handle: AppHandle,
     resolutions: HashMap<String, String>,
-) -> Result<String, String> {
-    log::info!("解决冲突，解决方案: {:?}", resolutions);
+) -> std::result::Result<String, String> {
+    log::info!("开始解决冲突，共 {} 个冲突项", resolutions.len());
 
-    // 获取当前冲突并检查是否为空
-    let conflicts_empty = {
+    // 先检查是否有待解决的冲突
+    let has_conflicts = {
         let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
-        pending_conflicts.is_empty()
+        !pending_conflicts.is_empty()
     };
 
-    if conflicts_empty {
-        log::info!("全局冲突列表为空，但可能存在未保存的冲突");
+    if !has_conflicts {
+        log::info!("没有待解决的冲突");
+        return Ok("没有待解决的冲突".to_string());
     }
 
-    // 获取同步配置
-    let sync_config = super::utils::load_sync_config_from_app_state(&state).await?;
-    if !sync_config.enabled {
-        return Err("同步功能未启用".to_string());
-    }
-
-    // 应用用户选择的解决方案
     let mut resolved_count = 0;
     let mut resolution_errors = Vec::new();
 
-    // 先处理所有解决方案，再更新冲突列表
     for (conflict_id, resolution) in resolutions {
         log::info!("处理冲突: {} -> {}", conflict_id, resolution);
 
@@ -139,51 +133,13 @@ pub async fn resolve_conflicts(
                         }
                     }
                 }
-                "merge" => {
-                    log::info!("用户选择合并数据，执行智能合并");
-
-                    // 执行智能合并
-                    match perform_smart_merge(&state, "data.json").await {
-                        Ok(_) => {
-                            log::info!("智能合并成功");
-                            resolved_count += 1;
-                        }
-                        Err(e) => {
-                            let error_msg = format!("智能合并失败: {}", e);
-                            log::error!("{}", error_msg);
-                            resolution_errors.push(error_msg);
-                        }
-                    }
-                }
                 _ => {
                     return Err(format!("未知的解决方案类型: {}", resolution));
                 }
             }
-            break;
-        }
-
-        // 处理正常的冲突项
-        let conflict_exists = {
-            let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
-            pending_conflicts.iter().any(|c| c.id == conflict_id)
-        };
-
-        if conflict_exists {
+        } else {
+            // 处理其他冲突项
             match resolution.as_str() {
-                "merge" => {
-                    log::info!("应用合并解决方案: {}", conflict_id);
-                    match perform_smart_merge(&state, &conflict_id).await {
-                        Ok(_) => {
-                            log::info!("智能合并成功: {}", conflict_id);
-                            resolved_count += 1;
-                        }
-                        Err(e) => {
-                            let error_msg = format!("智能合并失败 {}: {}", conflict_id, e);
-                            log::error!("{}", error_msg);
-                            resolution_errors.push(error_msg);
-                        }
-                    }
-                }
                 "use_local" => {
                     log::info!("使用本地数据: {}", conflict_id);
                     match force_upload_local_data(&state, &conflict_id).await {
@@ -246,16 +202,22 @@ pub async fn resolve_conflicts(
             log::warn!("更新最后同步时间失败: {}", e);
         }
         log::info!("所有冲突已解决，同步状态已更新为成功");
+
+        // 发送数据变化事件通知前端刷新
+        if let Err(e) = app_handle.emit("data_changed", "conflicts_resolved") {
+            log::warn!("发送数据变化事件失败: {}", e);
+        }
     }
 
-    let result_message = if resolved_count > 0 {
-        format!("成功解决了 {} 个冲突", resolved_count)
-    } else {
-        "没有找到匹配的冲突项".to_string()
-    };
-
-    log::info!("冲突解决完成: {}", result_message);
-    Ok(result_message)
+    Ok(format!(
+        "已解决 {} 个冲突{}",
+        resolved_count,
+        if all_resolved {
+            "，所有冲突已解决"
+        } else {
+            ""
+        }
+    ))
 }
 
 /// 强制上传本地数据

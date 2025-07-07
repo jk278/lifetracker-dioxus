@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "../../hooks/useRouter";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 
 export function DataManagement() {
 	const { navigate, canGoBack, goBack } = useNavigation();
@@ -56,6 +57,15 @@ export function DataManagement() {
 			setLoading(false);
 		}
 	}, []);
+
+	// 设置数据刷新监听 - 监听所有数据变化事件
+	useDataRefresh(fetchStatistics, {
+		onRefresh: (changeType) => {
+			console.log(`数据管理页面收到数据变化通知: ${changeType}`);
+			// 数据变化后清除之前的状态消息
+			setOperationStatus({ type: null, message: "" });
+		}
+	});
 
 	// 初始化获取统计信息
 	useEffect(() => {
@@ -156,7 +166,6 @@ export function DataManagement() {
 			<div className="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700 surface-adaptive">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
-						{/* 仅在从系统页面进入时显示返回按钮 */}
 						{isFromSystemPage && (
 							<button
 								onClick={handleBack}
@@ -170,148 +179,119 @@ export function DataManagement() {
 							数据管理
 						</h1>
 					</div>
+					<button
+						onClick={fetchStatistics}
+						className="flex items-center justify-center w-8 h-8 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+						title="刷新数据"
+					>
+						<RefreshCw className="w-5 h-5" />
+					</button>
 				</div>
 			</div>
 
 			{/* 可滚动内容区域 */}
-			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
+			<div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
 				<div className="max-w-4xl mx-auto space-y-6">
 					{/* 状态消息 */}
 					{operationStatus.type && (
 						<div
-							className={`p-4 rounded-lg border ${
+							className={`p-4 rounded-lg ${
 								operationStatus.type === "success"
-									? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200"
-									: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+									? "bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300"
+									: "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
 							}`}
 						>
-							<div className="flex justify-between items-center">
-								<span>{operationStatus.message}</span>
-								<button
-									onClick={() =>
-										setOperationStatus({ type: null, message: "" })
-									}
-									className="text-sm underline hover:no-underline"
-								>
-									关闭
-								</button>
-							</div>
+							{operationStatus.message}
 						</div>
 					)}
 
 					{/* 数据统计概览 */}
 					<div className="surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-						<div className="flex items-center mb-4">
-							<Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
-							<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+						<div className="flex items-center justify-between mb-4">
+							<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
 								数据统计概览
 							</h2>
-							<button
-								onClick={fetchStatistics}
-								className="ml-auto p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-								title="刷新统计数据"
-							>
-								<RefreshCw className="h-4 w-4" />
-							</button>
+							{loading && (
+								<div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+							)}
 						</div>
-
-						{loading ? (
-							<div className="flex items-center justify-center py-8">
-								<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-								<span className="ml-3 text-gray-600 dark:text-gray-400">
-									加载中...
-								</span>
-							</div>
-						) : (
-							<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										任务总数
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{statistics.total_tasks}
-									</div>
+						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+							<div className="text-center">
+								<div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+									{statistics.total_tasks}
 								</div>
-
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										累计时长
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{Math.floor(statistics.total_time_spent / 3600)}h{" "}
-										{Math.floor((statistics.total_time_spent % 3600) / 60)}m
-									</div>
-								</div>
-
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										财务记录
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{statistics.total_transactions}
-									</div>
-								</div>
-
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										日记数量
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{statistics.total_notes}
-									</div>
-								</div>
-
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										数据库大小
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{statistics.database_size}
-									</div>
-								</div>
-
-								<div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-									<div className="text-sm text-gray-600 dark:text-gray-400">
-										最后备份
-									</div>
-									<div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-										{statistics.last_backup}
-									</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									任务数量
 								</div>
 							</div>
-						)}
+							<div className="text-center">
+								<div className="text-2xl font-bold text-green-600 dark:text-green-400">
+									{Math.round(statistics.total_time_spent / 3600)}h
+								</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									总时长
+								</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+									{statistics.total_transactions}
+								</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									交易记录
+								</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+									{statistics.total_notes}
+								</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									笔记数量
+								</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+									{statistics.database_size}
+								</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									数据库大小
+								</div>
+							</div>
+							<div className="text-center">
+								<div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+									{statistics.last_backup}
+								</div>
+								<div className="text-sm text-gray-600 dark:text-gray-400">
+									最后备份
+								</div>
+							</div>
+						</div>
 					</div>
 
-					{/* 功能选项卡片 */}
+					{/* 功能卡片网格 */}
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{features.map((feature) => {
-							const Icon = feature.icon;
-							return (
-								<button
-									key={feature.id}
-									onClick={feature.onClick}
-									className={`${feature.bgColor} border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-left hover:bg-opacity-80 transition-all duration-200 hover:shadow-md group`}
-								>
-									<div className="flex items-start justify-between">
-										<div>
-											<div className="flex items-center mb-2">
-												<Icon className={`h-6 w-6 ${feature.color} mr-3`} />
-												<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-													{feature.title}
-												</h3>
-											</div>
-											<p className="text-sm text-gray-600 dark:text-gray-400">
-												{feature.description}
-											</p>
-										</div>
-										<ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+						{features.map((feature) => (
+							<button
+								key={feature.id}
+								onClick={feature.onClick}
+								className="group p-6 surface-adaptive rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md dark:hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 text-left"
+							>
+								<div className="flex items-center space-x-3 mb-3">
+									<div className={`p-2 rounded-lg ${feature.bgColor}`}>
+										<feature.icon className={`h-6 w-6 ${feature.color}`} />
 									</div>
-								</button>
-							);
-						})}
+									<ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors ml-auto" />
+								</div>
+								<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+									{feature.title}
+								</h3>
+								<p className="text-sm text-gray-600 dark:text-gray-400">
+									{feature.description}
+								</p>
+							</button>
+						))}
 					</div>
 
-					{/* 使用提示 */}
+					{/* 数据管理说明 */}
 					<div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
 						<div className="flex items-start">
 							<Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" />

@@ -133,6 +133,7 @@ pub async fn get_tasks(
 #[tauri::command]
 pub async fn create_task(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     request: CreateTaskRequest,
 ) -> Result<TaskDto, String> {
     log::info!("创建任务: {}", request.name);
@@ -226,6 +227,12 @@ pub async fn create_task(
     };
 
     log::debug!("返回TaskDto: {:?}", task_dto);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "task_created") {
+        log::warn!("发送任务创建事件失败: {}", e);
+    }
+
     Ok(task_dto)
 }
 
@@ -233,6 +240,7 @@ pub async fn create_task(
 #[tauri::command]
 pub async fn update_task(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     task_id: String,
     request: UpdateTaskRequest,
 ) -> Result<TaskDto, String> {
@@ -321,7 +329,7 @@ pub async fn update_task(
     let tags: Vec<String> = serde_json::from_str(&updated_task.tags).unwrap_or_default();
 
     // 返回更新后的任务
-    Ok(TaskDto {
+    let task_dto = TaskDto {
         id: updated_task.id.to_string(),
         name: updated_task.name,
         description: updated_task.description,
@@ -334,12 +342,23 @@ pub async fn update_task(
         tags,
         created_at: updated_task.created_at,
         updated_at: updated_task.updated_at.unwrap_or(updated_task.created_at),
-    })
+    };
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "task_updated") {
+        log::warn!("发送任务更新事件失败: {}", e);
+    }
+
+    Ok(task_dto)
 }
 
 /// 删除任务
 #[tauri::command]
-pub async fn delete_task(state: State<'_, AppState>, task_id: String) -> Result<bool, String> {
+pub async fn delete_task(
+    state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
+    task_id: String,
+) -> Result<bool, String> {
     let uuid = Uuid::parse_str(&task_id).map_err(|_| "无效的任务ID格式".to_string())?;
     let storage = &state.storage;
 
@@ -359,6 +378,11 @@ pub async fn delete_task(state: State<'_, AppState>, task_id: String) -> Result<
         .map_err(|e| format!("删除任务失败: {}", e))?;
 
     log::info!("任务删除成功: {}", task_id);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "task_deleted") {
+        log::warn!("发送任务删除事件失败: {}", e);
+    }
 
     Ok(true)
 }

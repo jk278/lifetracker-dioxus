@@ -15,6 +15,7 @@ import {
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 import type { Category, Task, TimeEntry, TimerStatus } from "../../types";
 
 interface DashboardProps {
@@ -103,6 +104,32 @@ const Dashboard: React.FC<DashboardProps> = ({
 			console.error("获取今日时间记录失败:", error);
 		}
 	}, []);
+
+	// 刷新所有数据
+	const refreshAllData = useCallback(async () => {
+		await Promise.all([
+			fetchCategories(),
+			fetchTodayTimeEntries(),
+			// 通知父组件更新任务列表和统计数据
+			new Promise<void>((resolve) => {
+				onTasksUpdate();
+				resolve();
+			})
+		]);
+	}, [fetchCategories, fetchTodayTimeEntries, onTasksUpdate]);
+
+	// 设置数据刷新监听 - 监听任务、分类、计时器相关的变化
+	useDataRefresh(refreshAllData, {
+		refreshTypes: [
+			"task_created", "task_updated", "task_deleted",
+			"category_created", "category_updated", "category_deleted",
+			"timer_started", "timer_stopped", "timer_updated",
+			"all_data_cleared", "sync_completed", "data_imported", "database_restored"
+		],
+		onRefresh: (changeType) => {
+			console.log(`Dashboard收到数据变化通知: ${changeType}`);
+		}
+	});
 
 	// 创建新任务
 	const createTask = async () => {

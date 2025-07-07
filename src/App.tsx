@@ -29,6 +29,7 @@ import SettingsComponent from "./components/Settings";
 import SystemPage from "./components/SystemPage";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
+import { useDataRefresh } from "./hooks/useDataRefresh";
 import { RouterProvider, useNavigation } from "./hooks/useRouter";
 import { ThemeProvider } from "./hooks/useTheme";
 import type { Task, TimerStatus } from "./types";
@@ -236,6 +237,30 @@ function AppContent() {
 			console.error("获取统计数据失败:", error);
 		}
 	}, []);
+
+	// 刷新所有数据
+	const refreshAllData = useCallback(async () => {
+		await Promise.all([
+			fetchTimerStatus(),
+			fetchTasks(),
+			fetchTodayStats()
+		]);
+	}, [fetchTimerStatus, fetchTasks, fetchTodayStats]);
+
+	// 设置数据刷新监听 - 监听所有可能影响主界面的数据变化
+	useDataRefresh(refreshAllData, {
+		refreshTypes: [
+			"task_created", "task_updated", "task_deleted",
+			"category_created", "category_updated", "category_deleted",
+			"timer_started", "timer_stopped", "timer_updated",
+			"transaction_created", "transaction_updated", "transaction_deleted",
+			"all_data_cleared", "sync_completed", "conflicts_resolved", 
+			"data_imported", "database_restored"
+		],
+		onRefresh: (changeType) => {
+			console.log(`App主组件收到数据变化通知: ${changeType}`);
+		}
+	});
 
 	// 开始计时
 	const startTimer = useCallback(

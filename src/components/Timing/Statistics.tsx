@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Activity, BarChart3, Clock, PieChart, Target } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 
 // 匹配后端的StatisticsDto结构
 interface StatisticsData {
@@ -49,7 +50,7 @@ const Statistics = () => {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const fetchStatistics = async () => {
+	const fetchStatistics = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
@@ -66,7 +67,22 @@ const Statistics = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [period]);
+
+	// 设置数据刷新监听 - 监听所有可能影响统计的数据变化
+	useDataRefresh(fetchStatistics, {
+		refreshTypes: [
+			"task_created", "task_updated", "task_deleted",
+			"category_created", "category_updated", "category_deleted",
+			"timer_started", "timer_stopped", "timer_updated",
+			"transaction_created", "transaction_updated", "transaction_deleted",
+			"all_data_cleared", "sync_completed", "conflicts_resolved", 
+			"data_imported", "database_restored"
+		],
+		onRefresh: (changeType) => {
+			console.log(`Statistics收到数据变化通知: ${changeType}`);
+		}
+	});
 
 	const formatDuration = (seconds: number): string => {
 		const hours = Math.floor(seconds / 3600);

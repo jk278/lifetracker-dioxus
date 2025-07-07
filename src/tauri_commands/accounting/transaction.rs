@@ -9,7 +9,7 @@ use crate::{
 use chrono::Local;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Emitter, State};
 use uuid::Uuid;
 
 use super::types::{
@@ -161,6 +161,7 @@ pub async fn get_transaction_by_id(
 #[tauri::command]
 pub async fn create_transaction(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     request: CreateTransactionRequest,
 ) -> Result<TransactionDto, String> {
     let storage = &state.storage;
@@ -313,6 +314,12 @@ pub async fn create_transaction(
     };
 
     log::info!("交易创建成功: {}", transaction_dto.id);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "transaction_created") {
+        log::warn!("发送交易创建事件失败: {}", e);
+    }
+
     Ok(transaction_dto)
 }
 
@@ -320,6 +327,7 @@ pub async fn create_transaction(
 #[tauri::command]
 pub async fn delete_transaction(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     transaction_id: String,
 ) -> Result<bool, String> {
     let storage = &state.storage;
@@ -331,5 +339,11 @@ pub async fn delete_transaction(
         .map_err(|e| e.to_string())?;
 
     log::info!("交易删除成功: {}", transaction_id);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "transaction_deleted") {
+        log::warn!("发送交易删除事件失败: {}", e);
+    }
+
     Ok(true)
 }

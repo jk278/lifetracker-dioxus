@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 import type {
 	AccountDto,
 	AccountType,
@@ -112,6 +113,27 @@ const AccountingPage: React.FC = () => {
 			setError("获取财务统计失败");
 		}
 	}, []);
+
+	// 刷新所有数据
+	const refreshAllData = useCallback(async () => {
+		await Promise.all([
+			fetchAccounts(),
+			fetchTransactions(),
+			fetchFinancialStats()
+		]);
+	}, [fetchAccounts, fetchTransactions, fetchFinancialStats]);
+
+	// 设置数据刷新监听 - 监听交易、账户相关的数据变化
+	useDataRefresh(refreshAllData, {
+		refreshTypes: [
+			"transaction_created", "transaction_updated", "transaction_deleted",
+			"all_data_cleared", "sync_completed", "conflicts_resolved", 
+			"data_imported", "database_restored"
+		],
+		onRefresh: (changeType) => {
+			console.log(`AccountingPage收到数据变化通知: ${changeType}`);
+		}
+	});
 
 	// 创建账户
 	const createAccount = async () => {

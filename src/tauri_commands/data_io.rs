@@ -189,11 +189,41 @@ async fn gather_export_data(
 
 /// 导入数据
 #[tauri::command]
-pub async fn import_data(state: State<'_, AppState>, file_path: String) -> Result<String, String> {
-    log::info!("从 {} 导入数据", file_path);
+pub async fn import_data(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+    file_path: String,
+) -> Result<String, String> {
+    log::info!("开始导入数据: {}", file_path);
 
-    // TODO: 实现实际的数据导入逻辑
-    Ok(format!("数据已从文件导入: {}", file_path))
+    // 检查文件是否存在
+    if !std::path::Path::new(&file_path).exists() {
+        let error_msg = format!("导入文件不存在: {}", file_path);
+        log::error!("{}", error_msg);
+        return Err(error_msg);
+    }
+
+    // 调用存储管理器的导入功能
+    let storage = &state.storage;
+
+    // 由于 import_data 需要 &mut self，我们需要先创建一个临时的存储管理器
+    // 然后使用它来导入数据
+    match storage.import_data_from_file(&file_path) {
+        Ok(_) => {
+            log::info!("数据导入完成");
+
+            // 发送数据变化事件通知前端刷新
+            if let Err(e) = app_handle.emit("data_changed", "data_imported") {
+                log::warn!("发送数据变化事件失败: {}", e);
+            }
+
+            Ok(format!("数据已从 {} 导入", file_path))
+        }
+        Err(e) => {
+            log::error!("数据导入失败: {}", e);
+            Err(e.to_string())
+        }
+    }
 }
 
 /// 备份数据库到指定文件
@@ -217,6 +247,7 @@ pub async fn backup_database(
 #[tauri::command]
 pub async fn restore_database(
     state: State<'_, AppState>,
+    app_handle: AppHandle,
     src_path: String,
 ) -> Result<String, String> {
     log::info!("从 {} 恢复数据库", src_path);
@@ -236,6 +267,12 @@ pub async fn restore_database(
     match storage.restore_database_from_backup(&src_path) {
         Ok(_) => {
             log::info!("数据库恢复完成");
+
+            // 发送数据变化事件通知前端刷新
+            if let Err(e) = app_handle.emit("data_changed", "database_restored") {
+                log::warn!("发送数据变化事件失败: {}", e);
+            }
+
             Ok(format!("数据库已从 {} 恢复", src_path))
         }
         Err(e) => {
@@ -247,7 +284,10 @@ pub async fn restore_database(
 
 /// 清除所有数据
 #[tauri::command]
-pub async fn clear_all_data(state: State<'_, AppState>) -> Result<String, String> {
+pub async fn clear_all_data(
+    state: State<'_, AppState>,
+    app_handle: AppHandle,
+) -> Result<String, String> {
     log::info!("开始清除所有数据");
 
     let storage = &state.storage;
@@ -280,6 +320,12 @@ pub async fn clear_all_data(state: State<'_, AppState>) -> Result<String, String
             }
 
             log::info!("所有数据已成功清除");
+
+            // 发送数据变化事件通知前端刷新
+            if let Err(e) = app_handle.emit("data_changed", "all_data_cleared") {
+                log::warn!("发送数据变化事件失败: {}", e);
+            }
+
             Ok("数据已清除！".to_string())
         }
         Err(e) => {

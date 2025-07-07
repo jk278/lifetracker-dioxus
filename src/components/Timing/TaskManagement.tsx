@@ -1,22 +1,43 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Clock, Edit, Plus, Search, Tag, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { Category, Task } from "../../types";
+import {
+	ChevronDown,
+	ChevronUp,
+	Edit,
+	Plus,
+	Tag,
+	Trash2,
+	User,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 
-interface TaskManagementProps {
-	tasks: Task[];
-	onTasksUpdate: () => void;
+interface Task {
+	id: string;
+	name: string;
+	description?: string;
+	category_id?: string;
+	category_name?: string;
+	duration_seconds: number;
+	tags: string[];
+	created_at: string;
+	updated_at: string;
 }
 
-const TaskManagement: React.FC<TaskManagementProps> = ({
-	tasks,
-	onTasksUpdate,
-}) => {
+interface Category {
+	id: string;
+	name: string;
+	color: string;
+	icon: string;
+}
+
+export function TaskManagement() {
+	const [tasks, setTasks] = useState<Task[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [selectedCategory, setSelectedCategory] = useState("");
-	const [showCreateDialog, setShowCreateDialog] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [showCreateForm, setShowCreateForm] = useState(false);
 	const [editingTask, setEditingTask] = useState<Task | null>(null);
+	const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
 	const [newTask, setNewTask] = useState({
 		name: "",
 		description: "",
@@ -24,369 +45,226 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 		tags: "",
 	});
 
-	// 获取分类列表
-	const fetchCategories = async () => {
+	// 获取任务列表
+	const fetchTasks = useCallback(async () => {
+		setLoading(true);
 		try {
-			const categoryList = await invoke<Category[]>("get_categories");
-			setCategories(categoryList);
+			const result = await invoke<Task[]>("get_tasks");
+			setTasks(result);
 		} catch (error) {
-			console.error("获取分类列表失败:", error);
+			console.error("获取任务失败:", error);
+		} finally {
+			setLoading(false);
 		}
-	};
+	}, []);
+
+	// 获取分类列表
+	const fetchCategories = useCallback(async () => {
+		try {
+			const result = await invoke<Category[]>("get_categories");
+			setCategories(result);
+		} catch (error) {
+			console.error("获取分类失败:", error);
+		}
+	}, []);
+
+	// 刷新所有数据
+	const refreshAllData = useCallback(async () => {
+		await Promise.all([fetchTasks(), fetchCategories()]);
+	}, [fetchTasks, fetchCategories]);
+
+	// 设置数据刷新监听
+	useDataRefresh(refreshAllData, {
+		onRefresh: (changeType) => {
+			console.log(`任务管理页面收到数据变化通知: ${changeType}`);
+		}
+	});
+
+	// 初始化数据获取
+	useEffect(() => {
+		refreshAllData();
+	}, [refreshAllData]);
 
 	// 创建任务
-	const createTask = async () => {
+	const handleCreateTask = useCallback(async () => {
 		if (!newTask.name.trim()) return;
 
 		try {
-			console.log("TaskManagement - 创建任务开始，参数:", {
-				name: newTask.name,
-				description: newTask.description || null,
+			const taskData = {
+				name: newTask.name.trim(),
+				description: newTask.description.trim() || null,
 				category_id: newTask.category_id || null,
 				tags: newTask.tags
 					? newTask.tags.split(",").map((tag) => tag.trim())
-					: null,
-			});
+					: [],
+			};
 
-			const result = await invoke("create_task", {
-				request: {
-					name: newTask.name,
-					description: newTask.description || null,
-					category_id: newTask.category_id || null,
-					tags: newTask.tags
-						? newTask.tags.split(",").map((tag) => tag.trim())
-						: null,
-				},
-			});
-
-			console.log("TaskManagement - 任务创建成功，返回结果:", result);
-
+			await invoke("create_task", { taskData });
 			setNewTask({ name: "", description: "", category_id: "", tags: "" });
-			setShowCreateDialog(false);
-
-			// 稍等一下再刷新，确保数据库操作完全完成
-			setTimeout(() => {
-				console.log("TaskManagement - 开始刷新任务列表");
-				onTasksUpdate();
-			}, 200);
+			setShowCreateForm(false);
+			await fetchTasks(); // 刷新任务列表
 		} catch (error) {
-			console.error("TaskManagement - 创建任务失败:", error);
-			alert(`创建任务失败: ${error}`);
+			console.error("创建任务失败:", error);
+			alert("创建任务失败，请重试");
 		}
-	};
-
-	// 更新任务
-	const updateTask = async () => {
-		if (!editingTask || !newTask.name.trim()) return;
-
-		try {
-			await invoke("update_task", {
-				taskId: editingTask.id,
-				request: {
-					name: newTask.name,
-					description: newTask.description || null,
-					category_id: newTask.category_id || null,
-					tags: newTask.tags
-						? newTask.tags.split(",").map((tag) => tag.trim())
-						: null,
-				},
-			});
-
-			setEditingTask(null);
-			setNewTask({ name: "", description: "", category_id: "", tags: "" });
-			onTasksUpdate();
-		} catch (error) {
-			console.error("更新任务失败:", error);
-		}
-	};
+	}, [newTask, fetchTasks]);
 
 	// 删除任务
-	const deleteTask = async (taskId: string) => {
-		if (!confirm("确定要删除这个任务吗？")) return;
+	const handleDeleteTask = useCallback(
+		async (taskId: string) => {
+			if (!confirm("确定要删除这个任务吗？")) return;
 
-		try {
-			await invoke("delete_task", { taskId });
-			onTasksUpdate();
-		} catch (error) {
-			console.error("删除任务失败:", error);
-		}
-	};
+			try {
+				await invoke("delete_task", { taskId });
+				await fetchTasks(); // 刷新任务列表
+			} catch (error) {
+				console.error("删除任务失败:", error);
+				alert("删除任务失败，请重试");
+			}
+		},
+		[fetchTasks],
+	);
 
-	// 开始编辑任务
-	const startEditTask = (task: Task) => {
-		setEditingTask(task);
-		setNewTask({
-			name: task.name,
-			description: task.description || "",
-			category_id: task.category_id || "",
-			tags: task.tags ? task.tags.join(", ") : "",
+	// 更新任务
+	const handleUpdateTask = useCallback(
+		async (taskId: string, updates: any) => {
+			try {
+				await invoke("update_task", { taskId, updates });
+				setEditingTask(null);
+				await fetchTasks(); // 刷新任务列表
+			} catch (error) {
+				console.error("更新任务失败:", error);
+				alert("更新任务失败，请重试");
+			}
+		},
+		[fetchTasks],
+	);
+
+	// 切换任务展开状态
+	const toggleTaskExpanded = useCallback((taskId: string) => {
+		setExpandedTasks((prev) => {
+			const newSet = new Set(prev);
+			if (newSet.has(taskId)) {
+				newSet.delete(taskId);
+			} else {
+				newSet.add(taskId);
+			}
+			return newSet;
 		});
-		setShowCreateDialog(true);
-	};
+	}, []);
 
-	// 筛选任务
-	const filteredTasks = tasks.filter((task) => {
-		const matchesSearch =
-			task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			task.description?.toLowerCase().includes(searchTerm.toLowerCase());
-		const matchesCategory =
-			!selectedCategory || task.category_id === selectedCategory;
-		return matchesSearch && matchesCategory;
-	});
-
-	// 格式化时间
-	const formatDuration = (seconds: number): string => {
+	// 格式化时长
+	const formatDuration = (seconds: number) => {
 		const hours = Math.floor(seconds / 3600);
 		const minutes = Math.floor((seconds % 3600) / 60);
 		return `${hours}h ${minutes}m`;
 	};
 
-	useEffect(() => {
-		fetchCategories();
-	}, []);
+	// 获取分类信息
+	const getCategoryInfo = (categoryId?: string) => {
+		return categories.find((cat) => cat.id === categoryId);
+	};
 
 	return (
 		<div className="space-y-6">
-			{/* 页面标题和工具栏 */}
+			{/* 页面标题和操作 */}
 			<div className="flex items-center justify-between">
-				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
 					任务管理
-				</h3>
+				</h2>
 				<button
-					onClick={() => {
-						setEditingTask(null);
-						setNewTask({
-							name: "",
-							description: "",
-							category_id: "",
-							tags: "",
-						});
-						setShowCreateDialog(true);
-					}}
-					className="flex items-center px-4 py-2 bg-theme-primary text-white rounded-lg bg-theme-primary-hover theme-transition"
+					onClick={() => setShowCreateForm(true)}
+					className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 				>
-					<Plus className="h-4 w-4 mr-2" />
-					新建任务
+					<Plus className="h-4 w-4" />
+					<span>新建任务</span>
 				</button>
 			</div>
 
-			{/* 搜索和筛选 */}
-			<div className="bg-surface rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4">
-				<div className="flex flex-col sm:flex-row gap-4">
-					{/* 搜索框 */}
-					<div className="flex-1 relative">
-						<Search className="h-5 w-5 absolute left-3 top-3 text-gray-400 dark:text-gray-500" />
-						<input
-							type="text"
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							placeholder="搜索任务名称或描述..."
-							className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-						/>
-					</div>
-
-					{/* 分类筛选 */}
-					<div className="sm:w-48">
-						<select
-							value={selectedCategory}
-							onChange={(e) => setSelectedCategory(e.target.value)}
-							className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-						>
-							<option value="">所有分类</option>
-							{categories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{category.name}
-								</option>
-							))}
-						</select>
-					</div>
-				</div>
-			</div>
-
-			{/* 任务列表 */}
-			<div>
-				{filteredTasks.length === 0 ? (
-					<div className="text-center py-12">
-						<Clock className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-						<h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-							暂无任务
-						</h3>
-						<p className="text-gray-500 dark:text-gray-400">
-							{searchTerm || selectedCategory
-								? "没有符合条件的任务"
-								: "创建您的第一个任务开始计时"}
-						</p>
-					</div>
-				) : (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-						{filteredTasks.map((task) => {
-							const category = categories.find(
-								(cat) => cat.id === task.category_id,
-							);
-
-							return (
-								<div
-									key={task.id}
-									className="border border-gray-200 dark:border-gray-700 bg-surface rounded-lg p-4 hover:shadow-md dark:hover:shadow-gray-700/30 transition-shadow"
-								>
-									<div className="flex items-start justify-between mb-3">
-										<h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-											{task.name}
-										</h3>
-										<div className="flex space-x-2 ml-2">
-											<button
-												onClick={() => startEditTask(task)}
-												className="text-theme-primary hover:text-theme-primary-hover theme-transition"
-											>
-												<Edit className="h-4 w-4" />
-											</button>
-											<button
-												onClick={() => deleteTask(task.id)}
-												className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 transition-colors"
-											>
-												<Trash2 className="h-4 w-4" />
-											</button>
-										</div>
-									</div>
-
-									{task.description && (
-										<p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
-											{task.description}
-										</p>
-									)}
-
-									<div className="flex items-center justify-between mb-3">
-										{category ? (
-											<span
-												className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-gray-200 dark:border-gray-700"
-												style={{
-													backgroundColor: category.color + "20",
-													color: category.color,
-												}}
-											>
-												{category.name}
-											</span>
-										) : (
-											<span className="text-xs text-gray-500 dark:text-gray-400">
-												未分类
-											</span>
-										)}
-
-										<span className="text-sm font-medium text-gray-900 dark:text-white">
-											{formatDuration(task.duration_seconds)}
-										</span>
-									</div>
-
-									{task.tags && task.tags.length > 0 && (
-										<div className="flex flex-wrap gap-1">
-											{task.tags.slice(0, 3).map((tag: string) => (
-												<span
-													key={tag}
-													className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200"
-												>
-													<Tag className="h-3 w-3 mr-1" />
-													{tag}
-												</span>
-											))}
-											{task.tags.length > 3 && (
-												<span className="text-xs text-gray-500 dark:text-gray-400">
-													+{task.tags.length - 3}
-												</span>
-											)}
-										</div>
-									)}
-
-									<div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400">
-										创建于 {new Date(task.created_at).toLocaleDateString()}
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				)}
-			</div>
-
-			{/* 创建/编辑任务对话框 */}
-			{showCreateDialog && (
-				<div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 !mt-0">
-					<div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
-						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-							{editingTask ? "编辑任务" : "创建新任务"}
-						</h3>
-
-						<div className="space-y-4">
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-									任务名称 *
-								</label>
-								<input
-									type="text"
-									value={newTask.name}
-									onChange={(e) =>
-										setNewTask({ ...newTask, name: e.target.value })
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-									placeholder="输入任务名称..."
-									autoFocus
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-									任务描述
-								</label>
-								<textarea
-									value={newTask.description}
-									onChange={(e) =>
-										setNewTask({ ...newTask, description: e.target.value })
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-									placeholder="输入任务描述..."
-									rows={3}
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-									分类
-								</label>
-								<select
-									value={newTask.category_id}
-									onChange={(e) =>
-										setNewTask({ ...newTask, category_id: e.target.value })
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-								>
-									<option value="">无分类</option>
-									{categories.map((category) => (
-										<option key={category.id} value={category.id}>
-											{category.name}
-										</option>
-									))}
-								</select>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-									标签 (用逗号分隔)
-								</label>
-								<input
-									type="text"
-									value={newTask.tags}
-									onChange={(e) =>
-										setNewTask({ ...newTask, tags: e.target.value })
-									}
-									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-surface text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-theme-primary theme-transition"
-									placeholder="工作, 项目, 重要..."
-								/>
-							</div>
+			{/* 创建任务表单 */}
+			{showCreateForm && (
+				<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+					<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+						创建新任务
+					</h3>
+					<div className="space-y-4">
+						<div>
+							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								任务名称 *
+							</label>
+							<input
+								type="text"
+								value={newTask.name}
+								onChange={(e) =>
+									setNewTask((prev) => ({ ...prev, name: e.target.value }))
+								}
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+								placeholder="输入任务名称"
+							/>
 						</div>
-
-						<div className="flex justify-end space-x-3 mt-6">
+						<div>
+							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								任务描述
+							</label>
+							<textarea
+								value={newTask.description}
+								onChange={(e) =>
+									setNewTask((prev) => ({
+										...prev,
+										description: e.target.value,
+									}))
+								}
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+								placeholder="输入任务描述"
+								rows={3}
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								分类
+							</label>
+							<select
+								value={newTask.category_id}
+								onChange={(e) =>
+									setNewTask((prev) => ({
+										...prev,
+										category_id: e.target.value,
+									}))
+								}
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+							>
+								<option value="">选择分类</option>
+								{categories.map((category) => (
+									<option key={category.id} value={category.id}>
+										{category.name}
+									</option>
+								))}
+							</select>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+								标签 (用逗号分隔)
+							</label>
+							<input
+								type="text"
+								value={newTask.tags}
+								onChange={(e) =>
+									setNewTask((prev) => ({ ...prev, tags: e.target.value }))
+								}
+								className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+								placeholder="例如: 工作, 重要"
+							/>
+						</div>
+						<div className="flex space-x-3">
+							<button
+								onClick={handleCreateTask}
+								className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+							>
+								创建任务
+							</button>
 							<button
 								onClick={() => {
-									setShowCreateDialog(false);
-									setEditingTask(null);
+									setShowCreateForm(false);
 									setNewTask({
 										name: "",
 										description: "",
@@ -394,23 +272,191 @@ const TaskManagement: React.FC<TaskManagementProps> = ({
 										tags: "",
 									});
 								}}
-								className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-surface dark:bg-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+								className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
 							>
 								取消
 							</button>
-							<button
-								onClick={editingTask ? updateTask : createTask}
-								className="px-4 py-2 bg-theme-primary text-white rounded-md bg-theme-primary-hover disabled:opacity-50 theme-transition"
-								disabled={!newTask.name.trim()}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* 任务列表 */}
+			<div className="space-y-4">
+				{loading ? (
+					<div className="flex justify-center py-8">
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+					</div>
+				) : tasks.length === 0 ? (
+					<div className="text-center py-8 text-gray-500 dark:text-gray-400">
+						暂无任务，点击"新建任务"开始添加
+					</div>
+				) : (
+					tasks.map((task) => {
+						const isExpanded = expandedTasks.has(task.id);
+						const categoryInfo = getCategoryInfo(task.category_id);
+
+						return (
+							<div
+								key={task.id}
+								className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
 							>
-								{editingTask ? "保存" : "创建"}
-							</button>
+								{/* 任务基本信息 */}
+								<div className="flex items-center justify-between">
+									<div className="flex items-center space-x-3 flex-1">
+										<button
+											onClick={() => toggleTaskExpanded(task.id)}
+											className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+										>
+											{isExpanded ? (
+												<ChevronUp className="h-4 w-4" />
+											) : (
+												<ChevronDown className="h-4 w-4" />
+											)}
+										</button>
+										<div className="flex-1">
+											<h3 className="font-medium text-gray-900 dark:text-white">
+												{task.name}
+											</h3>
+											<div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-400">
+												{categoryInfo && (
+													<span className="flex items-center space-x-1">
+														<span
+															className="w-2 h-2 rounded-full"
+															style={{ backgroundColor: categoryInfo.color }}
+														/>
+														<span>{categoryInfo.name}</span>
+													</span>
+												)}
+												<span className="flex items-center space-x-1">
+													<User className="h-3 w-3" />
+													<span>{formatDuration(task.duration_seconds)}</span>
+												</span>
+												{task.tags.length > 0 && (
+													<span className="flex items-center space-x-1">
+														<Tag className="h-3 w-3" />
+														<span>{task.tags.join(", ")}</span>
+													</span>
+												)}
+											</div>
+										</div>
+									</div>
+									<div className="flex items-center space-x-2">
+										<button
+											onClick={() => setEditingTask(task)}
+											className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+										>
+											<Edit className="h-4 w-4" />
+										</button>
+										<button
+											onClick={() => handleDeleteTask(task.id)}
+											className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+										>
+											<Trash2 className="h-4 w-4" />
+										</button>
+									</div>
+								</div>
+
+								{/* 展开的详细信息 */}
+								{isExpanded && (
+									<div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+										<div className="grid grid-cols-2 gap-4 text-sm">
+											<div>
+												<span className="font-medium text-gray-700 dark:text-gray-300">
+													创建时间:
+												</span>
+												<span className="ml-2 text-gray-500 dark:text-gray-400">
+													{new Date(task.created_at).toLocaleString()}
+												</span>
+											</div>
+											<div>
+												<span className="font-medium text-gray-700 dark:text-gray-300">
+													更新时间:
+												</span>
+												<span className="ml-2 text-gray-500 dark:text-gray-400">
+													{new Date(task.updated_at).toLocaleString()}
+												</span>
+											</div>
+										</div>
+										{task.description && (
+											<div className="mt-3">
+												<span className="font-medium text-gray-700 dark:text-gray-300">
+													描述:
+												</span>
+												<p className="mt-1 text-gray-600 dark:text-gray-400">
+													{task.description}
+												</p>
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						);
+					})
+				)}
+			</div>
+
+			{/* 编辑任务模态框 */}
+			{editingTask && (
+				<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+						<h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+							编辑任务
+						</h3>
+						<div className="space-y-4">
+							<div>
+								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+									任务名称
+								</label>
+								<input
+									type="text"
+									value={editingTask.name}
+									onChange={(e) =>
+										setEditingTask((prev) =>
+											prev ? { ...prev, name: e.target.value } : null,
+										)
+									}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+									任务描述
+								</label>
+								<textarea
+									value={editingTask.description || ""}
+									onChange={(e) =>
+										setEditingTask((prev) =>
+											prev ? { ...prev, description: e.target.value } : null,
+										)
+									}
+									className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+									rows={3}
+								/>
+							</div>
+							<div className="flex space-x-3">
+								<button
+									onClick={() =>
+										handleUpdateTask(editingTask.id, {
+											name: editingTask.name,
+											description: editingTask.description,
+										})
+									}
+									className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+								>
+									保存
+								</button>
+								<button
+									onClick={() => setEditingTask(null)}
+									className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+								>
+									取消
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
 			)}
 		</div>
 	);
-};
-
-export default TaskManagement;
+}

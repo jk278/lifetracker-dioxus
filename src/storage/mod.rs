@@ -412,26 +412,75 @@ impl StorageManager {
             .map_err(|e| AppError::Storage(e.to_string()))
     }
 
-    /// 从文件导入数据
-    pub fn import_data<P: AsRef<Path>>(&mut self, import_path: P) -> crate::errors::Result<()> {
+    /// 从文件导入数据（不需要可变借用）
+    pub fn import_data_from_file<P: AsRef<Path>>(
+        &self,
+        import_path: P,
+    ) -> crate::errors::Result<()> {
+        let import_path = import_path.as_ref();
+        log::info!("开始从文件导入数据: {}", import_path.display());
+
         // 从JSON文件导入
         let import_data = crate::utils::import::import_from_json(import_path)?;
 
+        // 获取数据库连接
+        let conn = self.database.get_connection()?.get_raw_connection();
+        let conn = conn.lock().unwrap();
+
         // 导入分类
         for category in import_data.categories {
-            if let Err(e) = self.database.insert_category(&category.into()) {
+            let category_model: crate::storage::models::CategoryModel = category.into();
+            if let Err(e) = conn.execute(
+                "INSERT OR REPLACE INTO categories (id, name, description, color, icon, created_at, updated_at, is_active, sort_order, parent_id, daily_target_seconds, weekly_target_seconds) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                rusqlite::params![
+                    category_model.id.to_string(),
+                    category_model.name,
+                    category_model.description,
+                    category_model.color,
+                    category_model.icon,
+                    category_model.created_at.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
+                    category_model.updated_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()),
+                    category_model.is_active,
+                    category_model.sort_order,
+                    category_model.parent_id.map(|id| id.to_string()),
+                    category_model.daily_target_seconds,
+                    category_model.weekly_target_seconds,
+                ]
+            ) {
                 log::warn!("导入分类失败: {}", e);
             }
         }
 
         // 导入时间条目
         for entry in import_data.time_entries {
-            if let Err(e) = self.database.insert_time_entry(&entry.into()) {
+            let entry_model: crate::storage::models::TimeEntry = entry.into();
+            if let Err(e) = conn.execute(
+                "INSERT OR REPLACE INTO time_entries (id, start_time, end_time, duration_seconds, task_name, category_id, description, tags, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                rusqlite::params![
+                    entry_model.id.to_string(),
+                    entry_model.start_time.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
+                    entry_model.end_time.map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()),
+                    entry_model.duration_seconds,
+                    entry_model.task_name,
+                    entry_model.category_id.map(|id| id.to_string()),
+                    entry_model.description,
+                    serde_json::to_string(&entry_model.tags).unwrap_or_default(),
+                    entry_model.created_at.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
+                    entry_model.updated_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()).unwrap_or_else(|| entry_model.created_at.format("%Y-%m-%d %H:%M:%S%.3f").to_string()),
+                ]
+            ) {
                 log::warn!("导入时间条目失败: {}", e);
             }
         }
 
+        log::info!("数据导入完成");
         Ok(())
+    }
+
+    /// 从文件导入数据
+    pub fn import_data<P: AsRef<Path>>(&mut self, import_path: P) -> crate::errors::Result<()> {
+        // 直接调用共享引用版本
+        self.import_data_from_file(import_path)
     }
 
     /// 清空所有数据

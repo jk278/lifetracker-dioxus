@@ -80,6 +80,7 @@ pub async fn get_categories(state: State<'_, AppState>) -> Result<Vec<CategoryDt
 #[tauri::command]
 pub async fn create_category(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     request: CreateCategoryRequest,
 ) -> Result<CategoryDto, String> {
     use crate::storage::models::CategoryInsert;
@@ -123,6 +124,12 @@ pub async fn create_category(
     };
 
     log::debug!("创建分类成功: {}", category_dto.name);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "category_created") {
+        log::warn!("发送分类创建事件失败: {}", e);
+    }
+
     Ok(category_dto)
 }
 
@@ -130,6 +137,7 @@ pub async fn create_category(
 #[tauri::command]
 pub async fn update_category(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     category_id: String,
     request: UpdateCategoryRequest,
 ) -> Result<CategoryDto, String> {
@@ -199,6 +207,12 @@ pub async fn update_category(
     };
 
     log::debug!("更新分类成功: {}", category_dto.name);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "category_updated") {
+        log::warn!("发送分类更新事件失败: {}", e);
+    }
+
     Ok(category_dto)
 }
 
@@ -206,6 +220,7 @@ pub async fn update_category(
 #[tauri::command]
 pub async fn delete_category(
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
     category_id: String,
 ) -> Result<bool, String> {
     let uuid = Uuid::parse_str(&category_id).map_err(|e| format!("无效的分类ID: {}", e))?;
@@ -227,5 +242,11 @@ pub async fn delete_category(
         .map_err(|e| format!("删除分类失败: {}", e))?;
 
     log::debug!("删除分类成功: {}", category.name);
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "category_deleted") {
+        log::warn!("发送分类删除事件失败: {}", e);
+    }
+
     Ok(true)
 }

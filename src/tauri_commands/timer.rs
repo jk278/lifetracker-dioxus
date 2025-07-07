@@ -50,6 +50,12 @@ pub async fn start_timer(
     app_handle
         .emit("timer_status_changed", &status_dto)
         .map_err(|e| e.to_string())?;
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "timer_started") {
+        log::warn!("发送计时器启动事件失败: {}", e);
+    }
+
     Ok(status_dto)
 }
 
@@ -116,6 +122,12 @@ pub async fn stop_timer(
     app_handle
         .emit("timer_status_changed", &status_dto)
         .map_err(|e| e.to_string())?;
+
+    // 发送数据变化事件通知前端刷新
+    if let Err(e) = app_handle.emit("data_changed", "timer_stopped") {
+        log::warn!("发送计时器停止事件失败: {}", e);
+    }
+
     Ok(status_dto)
 }
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Edit, Folder, FolderOpen, Plus, Search, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useDataRefresh } from "../../hooks/useDataRefresh";
 import type { Category } from "../../types";
 
 interface CategoryManagementProps {
@@ -84,14 +85,26 @@ const CategoryManagement: React.FC<CategoryManagementProps> = ({
 		"#F43F5E",
 	];
 
-	const fetchCategories = async () => {
+	const fetchCategories = useCallback(async () => {
 		try {
 			const categoryList = await invoke<Category[]>("get_categories");
 			setCategories(categoryList);
 		} catch (error) {
 			console.error("获取分类列表失败:", error);
 		}
-	};
+	}, []);
+
+	// 设置数据刷新监听 - 监听分类相关的数据变化
+	useDataRefresh(fetchCategories, {
+		refreshTypes: [
+			"category_created", "category_updated", "category_deleted",
+			"all_data_cleared", "sync_completed", "conflicts_resolved", 
+			"data_imported", "database_restored"
+		],
+		onRefresh: (changeType) => {
+			console.log(`CategoryManagement收到数据变化通知: ${changeType}`);
+		}
+	});
 
 	const createCategory = async () => {
 		if (!newCategory.name.trim()) return;
