@@ -129,6 +129,8 @@ export function DataSync() {
 				// 同步检测到冲突，立即检查冲突状态
 				await checkConflicts();
 				alert(`${result}`);
+				// 显示冲突解决界面
+				setShowConflictResolution(true);
 			} else {
 				// 无冲突，正常完成
 				alert(`同步成功：${result}`);
