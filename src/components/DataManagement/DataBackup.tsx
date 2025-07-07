@@ -176,7 +176,7 @@ export function DataBackup() {
 			const res = await invoke<string>("restore_database", {
 				srcPath: filePath,
 			});
-			alert(res + "\n请重启应用以生效");
+			alert(res);
 		} catch (e) {
 			console.error(e);
 			alert("恢复失败");

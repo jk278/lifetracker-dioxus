@@ -243,7 +243,7 @@ export function DataCleanup() {
 								<li>需要重新配置各项功能</li>
 							</ul>
 							<p>
-								<strong>建议清理后重启应用以确保完全生效。</strong>
+								清理完成后，应用将回到初始状态。
 							</p>
 						</div>
 					</div>
