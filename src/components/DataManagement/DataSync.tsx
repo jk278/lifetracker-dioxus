@@ -123,15 +123,37 @@ export function DataSync() {
 		setIsLoading(true);
 		try {
 			const result = await invoke("start_sync");
-			alert(`同步成功：${result}`);
+
+			// 检查结果是否包含冲突信息
+			if (typeof result === "string" && result.includes("冲突需要解决")) {
+				// 同步检测到冲突，立即检查冲突状态
+				await checkConflicts();
+				alert(`${result}`);
+			} else {
+				// 无冲突，正常完成
+				alert(`同步成功：${result}`);
+			}
+
+			// 刷新状态
 			await fetchSyncStatus();
+
+			// 再次检查冲突（确保状态同步）
+			await checkConflicts();
 		} catch (error) {
 			console.error("同步失败:", error);
 			alert(`同步失败：${error}`);
 		} finally {
 			setIsLoading(false);
 		}
-	}, [syncConfig.enabled, fetchSyncStatus]);
+	}, [syncConfig.enabled, fetchSyncStatus, checkConflicts]);
+
+	// 检查冲突并自动显示解决界面
+	useEffect(() => {
+		if (conflictCount > 0 && !showConflictResolution) {
+			// 有冲突但没有显示冲突解决界面，自动显示
+			setShowConflictResolution(true);
+		}
+	}, [conflictCount, showConflictResolution]);
 
 	// 处理冲突解决完成
 	const handleConflictResolutionComplete = useCallback(() => {

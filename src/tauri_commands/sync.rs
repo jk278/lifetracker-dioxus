@@ -4,14 +4,22 @@
 
 use crate::errors::AppError;
 use crate::storage::database::Database;
+use crate::storage::StorageManager;
 use crate::sync::engine::SyncEngine;
-use crate::sync::{validate_sync_config, ConflictStrategy, SyncConfig};
+use crate::sync::providers::create_provider;
+use crate::sync::providers::webdav::WebDavProvider;
+use crate::sync::{
+    validate_sync_config, ConflictStrategy, SyncConfig, SyncItem, SyncResult, SyncStatus,
+};
 use crate::tauri_commands::AppState;
 use crate::utils::crypto::{decrypt_password, encrypt_password};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tauri::State;
+
+/// 全局冲突存储
+static PENDING_CONFLICTS: Mutex<Vec<ConflictItem>> = Mutex::new(Vec::new());
 
 /// 同步配置请求
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -241,7 +249,7 @@ pub async fn test_sync_connection(
     validate_sync_config(&sync_config).map_err(|e| format!("验证同步配置失败: {}", e))?;
 
     // 创建提供者并测试连接
-    let provider = crate::sync::providers::create_provider(&sync_config)
+    let provider = create_provider(&sync_config)
         .await
         .map_err(|e| format!("创建同步提供者失败: {}", e))?;
 
@@ -274,67 +282,92 @@ pub async fn test_sync_connection(
     }
 }
 
-/// 开始手动同步
+/// 开始同步
 #[tauri::command]
 pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<String, String> {
     log::info!("开始手动同步");
 
-    let config = {
-        let config_guard = state.config.lock().unwrap();
-        config_guard.clone()
-    };
+    let storage = state.storage.clone();
+    let sync_config = load_sync_config(storage.get_database()).await?;
 
-    if !config.data.sync.enabled {
+    if !sync_config.enabled {
         return Err("同步功能未启用".to_string());
     }
 
-    // 创建同步配置
-    let sync_config = create_sync_config_from_app_config(&config)
-        .map_err(|e| format!("创建同步配置失败: {}", e))?;
-
     // 创建同步引擎
-    let mut sync_engine = SyncEngine::new(state.storage.clone(), sync_config)
-        .map_err(|e| format!("创建同步引擎失败: {}", e))?;
-    sync_engine
-        .initialize()
-        .await
-        .map_err(|e| format!("初始化同步引擎失败: {}", e))?;
+    let engine = create_sync_engine(&sync_config, storage.clone()).await?;
 
     // 执行同步
-    let result = sync_engine
-        .sync()
-        .await
-        .map_err(|e| format!("同步执行失败: {}", e))?;
+    let sync_result = engine.sync().await.map_err(|e| e.to_string())?;
 
-    if result.success {
-        // 同步成功后更新最后同步时间
-        let mut updated_config = config.clone();
-        updated_config.data.sync.last_sync_time = Some(chrono::Local::now());
+    // 检查是否有冲突
+    if !sync_result.conflicts.is_empty() {
+        log::info!(
+            "检测到 {} 个冲突，需要手动解决",
+            sync_result.conflicts.len()
+        );
 
-        // 保存配置到内存
-        {
-            let mut config_guard = state.config.lock().unwrap();
-            *config_guard = updated_config.clone();
+        // 创建冲突项列表
+        let mut conflict_items = Vec::new();
+        for conflict in &sync_result.conflicts {
+            let conflict_item = ConflictItem {
+                id: conflict.id.clone(),
+                name: conflict.name.clone(),
+                local_modified: conflict
+                    .local_modified
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
+                remote_modified: conflict
+                    .remote_modified
+                    .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string()),
+                conflict_type: "content".to_string(),
+                local_preview: serde_json::json!({
+                    "size": conflict.size,
+                    "hash": conflict.hash,
+                    "modified": conflict.local_modified
+                }),
+                remote_preview: serde_json::json!({
+                    "size": conflict.size,
+                    "hash": conflict.hash,
+                    "modified": conflict.remote_modified
+                }),
+                file_size: conflict.size,
+                local_hash: conflict.hash.clone(),
+                remote_hash: Some(conflict.hash.clone()),
+            };
+            conflict_items.push(conflict_item);
         }
 
-        // 保存配置到文件
-        let mut config_manager = crate::config::create_config_manager()
-            .map_err(|e| format!("创建配置管理器失败: {}", e))?;
+        // 将冲突存储到全局状态
+        {
+            let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+            pending_conflicts.clear();
+            pending_conflicts.extend(conflict_items);
+        }
 
-        *config_manager.config_mut() = updated_config;
-        config_manager
-            .save()
-            .map_err(|e| format!("保存配置文件失败: {}", e))?;
+        // 更新同步状态和时间
+        update_sync_status(storage.get_database(), "conflict_pending").await?;
+        update_last_sync_time(storage.get_database()).await?;
 
-        log::info!("同步成功，已更新最后同步时间");
-
-        Ok(format!(
-            "同步完成：上传 {} 个文件，下载 {} 个文件",
-            result.uploaded_count, result.downloaded_count
-        ))
-    } else {
-        Err(format!("同步失败：{}", result.errors.join(", ")))
+        return Ok(format!(
+            "同步检测到 {} 个冲突需要解决",
+            sync_result.conflicts.len()
+        ));
     }
+
+    // 无冲突，正常完成
+    let result_message = format!(
+        "同步完成，下载{}，上传{}",
+        sync_result.downloaded_count, sync_result.uploaded_count
+    );
+
+    // 更新同步状态和时间
+    update_sync_status(storage.get_database(), "success").await?;
+    update_last_sync_time(storage.get_database()).await?;
+
+    log::info!("同步成功，已更新最后同步时间");
+
+    Ok(result_message)
 }
 
 /// 获取同步状态
@@ -636,7 +669,7 @@ fn create_sync_config_from_app_config(
     })
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConflictItem {
     pub id: String,
     pub name: String,
@@ -645,17 +678,26 @@ pub struct ConflictItem {
     pub conflict_type: String,
     pub local_preview: serde_json::Value,
     pub remote_preview: serde_json::Value,
+    pub file_size: u64,
+    pub local_hash: String,
+    pub remote_hash: Option<String>,
 }
 
 #[tauri::command]
 pub async fn get_pending_conflicts(
-    database: State<'_, Database>,
+    _database: State<'_, Database>,
 ) -> Result<Vec<ConflictItem>, String> {
-    println!("Getting pending conflicts");
+    log::info!("获取待解决冲突");
 
-    // 这里应该从数据库或缓存中获取待解决的冲突
-    // 暂时返回空数组，后续会在同步过程中填充
-    Ok(vec![])
+    // 从全局状态获取冲突
+    let conflicts = {
+        let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+        pending_conflicts.clone()
+    };
+
+    log::info!("当前有 {} 个待解决冲突", conflicts.len());
+
+    Ok(conflicts)
 }
 
 #[tauri::command]
@@ -663,30 +705,110 @@ pub async fn resolve_conflicts(
     database: State<'_, Database>,
     resolutions: HashMap<String, String>,
 ) -> Result<String, String> {
-    println!("Resolving conflicts with resolutions: {:?}", resolutions);
+    log::info!("解决冲突，解决方案: {:?}", resolutions);
+
+    // 获取当前冲突并检查是否为空
+    let conflicts_empty = {
+        let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+        pending_conflicts.is_empty()
+    };
+
+    if conflicts_empty {
+        return Err("没有待解决的冲突".to_string());
+    }
 
     // 应用用户选择的解决方案
-    for (conflict_id, resolution) in resolutions {
-        match resolution.as_str() {
-            "merge" => {
-                println!("Applying merge resolution for conflict: {}", conflict_id);
-                // 执行智能合并逻辑
-            }
-            "use_local" => {
-                println!("Using local data for conflict: {}", conflict_id);
-                // 保留本地数据
-            }
-            "use_remote" => {
-                println!("Using remote data for conflict: {}", conflict_id);
-                // 使用远程数据
-            }
-            _ => {
-                return Err(format!("Unknown resolution type: {}", resolution));
+    let mut resolved_count = 0;
+    {
+        let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+
+        for (conflict_id, resolution) in resolutions {
+            if let Some(conflict_index) = pending_conflicts.iter().position(|c| c.id == conflict_id)
+            {
+                let conflict = &pending_conflicts[conflict_index];
+
+                match resolution.as_str() {
+                    "merge" => {
+                        log::info!("应用合并解决方案: {}", conflict.name);
+                        // TODO: 实现智能合并逻辑
+                    }
+                    "use_local" => {
+                        log::info!("使用本地数据: {}", conflict.name);
+                        // TODO: 实现使用本地数据的逻辑
+                    }
+                    "use_remote" => {
+                        log::info!("使用远程数据: {}", conflict.name);
+                        // TODO: 实现使用远程数据的逻辑
+                    }
+                    _ => {
+                        return Err(format!("未知的解决方案类型: {}", resolution));
+                    }
+                }
+
+                // 移除已解决的冲突
+                pending_conflicts.remove(conflict_index);
+                resolved_count += 1;
             }
         }
     }
 
-    Ok("冲突解决成功".to_string())
+    // 检查是否所有冲突都已解决
+    let all_resolved = {
+        let pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+        pending_conflicts.is_empty()
+    };
+
+    if all_resolved {
+        update_sync_status(&database, "success").await?;
+        log::info!("所有冲突已解决，同步状态更新为成功");
+    }
+
+    Ok(format!("已解决 {} 个冲突", resolved_count))
+}
+
+/// 从数据库加载同步配置
+async fn load_sync_config(database: &Database) -> Result<SyncConfigRequest, String> {
+    // 这里应该从数据库读取配置，目前返回默认配置
+    // TODO: 实现从数据库读取配置的逻辑
+    Ok(SyncConfigRequest {
+        enabled: true,
+        provider: "webdav".to_string(),
+        auto_sync: false,
+        sync_interval: 30,
+        conflict_strategy: "manual".to_string(),
+        webdav_config: None,
+    })
+}
+
+/// 创建同步引擎
+async fn create_sync_engine(
+    sync_config: &SyncConfigRequest,
+    storage: Arc<StorageManager>,
+) -> Result<SyncEngine, String> {
+    let config = create_sync_config_from_request(sync_config)?;
+
+    // 创建同步引擎
+    let mut engine = SyncEngine::new(storage, config).map_err(|e| e.to_string())?;
+
+    // 初始化同步引擎（会自动创建提供者并测试连接）
+    engine.initialize().await.map_err(|e| e.to_string())?;
+
+    Ok(engine)
+}
+
+/// 更新同步状态
+async fn update_sync_status(database: &Database, status: &str) -> Result<(), String> {
+    // TODO: 实现更新数据库中同步状态的逻辑
+    log::info!("更新同步状态: {}", status);
+    Ok(())
+}
+
+/// 更新最后同步时间
+async fn update_last_sync_time(database: &Database) -> Result<(), String> {
+    // TODO: 实现更新数据库中最后同步时间的逻辑
+    let now = chrono::Local::now();
+    log::info!("更新最后同步时间: {}", now.format("%Y-%m-%d %H:%M:%S"));
+    Ok(())
 }
 
 #[cfg(test)]

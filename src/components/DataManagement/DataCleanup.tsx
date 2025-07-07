@@ -26,7 +26,7 @@ export function DataCleanup() {
 
 		try {
 			await invoke("clear_all_data");
-			alert("数据已清除！所有记录已从数据库中删除。");
+			alert("数据已清除！建议立即重启应用。");
 			// 清除成功后导航回数据管理页面
 			if (canGoBack) {
 				goBack();
