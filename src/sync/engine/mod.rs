@@ -11,6 +11,7 @@
 pub mod comparator;
 pub mod conflict_resolver;
 pub mod core;
+pub mod integrity_checker;
 pub mod merger;
 pub mod serializer;
 pub mod types;
@@ -20,6 +21,7 @@ pub mod validator;
 pub use comparator::DataComparator;
 pub use conflict_resolver::ConflictResolver;
 pub use core::SyncEngine;
+pub use integrity_checker::{ConflictDetectionResult, DataIntegrityChecker, RiskLevel};
 pub use merger::DataMerger;
 pub use serializer::DataSerializer;
 pub use types::*;

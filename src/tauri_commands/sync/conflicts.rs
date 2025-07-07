@@ -50,6 +50,14 @@ pub async fn get_pending_conflicts(
                 conflict.local_hash,
                 conflict.remote_hash
             );
+
+            // 如果是数据完整性冲突，记录详细信息
+            if conflict.conflict_type.contains("data_") {
+                log::info!("  -> 数据完整性冲突详情:");
+                log::info!("     本地数据预览: {}", conflict.local_preview);
+                log::info!("     远程数据预览: {}", conflict.remote_preview);
+                log::info!("     文件大小: {} 字节", conflict.file_size);
+            }
         }
 
         pending_conflicts.clone()
@@ -57,52 +65,7 @@ pub async fn get_pending_conflicts(
 
     log::info!("当前有 {} 个待解决冲突", conflicts.len());
 
-    // 如果冲突列表为空，但可能存在冲突状态，创建一个基于实际情况的冲突项
-    if conflicts.is_empty() {
-        log::info!("冲突列表为空，检查是否需要创建冲突项");
-
-        // 创建基于实际同步信息的冲突项
-        let conflict_item = ConflictItem {
-            id: "local_data".to_string(),
-            name: "data.json".to_string(),
-            local_modified: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            remote_modified: Some("2025-07-07 21:20:19".to_string()),
-            conflict_type: "fresh_data".to_string(),
-            local_preview: serde_json::json!({
-                "type": "local_fresh_data",
-                "description": "本地新安装的数据，需要与远程数据合并",
-                "size": 554,
-                "hash": "d368fa7f9d06cd6dc73f433a0d262570",
-                "modified": chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-                "source": "Fresh",
-                "details": "本地数据是全新安装后首次创建的，包含基础配置和初始数据"
-            }),
-            remote_preview: serde_json::json!({
-                "type": "remote_existing_data",
-                "description": "远程已存在的数据，包含更多历史记录",
-                "size": 9119,
-                "hash": "e333188ffd2f55af7885dd59a2b9fd6b",
-                "modified": "2025-07-07 21:20:19",
-                "source": "Remote",
-                "details": "远程数据包含历史任务记录、时间追踪数据、财务记录等完整信息"
-            }),
-            file_size: 554,
-            local_hash: "d368fa7f9d06cd6dc73f433a0d262570".to_string(),
-            remote_hash: Some("e333188ffd2f55af7885dd59a2b9fd6b".to_string()),
-        };
-
-        log::info!(
-            "创建冲突项: id={}, name={}, type={}",
-            conflict_item.id,
-            conflict_item.name,
-            conflict_item.conflict_type
-        );
-
-        let result = vec![conflict_item];
-        log::info!("=== 返回 {} 个冲突项 ===", result.len());
-        return Ok(result);
-    }
-
+    // 直接返回冲突列表，不再自动创建冲突项
     log::info!("=== 返回 {} 个冲突项 ===", conflicts.len());
     Ok(conflicts)
 }
@@ -145,48 +108,48 @@ pub async fn resolve_conflicts(
 
             match resolution.as_str() {
                 "use_remote" => {
-                    log::info!("用户选择使用远程数据，触发完整同步来下载远程数据");
+                    log::info!("用户选择使用远程数据，强制下载远程数据");
 
-                    // 执行完整同步来下载远程数据
-                    match super::operations::start_sync(state.clone()).await {
+                    // 直接下载远程数据并覆盖本地数据
+                    match force_download_remote_data(&state, "data.json").await {
                         Ok(_) => {
-                            log::info!("同步成功，已下载远程数据");
+                            log::info!("强制下载远程数据成功");
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败: {}", e);
+                            let error_msg = format!("强制下载远程数据失败: {}", e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
                     }
                 }
                 "use_local" => {
-                    log::info!("用户选择使用本地数据，触发完整同步来上传本地数据");
+                    log::info!("用户选择使用本地数据，强制上传本地数据");
 
-                    // 执行完整同步来上传本地数据
-                    match super::operations::start_sync(state.clone()).await {
+                    // 直接上传本地数据并覆盖远程数据
+                    match force_upload_local_data(&state, "data.json").await {
                         Ok(_) => {
-                            log::info!("同步成功，已上传本地数据");
+                            log::info!("强制上传本地数据成功");
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败: {}", e);
+                            let error_msg = format!("强制上传本地数据失败: {}", e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
                     }
                 }
                 "merge" => {
-                    log::info!("用户选择合并数据，触发完整同步来执行智能合并");
+                    log::info!("用户选择合并数据，执行智能合并");
 
-                    // 执行完整同步来进行智能合并
-                    match super::operations::start_sync(state.clone()).await {
+                    // 执行智能合并
+                    match perform_smart_merge(&state, "data.json").await {
                         Ok(_) => {
-                            log::info!("同步成功，已执行智能合并");
+                            log::info!("智能合并成功");
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败: {}", e);
+                            let error_msg = format!("智能合并失败: {}", e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
@@ -209,14 +172,13 @@ pub async fn resolve_conflicts(
             match resolution.as_str() {
                 "merge" => {
                     log::info!("应用合并解决方案: {}", conflict_id);
-                    // 执行完整同步来进行智能合并
-                    match super::operations::start_sync(state.clone()).await {
+                    match perform_smart_merge(&state, &conflict_id).await {
                         Ok(_) => {
-                            log::info!("同步成功，已执行智能合并: {}", conflict_id);
+                            log::info!("智能合并成功: {}", conflict_id);
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            let error_msg = format!("智能合并失败 {}: {}", conflict_id, e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
@@ -224,14 +186,13 @@ pub async fn resolve_conflicts(
                 }
                 "use_local" => {
                     log::info!("使用本地数据: {}", conflict_id);
-                    // 执行完整同步来上传本地数据
-                    match super::operations::start_sync(state.clone()).await {
+                    match force_upload_local_data(&state, &conflict_id).await {
                         Ok(_) => {
-                            log::info!("同步成功，已上传本地数据: {}", conflict_id);
+                            log::info!("强制上传本地数据成功: {}", conflict_id);
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            let error_msg = format!("强制上传本地数据失败 {}: {}", conflict_id, e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
@@ -239,14 +200,13 @@ pub async fn resolve_conflicts(
                 }
                 "use_remote" => {
                     log::info!("使用远程数据: {}", conflict_id);
-                    // 执行完整同步来下载远程数据
-                    match super::operations::start_sync(state.clone()).await {
+                    match force_download_remote_data(&state, &conflict_id).await {
                         Ok(_) => {
-                            log::info!("同步成功，已下载远程数据: {}", conflict_id);
+                            log::info!("强制下载远程数据成功: {}", conflict_id);
                             resolved_count += 1;
                         }
                         Err(e) => {
-                            let error_msg = format!("同步失败 {}: {}", conflict_id, e);
+                            let error_msg = format!("强制下载远程数据失败 {}: {}", conflict_id, e);
                             log::error!("{}", error_msg);
                             resolution_errors.push(error_msg);
                         }
@@ -282,7 +242,7 @@ pub async fn resolve_conflicts(
             log::warn!("更新同步状态失败: {}", e);
         }
         // 更新最后同步时间
-        if let Err(e) = super::utils::update_last_sync_time(state.storage.get_database()).await {
+        if let Err(e) = super::utils::update_last_sync_time_in_config(&state).await {
             log::warn!("更新最后同步时间失败: {}", e);
         }
         log::info!("所有冲突已解决，同步状态已更新为成功");
@@ -296,6 +256,195 @@ pub async fn resolve_conflicts(
 
     log::info!("冲突解决完成: {}", result_message);
     Ok(result_message)
+}
+
+/// 强制上传本地数据
+async fn force_upload_local_data(
+    state: &State<'_, crate::tauri_commands::AppState>,
+    file_name: &str,
+) -> Result<(), String> {
+    log::info!("强制上传本地数据: {}", file_name);
+
+    // 获取同步配置
+    let sync_config = super::utils::load_sync_config_from_app_state(state).await?;
+
+    // 创建同步提供者
+    let provider = crate::sync::providers::create_provider(
+        &super::utils::create_sync_config_from_request(&sync_config)?,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // 序列化本地数据
+    let storage = state.storage.clone();
+    let serializer = crate::sync::engine::DataSerializer::new(storage);
+    let local_data = serializer
+        .serialize_all_data()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 创建上传项
+    let upload_item = crate::sync::SyncItem {
+        id: file_name.to_string(),
+        name: file_name.to_string(),
+        local_path: file_name.to_string(),
+        remote_path: format!("LifeTracker/{}", file_name),
+        size: local_data.len() as u64,
+        local_modified: chrono::Local::now(),
+        remote_modified: None,
+        hash: format!("{:x}", md5::compute(&local_data)),
+        status: crate::sync::SyncStatus::Idle,
+        direction: crate::sync::SyncDirection::Upload,
+    };
+
+    // 执行上传
+    provider
+        .upload_file(&upload_item, &local_data)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    log::info!("强制上传本地数据完成: {}", file_name);
+    Ok(())
+}
+
+/// 强制下载远程数据
+async fn force_download_remote_data(
+    state: &State<'_, crate::tauri_commands::AppState>,
+    file_name: &str,
+) -> Result<(), String> {
+    log::info!("强制下载远程数据: {}", file_name);
+
+    // 获取同步配置
+    let sync_config = super::utils::load_sync_config_from_app_state(state).await?;
+
+    // 创建同步提供者
+    let provider = crate::sync::providers::create_provider(
+        &super::utils::create_sync_config_from_request(&sync_config)?,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // 获取远程文件列表
+    let remote_files = provider
+        .list_remote_files("LifeTracker")
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 找到目标文件
+    let target_file = remote_files
+        .iter()
+        .find(|f| f.name == file_name)
+        .ok_or_else(|| format!("远程文件不存在: {}", file_name))?;
+
+    // 下载文件
+    let remote_data = provider
+        .download_file(target_file)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 导入数据到本地存储
+    let storage = state.storage.clone();
+    let serializer = crate::sync::engine::DataSerializer::new(storage);
+    serializer
+        .import_data(&remote_data)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    log::info!("强制下载远程数据完成: {}", file_name);
+    Ok(())
+}
+
+/// 执行智能合并
+async fn perform_smart_merge(
+    state: &State<'_, crate::tauri_commands::AppState>,
+    file_name: &str,
+) -> Result<(), String> {
+    log::info!("执行智能合并: {}", file_name);
+
+    // 获取同步配置
+    let sync_config = super::utils::load_sync_config_from_app_state(state).await?;
+
+    // 创建同步提供者
+    let provider = crate::sync::providers::create_provider(
+        &super::utils::create_sync_config_from_request(&sync_config)?,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    // 获取本地数据
+    let storage = state.storage.clone();
+    let serializer = crate::sync::engine::DataSerializer::new(storage);
+    let local_data = serializer
+        .serialize_all_data()
+        .await
+        .map_err(|e| e.to_string())?;
+    let local_json: serde_json::Value =
+        serde_json::from_slice(&local_data).map_err(|e| e.to_string())?;
+
+    // 获取远程数据
+    let remote_files = provider
+        .list_remote_files("LifeTracker")
+        .await
+        .map_err(|e| e.to_string())?;
+    let target_file = remote_files
+        .iter()
+        .find(|f| f.name == file_name)
+        .ok_or_else(|| format!("远程文件不存在: {}", file_name))?;
+
+    // 下载远程数据
+    let remote_data = provider
+        .download_file(target_file)
+        .await
+        .map_err(|e| e.to_string())?;
+    let remote_json: serde_json::Value =
+        serde_json::from_slice(&remote_data).map_err(|e| e.to_string())?;
+
+    // 创建同步引擎来执行合并
+    let sync_engine_config = super::utils::create_sync_config_from_request(&sync_config)?;
+    let mut engine =
+        crate::sync::engine::SyncEngine::new(state.storage.clone(), sync_engine_config)
+            .map_err(|e| e.to_string())?;
+    engine.initialize().await.map_err(|e| e.to_string())?;
+
+    // 执行智能合并
+    let merge_config = crate::sync::engine::MergeConfig {
+        deduplicate: true,
+        priority_strategy: crate::sync::engine::MergePriorityStrategy::TimestampFirst,
+    };
+
+    let merged_data = engine
+        .smart_merge(&local_json, &remote_json, &merge_config)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 保存合并后的数据到本地
+    let merged_data_bytes = serde_json::to_vec(&merged_data).map_err(|e| e.to_string())?;
+    serializer
+        .import_data(&merged_data_bytes)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 上传合并后的数据到远程
+    let upload_item = crate::sync::SyncItem {
+        id: file_name.to_string(),
+        name: file_name.to_string(),
+        local_path: file_name.to_string(),
+        remote_path: format!("LifeTracker/{}", file_name),
+        size: merged_data_bytes.len() as u64,
+        local_modified: chrono::Local::now(),
+        remote_modified: None,
+        hash: format!("{:x}", md5::compute(&merged_data_bytes)),
+        status: crate::sync::SyncStatus::Idle,
+        direction: crate::sync::SyncDirection::Upload,
+    };
+
+    provider
+        .upload_file(&upload_item, &merged_data_bytes)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    log::info!("智能合并完成: {}", file_name);
+    Ok(())
 }
 
 /// 解决同步冲突

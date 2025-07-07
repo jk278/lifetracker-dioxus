@@ -63,7 +63,7 @@ pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<Strin
 
         // 更新同步状态和时间
         update_sync_status(storage.get_database(), "conflict_pending").await?;
-        update_last_sync_time(storage.get_database()).await?;
+        super::utils::update_last_sync_time_in_config(&state).await?;
 
         return Ok(format!(
             "同步检测到 {} 个冲突需要解决",
@@ -79,7 +79,7 @@ pub async fn start_sync(state: State<'_, AppState>) -> std::result::Result<Strin
 
     // 更新同步状态和时间
     update_sync_status(storage.get_database(), "success").await?;
-    update_last_sync_time(storage.get_database()).await?;
+    super::utils::update_last_sync_time_in_config(&state).await?;
 
     log::info!("同步成功，已更新最后同步时间");
 

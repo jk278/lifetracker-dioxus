@@ -127,6 +127,18 @@ impl DataMerger {
         self.merge_tasks_selective(&mut merged, overlay_data)
             .await?;
 
+        // 合并时间记录
+        self.merge_time_entries_selective(&mut merged, overlay_data)
+            .await?;
+
+        // 合并账户
+        self.merge_accounts_selective(&mut merged, overlay_data)
+            .await?;
+
+        // 合并交易
+        self.merge_transactions_selective(&mut merged, overlay_data)
+            .await?;
+
         // 更新元数据
         if let Some(merged_obj) = merged.as_object_mut() {
             merged_obj.insert(
@@ -453,6 +465,103 @@ impl DataMerger {
         Ok(())
     }
 
+    /// 选择性合并时间记录（用于标准合并）
+    async fn merge_time_entries_selective(
+        &self,
+        base_data: &mut serde_json::Value,
+        overlay_data: &serde_json::Value,
+    ) -> Result<()> {
+        // 实现选择性合并逻辑，只添加基础数据中不存在的时间记录
+        if let (Some(base_entries), Some(overlay_entries)) = (
+            base_data
+                .get_mut("time_entries")
+                .and_then(|e| e.as_array_mut()),
+            overlay_data.get("time_entries").and_then(|e| e.as_array()),
+        ) {
+            let mut existing_ids: std::collections::HashSet<String> = base_entries
+                .iter()
+                .filter_map(|e| {
+                    e.get("id")
+                        .and_then(|id| id.as_str())
+                        .map(|s| s.to_string())
+                })
+                .collect();
+
+            for entry in overlay_entries {
+                if let Some(id) = entry.get("id").and_then(|id| id.as_str()) {
+                    if existing_ids.insert(id.to_string()) {
+                        base_entries.push(entry.clone());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// 选择性合并账户（用于标准合并）
+    async fn merge_accounts_selective(
+        &self,
+        base_data: &mut serde_json::Value,
+        overlay_data: &serde_json::Value,
+    ) -> Result<()> {
+        // 实现选择性合并逻辑，只添加基础数据中不存在的账户
+        if let (Some(base_accounts), Some(overlay_accounts)) = (
+            base_data.get_mut("accounts").and_then(|a| a.as_array_mut()),
+            overlay_data.get("accounts").and_then(|a| a.as_array()),
+        ) {
+            let mut existing_ids: std::collections::HashSet<String> = base_accounts
+                .iter()
+                .filter_map(|a| {
+                    a.get("id")
+                        .and_then(|id| id.as_str())
+                        .map(|s| s.to_string())
+                })
+                .collect();
+
+            for account in overlay_accounts {
+                if let Some(id) = account.get("id").and_then(|id| id.as_str()) {
+                    if existing_ids.insert(id.to_string()) {
+                        base_accounts.push(account.clone());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// 选择性合并交易（用于标准合并）
+    async fn merge_transactions_selective(
+        &self,
+        base_data: &mut serde_json::Value,
+        overlay_data: &serde_json::Value,
+    ) -> Result<()> {
+        // 实现选择性合并逻辑，只添加基础数据中不存在的交易
+        if let (Some(base_transactions), Some(overlay_transactions)) = (
+            base_data
+                .get_mut("transactions")
+                .and_then(|t| t.as_array_mut()),
+            overlay_data.get("transactions").and_then(|t| t.as_array()),
+        ) {
+            let mut existing_ids: std::collections::HashSet<String> = base_transactions
+                .iter()
+                .filter_map(|t| {
+                    t.get("id")
+                        .and_then(|id| id.as_str())
+                        .map(|s| s.to_string())
+                })
+                .collect();
+
+            for transaction in overlay_transactions {
+                if let Some(id) = transaction.get("id").and_then(|id| id.as_str()) {
+                    if existing_ids.insert(id.to_string()) {
+                        base_transactions.push(transaction.clone());
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// 智能合并策略
     /// 根据数据类型和冲突情况选择最佳合并策略
     pub async fn smart_merge(
@@ -493,6 +602,12 @@ impl DataMerger {
             self.merge_categories_selective(&mut merged, remote_data)
                 .await?;
             self.merge_tasks_selective(&mut merged, remote_data).await?;
+            self.merge_time_entries_selective(&mut merged, remote_data)
+                .await?;
+            self.merge_accounts_selective(&mut merged, remote_data)
+                .await?;
+            self.merge_transactions_selective(&mut merged, remote_data)
+                .await?;
         }
 
         Ok(merged)
@@ -512,6 +627,12 @@ impl DataMerger {
             self.merge_categories_selective(&mut merged, local_data)
                 .await?;
             self.merge_tasks_selective(&mut merged, local_data).await?;
+            self.merge_time_entries_selective(&mut merged, local_data)
+                .await?;
+            self.merge_accounts_selective(&mut merged, local_data)
+                .await?;
+            self.merge_transactions_selective(&mut merged, local_data)
+                .await?;
         }
 
         Ok(merged)

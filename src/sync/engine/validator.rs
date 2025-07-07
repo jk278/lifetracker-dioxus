@@ -265,7 +265,7 @@ impl DataValidator {
 
     /// 验证时间记录格式
     pub fn validate_time_entry_format(&self, entry: &serde_json::Value) -> Result<()> {
-        let required_fields = ["id", "task_id", "start_time"];
+        let required_fields = ["id", "task_name", "start_time"];
 
         for field in &required_fields {
             if !entry.get(field).is_some() {
@@ -282,11 +282,11 @@ impl DataValidator {
             }
         }
 
-        // 验证任务ID格式
-        if let Some(task_id) = entry.get("task_id") {
-            if let Some(task_id_str) = task_id.as_str() {
-                if uuid::Uuid::parse_str(task_id_str).is_err() {
-                    return Err(AppError::Sync("时间记录任务ID格式无效".to_string()));
+        // 验证任务名称不为空
+        if let Some(task_name) = entry.get("task_name") {
+            if let Some(task_name_str) = task_name.as_str() {
+                if task_name_str.trim().is_empty() {
+                    return Err(AppError::Sync("任务名称不能为空".to_string()));
                 }
             }
         }
@@ -333,7 +333,7 @@ impl DataValidator {
             return Err(AppError::Sync("账户不是对象格式".to_string()));
         }
 
-        let required_fields = ["id", "name", "type", "created_at"];
+        let required_fields = ["id", "name", "account_type", "created_at"];
         for field in &required_fields {
             if account.get(field).is_none() {
                 return Err(AppError::Sync(format!("账户缺少必要字段: {}", field)));
@@ -359,7 +359,7 @@ impl DataValidator {
         }
 
         // 验证账户类型
-        if let Some(account_type) = account.get("type") {
+        if let Some(account_type) = account.get("account_type") {
             if let Some(type_str) = account_type.as_str() {
                 let valid_types = ["cash", "bank", "credit_card", "investment", "other"];
                 if !valid_types.contains(&type_str) {
@@ -380,7 +380,14 @@ impl DataValidator {
             return Err(AppError::Sync("交易不是对象格式".to_string()));
         }
 
-        let required_fields = ["id", "account_id", "amount", "type", "date", "description"];
+        let required_fields = [
+            "id",
+            "account_id",
+            "amount",
+            "transaction_type",
+            "transaction_date",
+            "description",
+        ];
         for field in &required_fields {
             if transaction.get(field).is_none() {
                 return Err(AppError::Sync(format!("交易缺少必要字段: {}", field)));
@@ -413,7 +420,7 @@ impl DataValidator {
         }
 
         // 验证交易类型
-        if let Some(transaction_type) = transaction.get("type") {
+        if let Some(transaction_type) = transaction.get("transaction_type") {
             if let Some(type_str) = transaction_type.as_str() {
                 let valid_types = ["income", "expense", "transfer"];
                 if !valid_types.contains(&type_str) {
@@ -426,7 +433,7 @@ impl DataValidator {
         }
 
         // 验证日期格式
-        if let Some(date) = transaction.get("date") {
+        if let Some(date) = transaction.get("transaction_date") {
             if let Some(date_str) = date.as_str() {
                 if chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").is_err() {
                     return Err(AppError::Sync(

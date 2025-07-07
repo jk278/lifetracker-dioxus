@@ -270,8 +270,49 @@ pub async fn update_sync_status(database: &Database, status: &str) -> Result<(),
 
 /// 更新最后同步时间
 pub async fn update_last_sync_time(database: &Database) -> Result<(), String> {
-    // TODO: 实现更新数据库中最后同步时间的逻辑
     let now = chrono::Local::now();
     log::info!("更新最后同步时间: {}", now.format("%Y-%m-%d %H:%M:%S"));
+
+    // 由于这个函数只接收 database 参数，但我们需要更新配置文件
+    // 我们需要重新设计这个函数的调用方式
+    // 现在暂时只记录日志，实际的更新将在调用者中处理
+    Ok(())
+}
+
+/// 更新最后同步时间（新版本，接收 AppState）
+pub async fn update_last_sync_time_in_config(
+    state: &tauri::State<'_, crate::tauri_commands::AppState>,
+) -> Result<(), String> {
+    let now = chrono::Local::now();
+    log::info!(
+        "更新配置中的最后同步时间: {}",
+        now.format("%Y-%m-%d %H:%M:%S")
+    );
+
+    // 获取当前配置
+    let mut config = {
+        let config_guard = state.config.lock().unwrap();
+        config_guard.clone()
+    };
+
+    // 更新最后同步时间
+    config.data.sync.last_sync_time = Some(now);
+
+    // 保存配置到内存
+    {
+        let mut config_guard = state.config.lock().unwrap();
+        *config_guard = config.clone();
+    }
+
+    // 保存配置到文件
+    let mut config_manager =
+        crate::config::create_config_manager().map_err(|e| format!("创建配置管理器失败: {}", e))?;
+
+    *config_manager.config_mut() = config;
+    config_manager
+        .save()
+        .map_err(|e| format!("保存配置文件失败: {}", e))?;
+
+    log::info!("最后同步时间已成功更新并保存到配置文件");
     Ok(())
 }

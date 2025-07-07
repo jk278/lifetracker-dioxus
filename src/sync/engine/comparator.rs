@@ -2,6 +2,7 @@
 //!
 //! 负责比较本地和远程数据，检测数据差异和变化
 
+use super::integrity_checker::{ConflictDetectionResult, DataIntegrityChecker, RiskLevel};
 use super::types::*;
 use crate::errors::{AppError, Result};
 use crate::storage::StorageManager;
@@ -12,12 +13,16 @@ use std::sync::Arc;
 /// 数据比较器
 pub struct DataComparator {
     storage: Arc<StorageManager>,
+    integrity_checker: DataIntegrityChecker,
 }
 
 impl DataComparator {
     /// 创建新的数据比较器
     pub fn new(storage: Arc<StorageManager>) -> Self {
-        Self { storage }
+        Self {
+            storage,
+            integrity_checker: DataIntegrityChecker::new(),
+        }
     }
 
     /// 比较本地和远程数据
@@ -134,47 +139,50 @@ impl DataComparator {
             return Ok(DataComparisonResult::LocalNewer);
         }
 
-        // ========== 数据来源检测逻辑 ==========
+        // ========== 使用完整性检查器进行深度分析 ==========
+        log::info!("开始使用完整性检查器进行深度冲突分析");
 
-        // 检测本地数据来源
-        let local_origin = self
-            .detect_data_origin(local_data, &remote_item.hash)
-            .await?;
+        let conflict_result = self
+            .integrity_checker
+            .detect_conflicts(local_data, &remote_data)?;
 
-        // 比较数据内容（排除时间戳字段）
-        let local_content = self.extract_content_for_comparison(local_data)?;
-        let remote_content = self.extract_content_for_comparison(&remote_data)?;
+        // 根据完整性检查结果决定同步策略
+        if !conflict_result.has_conflict {
+            log::info!("完整性检查通过，数据可以安全同步");
 
-        // 计算内容哈希
-        let local_hash = self.calculate_content_hash(&local_content);
-        let remote_hash = self.calculate_content_hash(&remote_content);
+            // 比较数据内容（排除时间戳字段）
+            let local_content = self.extract_content_for_comparison(local_data)?;
+            let remote_content = self.extract_content_for_comparison(&remote_data)?;
+            let local_hash = self.calculate_content_hash(&local_content);
+            let remote_hash = self.calculate_content_hash(&remote_content);
 
-        log::info!("本地数据哈希: {}", local_hash);
-        log::info!("远程数据哈希: {}", remote_hash);
-        log::info!("本地数据来源: {:?}", local_origin);
-
-        if local_hash == remote_hash {
-            log::info!("数据内容相同，无需同步");
-            Ok(DataComparisonResult::Same)
+            if local_hash == remote_hash {
+                log::info!("数据内容相同，无需同步");
+                Ok(DataComparisonResult::Same)
+            } else {
+                // 进行时间戳比较
+                self.compare_by_timestamp_with_data(local_data, &remote_data)
+            }
         } else {
-            log::info!("数据内容不同，需要同步");
+            log::warn!("完整性检查发现冲突: {:?}", conflict_result.conflict_type);
+            log::warn!("风险级别: {:?}", conflict_result.risk_assessment.risk_level);
+            log::warn!("用户消息: {}", conflict_result.user_message);
 
-            // 根据数据来源决定同步策略
-            match local_origin {
-                DataOrigin::Fresh => {
-                    // 本地是全新数据，远程也有数据，需要合并
-                    log::info!("本地为全新数据，远程存在数据，建议合并");
+            // 根据风险级别决定处理策略
+            match conflict_result.risk_assessment.risk_level {
+                RiskLevel::Safe => {
+                    log::info!("风险级别为安全，继续正常同步流程");
+                    self.compare_by_timestamp_with_data(local_data, &remote_data)
+                }
+                RiskLevel::NeedsConfirmation => {
+                    log::info!("需要用户确认，标记为需要合并");
                     Ok(DataComparisonResult::NeedsMerge)
                 }
-                DataOrigin::BasedOnRemote => {
-                    // 本地基于远程修改，进行正常的时间戳比较
-                    log::info!("本地基于远程数据修改，进行时间戳比较");
-                    self.compare_by_timestamp_with_data(local_data, &remote_data)
-                }
-                DataOrigin::Unknown => {
-                    // 来源未知，进行时间戳比较但标记为潜在冲突
-                    log::warn!("本地数据来源未知，进行时间戳比较");
-                    self.compare_by_timestamp_with_data(local_data, &remote_data)
+                RiskLevel::HighRisk | RiskLevel::Dangerous => {
+                    log::warn!("检测到高风险或危险操作，强制标记为冲突");
+                    // 保存冲突详情到全局状态
+                    self.save_conflict_details(&conflict_result).await?;
+                    Ok(DataComparisonResult::Conflict)
                 }
             }
         }
@@ -472,5 +480,80 @@ impl DataComparator {
         let transactions = self.storage.get_database().get_all_transactions()?;
 
         Ok(!tasks.is_empty() || !time_entries.is_empty() || !transactions.is_empty())
+    }
+
+    /// 保存冲突详情到全局状态
+    async fn save_conflict_details(&self, conflict_result: &ConflictDetectionResult) -> Result<()> {
+        use crate::tauri_commands::sync::conflicts::PENDING_CONFLICTS;
+        use crate::tauri_commands::sync::types::ConflictItem;
+
+        // 创建冲突项
+        let conflict_item = ConflictItem {
+            id: "data_integrity_conflict".to_string(),
+            name: "数据完整性冲突".to_string(),
+            local_modified: chrono::Local::now().to_rfc3339(),
+            remote_modified: Some(chrono::Local::now().to_rfc3339()),
+            conflict_type: match conflict_result.conflict_type {
+                super::integrity_checker::ConflictType::DataLossRisk => {
+                    "data_loss_risk".to_string()
+                }
+                super::integrity_checker::ConflictType::DataVolumeConflict => {
+                    "data_volume_conflict".to_string()
+                }
+                super::integrity_checker::ConflictType::DataIntegrityConflict => {
+                    "data_integrity_conflict".to_string()
+                }
+                super::integrity_checker::ConflictType::StructuralConflict => {
+                    "structural_conflict".to_string()
+                }
+                super::integrity_checker::ConflictType::TimestampConflict => {
+                    "timestamp_conflict".to_string()
+                }
+                _ => "unknown_conflict".to_string(),
+            },
+            local_preview: serde_json::json!({
+                "tasks": conflict_result.local_stats.tasks,
+                "time_entries": conflict_result.local_stats.time_entries,
+                "transactions": conflict_result.local_stats.transactions,
+                "data_size": conflict_result.local_stats.data_size,
+                "user_message": conflict_result.user_message
+            }),
+            remote_preview: serde_json::json!({
+                "tasks": conflict_result.remote_stats.tasks,
+                "time_entries": conflict_result.remote_stats.time_entries,
+                "transactions": conflict_result.remote_stats.transactions,
+                "data_size": conflict_result.remote_stats.data_size,
+                "risk_level": match conflict_result.risk_assessment.risk_level {
+                    RiskLevel::Safe => "safe",
+                    RiskLevel::NeedsConfirmation => "needs_confirmation",
+                    RiskLevel::HighRisk => "high_risk",
+                    RiskLevel::Dangerous => "dangerous",
+                }
+            }),
+            file_size: conflict_result.local_stats.data_size as u64,
+            local_hash: format!(
+                "{:x}",
+                md5::compute(
+                    serde_json::to_string(&conflict_result.local_stats).unwrap_or_default()
+                )
+            ),
+            remote_hash: Some(format!(
+                "{:x}",
+                md5::compute(
+                    serde_json::to_string(&conflict_result.remote_stats).unwrap_or_default()
+                )
+            )),
+        };
+
+        // 保存到全局状态
+        let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
+        pending_conflicts.clear(); // 清除旧的冲突
+        pending_conflicts.push(conflict_item);
+
+        log::info!(
+            "已保存冲突详情到全局状态，冲突类型: {:?}",
+            conflict_result.conflict_type
+        );
+        Ok(())
     }
 }
