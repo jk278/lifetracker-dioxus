@@ -78,7 +78,7 @@ export function TaskManagement() {
 	useDataRefresh(refreshAllData, {
 		onRefresh: (changeType) => {
 			console.log(`任务管理页面收到数据变化通知: ${changeType}`);
-		}
+		},
 	});
 
 	// 初始化数据获取
@@ -176,7 +176,7 @@ export function TaskManagement() {
 				<InteractiveButton
 					onClick={() => setShowCreateForm(true)}
 					variant="primary"
-					className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+					className="flex items-center space-x-2 px-4 py-2 bg-theme-primary text-white rounded-lg hover:bg-theme-primary-hover theme-transition"
 				>
 					<Plus className="h-4 w-4" />
 					<span>新建任务</span>
@@ -293,8 +293,8 @@ export function TaskManagement() {
 					暂无任务，点击"新建任务"开始添加
 				</div>
 			) : (
-				<AnimatedList 
-					animation="slide" 
+				<AnimatedList
+					animation="slide"
 					staggerDelay={0.1}
 					className="space-y-4"
 				>
