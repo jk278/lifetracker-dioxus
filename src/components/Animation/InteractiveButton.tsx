@@ -33,12 +33,12 @@ const InteractiveButton: React.FC<InteractiveButtonProps> = ({
 					: "bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700";
 			case "secondary":
 				return disabled
-					? "bg-gray-200 text-gray-400 cursor-not-allowed"
-					: "bg-gray-200 text-gray-800 hover:bg-gray-300 active:bg-gray-400";
+					? "bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed"
+					: "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 active:bg-gray-400 dark:active:bg-gray-500";
 			case "ghost":
 				return disabled
 					? "text-gray-400 cursor-not-allowed"
-					: "text-gray-600 hover:text-gray-800 hover:bg-gray-100 active:bg-gray-200";
+					: "hover:bg-gray-100 dark:hover:bg-gray-700 active:bg-gray-200 dark:active:bg-gray-600";
 			case "danger":
 				return disabled
 					? "bg-gray-300 text-gray-500 cursor-not-allowed"

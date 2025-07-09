@@ -546,7 +546,7 @@ function AppContent() {
 												className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
 													currentRoute === id
 														? "bg-theme-primary/10 hover:bg-theme-primary/15"
-														: "hover:bg-gray-50 dark:hover:bg-gray-700"
+														: "hover:bg-gray-100 dark:hover:bg-gray-700"
 												}`}
 												title={isCollapsed ? name : undefined}
 											>
@@ -717,7 +717,7 @@ function AppContent() {
 									className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 rounded-none ${
 										currentRoute === id
 											? "text-theme-primary bg-theme-primary/5"
-											: "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+											: "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
 									}`}
 								>
 									<Icon size={20} />

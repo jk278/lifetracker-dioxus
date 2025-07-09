@@ -53,6 +53,17 @@ export default {
 					800: "#991b1b",
 					900: "#7f1d1d",
 				},
+				// 添加主题色变量支持
+				theme: {
+					primary: "var(--theme-primary)",
+					"primary-hover": "var(--theme-primary-hover)",
+					"primary-active": "var(--theme-primary-active)",
+					"primary-light": "var(--theme-primary-light)",
+					"primary-lighter": "var(--theme-primary-lighter)",
+					"primary-dark": "var(--theme-primary-dark)",
+					background: "var(--theme-background)",
+					surface: "var(--theme-surface)",
+				},
 			},
 			animation: {
 				"spin-slow": "spin 3s linear infinite",

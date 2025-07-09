@@ -115,6 +115,77 @@ code {
 		--tw-ring-color: var(--theme-primary);
 	}
 
+	/* 主题色透明度支持 */
+	.bg-theme-primary\/5 {
+		background-color: rgb(from var(--theme-primary) r g b / 0.05);
+	}
+
+	.bg-theme-primary\/10 {
+		background-color: rgb(from var(--theme-primary) r g b / 0.1);
+	}
+
+	.bg-theme-primary\/15 {
+		background-color: rgb(from var(--theme-primary) r g b / 0.15);
+	}
+
+	.bg-theme-primary\/20 {
+		background-color: rgb(from var(--theme-primary) r g b / 0.2);
+	}
+
+	/* hover状态的主题色透明度支持 */
+	.hover\:bg-theme-primary\/15:hover {
+		background-color: rgb(from var(--theme-primary) r g b / 0.15);
+	}
+
+	.hover\:bg-theme-primary\/20:hover {
+		background-color: rgb(from var(--theme-primary) r g b / 0.2);
+	}
+
+	/* group-hover状态的主题色透明度支持 */
+	.group:hover .group-hover\:bg-theme-primary\/20 {
+		background-color: rgb(from var(--theme-primary) r g b / 0.2);
+	}
+
+	/* 为不支持 rgb(from ...) 语法的浏览器提供兼容性 */
+	@supports not (color: rgb(from #000 r g b)) {
+		.bg-theme-primary\/5 {
+			background-color: var(--theme-primary);
+			opacity: 0.05;
+		}
+
+		.bg-theme-primary\/10 {
+			background-color: var(--theme-primary);
+			opacity: 0.1;
+		}
+
+		.bg-theme-primary\/15 {
+			background-color: var(--theme-primary);
+			opacity: 0.15;
+		}
+
+		.bg-theme-primary\/20 {
+			background-color: var(--theme-primary);
+			opacity: 0.2;
+		}
+
+		/* hover状态的兼容性支持 */
+		.hover\:bg-theme-primary\/15:hover {
+			background-color: var(--theme-primary);
+			opacity: 0.15;
+		}
+
+		.hover\:bg-theme-primary\/20:hover {
+			background-color: var(--theme-primary);
+			opacity: 0.2;
+		}
+
+		/* group-hover状态的兼容性支持 */
+		.group:hover .group-hover\:bg-theme-primary\/20 {
+			background-color: var(--theme-primary);
+			opacity: 0.2;
+		}
+	}
+
 	/* Material You 背景色类 */
 	.bg-theme-background {
 		background-color: var(--theme-background);
