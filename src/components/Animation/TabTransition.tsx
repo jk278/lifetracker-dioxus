@@ -57,7 +57,7 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 	};
 
 	return (
-		<AnimatePresence mode="wait">
+		<AnimatePresence mode="wait" custom={finalAnimationDirection}>
 			<motion.div
 				key={activeKey}
 				custom={finalAnimationDirection}
