@@ -710,19 +710,33 @@ function AppContent() {
 					<div className="fixed bottom-0 left-0 right-0 h-16 surface-adaptive border-t border-gray-200 dark:border-gray-700 z-40">
 						<div className="flex h-full">
 							{navItems.map(({ id, name, icon: Icon }) => (
-								<InteractiveButton
-									key={id}
-									onClick={() => navigate(id as RouteId, "direct")}
-									variant="ghost"
-									className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 rounded-none ${
-										currentRoute === id
-											? "text-theme-primary bg-theme-primary/5"
-											: "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-									}`}
-								>
-									<Icon size={20} />
-									<span className="text-xs font-medium">{name}</span>
-								</InteractiveButton>
+								<div key={id} className="flex-1 relative">
+									<InteractiveButton
+										onClick={() => navigate(id as RouteId, "direct")}
+										variant="ghost"
+										className="w-full h-full flex flex-col items-center justify-center space-y-1 transition-all duration-200 rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
+									>
+										{/* 优化的图标状态变化 */}
+										<Icon
+											size={currentRoute === id ? 22 : 20}
+											className={`transition-all duration-200 ${
+												currentRoute === id
+													? "text-theme-primary font-bold"
+													: "text-gray-500 dark:text-gray-400"
+											}`}
+											strokeWidth={currentRoute === id ? 2.5 : 1.5}
+										/>
+										<span
+											className={`text-xs transition-all duration-200 ${
+												currentRoute === id
+													? "text-theme-primary font-semibold"
+													: "text-gray-500 dark:text-gray-400 font-medium"
+											}`}
+										>
+											{name}
+										</span>
+									</InteractiveButton>
+								</div>
 							))}
 						</div>
 					</div>
