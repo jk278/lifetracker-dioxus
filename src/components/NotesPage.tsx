@@ -1,6 +1,7 @@
 import { BookOpen, Plus, Search } from "lucide-react";
+import { memo } from "react";
 
-function NotesPage() {
+const NotesPage = memo(() => {
 	return (
 		<div className="h-full bg-adaptive flex flex-col">
 			{/* 顶部工具栏 */}
@@ -43,6 +44,6 @@ function NotesPage() {
 			</div>
 		</div>
 	);
-}
+});
 
-export default NotesPage; 
+export default NotesPage;

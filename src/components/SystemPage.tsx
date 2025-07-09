@@ -1,22 +1,39 @@
 import { ArrowLeft, Database, Info, Settings } from "lucide-react";
+import { memo } from "react";
+import { useNavigation } from "../hooks/useRouter";
+import type { RouteId } from "../types/router";
 import About from "./About";
 import { DataManagement } from "./DataManagement";
 import SettingsComponent from "./Settings";
-import { useNavigation } from "../hooks/useRouter";
-import type { RouteId } from "../types/router";
 
 // 系统页面的子选项配置
 const SYSTEM_ITEMS = [
-	{ id: "data", name: "数据管理", icon: Database, description: "导入导出、备份恢复" },
-	{ id: "settings", name: "应用设置", icon: Settings, description: "主题、偏好设置" },
-	{ id: "about", name: "关于应用", icon: Info, description: "版本信息、许可证" },
+	{
+		id: "data",
+		name: "数据管理",
+		icon: Database,
+		description: "导入导出、备份恢复",
+	},
+	{
+		id: "settings",
+		name: "应用设置",
+		icon: Settings,
+		description: "主题、偏好设置",
+	},
+	{
+		id: "about",
+		name: "关于应用",
+		icon: Info,
+		description: "版本信息、许可证",
+	},
 ] as const;
 
-function SystemPage() {
-	const { currentRoute, currentSource, canGoBack, navigate, goBack } = useNavigation();
+const SystemPage = memo(() => {
+	const { currentRoute, currentSource, canGoBack, navigate, goBack } =
+		useNavigation();
 
 	// 判断当前是否在系统页面的二级页面
-	const isInSubPage = currentRoute !== 'system' && currentSource === 'system';
+	const isInSubPage = currentRoute !== "system" && currentSource === "system";
 
 	// 返回到系统页面概览或上一级
 	const handleBackToOverview = () => {
@@ -24,13 +41,13 @@ function SystemPage() {
 			goBack();
 		} else {
 			// 如果无法返回，直接导航到系统页面
-			navigate('system', 'direct');
+			navigate("system", "direct");
 		}
 	};
 
 	// 导航到系统子页面
 	const handleNavigateToSubPage = (subPageId: RouteId) => {
-		navigate(subPageId, 'system');
+		navigate(subPageId, "system");
 	};
 
 	// 渲染系统页面概览
@@ -75,8 +92,8 @@ function SystemPage() {
 
 	// 渲染具体功能页面（带返回按钮）
 	const renderDetailView = () => {
-		const currentItem = SYSTEM_ITEMS.find(item => item.id === currentRoute);
-		
+		const currentItem = SYSTEM_ITEMS.find((item) => item.id === currentRoute);
+
 		return (
 			<div className="h-full flex flex-col">
 				{/* 返回导航栏 */}
@@ -111,9 +128,13 @@ function SystemPage() {
 	return (
 		<div className="h-full bg-adaptive">
 			{/* 判断显示内容：系统页面概览 vs 二级页面 */}
-			{currentRoute === 'system' ? renderOverview() : isInSubPage ? renderDetailView() : renderOverview()}
+			{currentRoute === "system"
+				? renderOverview()
+				: isInSubPage
+					? renderDetailView()
+					: renderOverview()}
 		</div>
 	);
-}
+});
 
-export default SystemPage; 
+export default SystemPage;

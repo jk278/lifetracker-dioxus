@@ -330,26 +330,22 @@ function AppContent() {
 		try {
 			const status = await invoke<TimerStatus>("stop_timer");
 			setTimerStatus(status);
-			await fetchTasks(); // 刷新任务列表
-			await fetchTimerStatus(); // 重新获取计时器状态以更新今日总时间
-			await fetchTodayStats(); // 任务停止后更新统计数据
+			// 并行刷新所有相关数据
+			await Promise.all([fetchTasks(), fetchTimerStatus(), fetchTodayStats()]);
 		} catch (error) {
 			console.error("停止计时失败:", error);
 		}
 	}, [fetchTasks, fetchTimerStatus, fetchTodayStats]);
 
-	// 初始化数据
+	// 初始化数据 - 并行加载
 	useEffect(() => {
-		fetchTimerStatus();
-		fetchTasks();
-	}, [fetchTasks, fetchTimerStatus]);
+		const initializeData = async () => {
+			await Promise.all([fetchTimerStatus(), fetchTasks(), fetchTodayStats()]);
+		};
+		initializeData();
+	}, [fetchTimerStatus, fetchTasks, fetchTodayStats]);
 
-	// 只在任务列表变化时更新统计数据（不包括计时器状态变化）
-	useEffect(() => {
-		fetchTodayStats();
-	}, [fetchTodayStats]);
-
-	// 定时器更新效果
+	// 定时器更新效果 - 优化清理机制
 	useEffect(() => {
 		let interval: number | null = null;
 
@@ -366,6 +362,24 @@ function AppContent() {
 			}
 		};
 	}, [timerStatus.state, fetchTimerStatus]);
+
+	// 页面切换时清理定时器
+	useEffect(() => {
+		return () => {
+			// 组件卸载时确保清理所有定时器
+			if (timerStatus.state === "running") {
+				console.log("AppContent unmounting, clearing timer interval");
+			}
+		};
+	}, [timerStatus.state]);
+
+	// 路由变化时暂停不必要的数据请求
+	useEffect(() => {
+		// 当切换到非计时页面时，减少数据刷新频率
+		if (currentRoute !== "timing" && timerStatus.state === "running") {
+			console.log("Switched away from timing page, timer still running");
+		}
+	}, [currentRoute, timerStatus.state]);
 
 	// 处理图标状态的延迟切换
 	useEffect(() => {

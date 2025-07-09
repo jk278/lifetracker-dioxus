@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDataRefresh } from "../../hooks/useDataRefresh";
 import type {
 	AccountDto,
@@ -16,7 +16,7 @@ import OverviewTab from "./OverviewTab";
 import StatsTab from "./StatsTab";
 import TransactionsTab from "./TransactionsTab";
 
-const AccountingPage: React.FC = () => {
+const AccountingPage: React.FC = memo(() => {
 	// 状态管理
 	const [activeTab, setActiveTab] = useState<
 		"overview" | "accounts" | "transactions" | "stats"
@@ -645,6 +645,6 @@ const AccountingPage: React.FC = () => {
 			)}
 		</div>
 	);
-};
+});
 
 export default AccountingPage;

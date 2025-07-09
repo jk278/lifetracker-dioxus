@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Task, TimerStatus } from "../../types";
 import { TabTransition } from "../Animation";
 import CategoryManagement from "./CategoryManagement";
@@ -33,91 +33,93 @@ interface TimingPageProps {
 	onCategoriesUpdate: () => void;
 }
 
-const TimingPage: React.FC<TimingPageProps> = ({
-	timerStatus,
-	tasks,
-	onStartTimer,
-	onPauseTimer,
-	onResumeTimer,
-	onStopTimer,
-	selectedTaskId,
-	setSelectedTaskId,
-	onTasksUpdate,
-	todayStats,
-	onCategoriesUpdate,
-}) => {
-	const [activeTab, setActiveTab] = useState<
-		"dashboard" | "tasks" | "categories" | "statistics"
-	>("dashboard");
-	const [previousTab, setPreviousTab] = useState<
-		"dashboard" | "tasks" | "categories" | "statistics"
-	>("dashboard");
+const TimingPage: React.FC<TimingPageProps> = memo(
+	({
+		timerStatus,
+		tasks,
+		onStartTimer,
+		onPauseTimer,
+		onResumeTimer,
+		onStopTimer,
+		selectedTaskId,
+		setSelectedTaskId,
+		onTasksUpdate,
+		todayStats,
+		onCategoriesUpdate,
+	}) => {
+		const [activeTab, setActiveTab] = useState<
+			"dashboard" | "tasks" | "categories" | "statistics"
+		>("dashboard");
+		const [previousTab, setPreviousTab] = useState<
+			"dashboard" | "tasks" | "categories" | "statistics"
+		>("dashboard");
 
-	const tabs = [
-		{ key: "dashboard", label: "仪表板" },
-		{ key: "tasks", label: "任务管理" },
-		{ key: "categories", label: "分类管理" },
-		{ key: "statistics", label: "统计报告" },
-	];
+		const tabs = [
+			{ key: "dashboard", label: "仪表板" },
+			{ key: "tasks", label: "任务管理" },
+			{ key: "categories", label: "分类管理" },
+			{ key: "statistics", label: "统计报告" },
+		];
 
-	return (
-		<div className="flex flex-col h-full">
-			{/* 内部标签导航 - 固定在顶部 */}
-			<div className="flex-shrink-0 surface-adaptive border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
-				<div className="flex px-0 md:px-6">
-					{tabs.map((tab) => (
-						<button
-							key={tab.key}
-							onClick={() => {
-								setPreviousTab(activeTab);
-								setActiveTab(tab.key as any);
-							}}
-							className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
-								activeTab === tab.key
-									? "text-theme-primary border-theme-primary border-b-2"
-									: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-b-2 border-transparent"
-							}`}
-						>
-							{tab.label}
-						</button>
-					))}
+		return (
+			<div className="flex flex-col h-full">
+				{/* 内部标签导航 - 固定在顶部 */}
+				<div className="flex-shrink-0 surface-adaptive border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
+					<div className="flex px-0 md:px-6">
+						{tabs.map((tab) => (
+							<button
+								key={tab.key}
+								onClick={() => {
+									setPreviousTab(activeTab);
+									setActiveTab(tab.key as any);
+								}}
+								className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+									activeTab === tab.key
+										? "text-theme-primary border-theme-primary border-b-2"
+										: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-b-2 border-transparent"
+								}`}
+							>
+								{tab.label}
+							</button>
+						))}
+					</div>
+				</div>
+
+				{/* 对应内容 - 可滚动区域 */}
+				<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
+					<TabTransition
+						activeKey={activeTab}
+						direction="right"
+						previousTab={previousTab}
+						tabGroup="timing"
+					>
+						{activeTab === "dashboard" && (
+							<Dashboard
+								timerStatus={timerStatus}
+								tasks={tasks}
+								onStartTimer={onStartTimer}
+								onPauseTimer={onPauseTimer}
+								onResumeTimer={onResumeTimer}
+								onStopTimer={onStopTimer}
+								selectedTaskId={selectedTaskId}
+								setSelectedTaskId={setSelectedTaskId}
+								onTasksUpdate={onTasksUpdate}
+								todayStats={todayStats}
+							/>
+						)}
+
+						{activeTab === "tasks" && <TaskManagement />}
+
+						{activeTab === "categories" && (
+							<CategoryManagement onCategoriesUpdate={onCategoriesUpdate} />
+						)}
+
+						{activeTab === "statistics" && <Statistics />}
+					</TabTransition>
 				</div>
 			</div>
-
-			{/* 对应内容 - 可滚动区域 */}
-			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-				<TabTransition
-					activeKey={activeTab}
-					direction="right"
-					previousTab={previousTab}
-					tabGroup="timing"
-				>
-					{activeTab === "dashboard" && (
-						<Dashboard
-							timerStatus={timerStatus}
-							tasks={tasks}
-							onStartTimer={onStartTimer}
-							onPauseTimer={onPauseTimer}
-							onResumeTimer={onResumeTimer}
-							onStopTimer={onStopTimer}
-							selectedTaskId={selectedTaskId}
-							setSelectedTaskId={setSelectedTaskId}
-							onTasksUpdate={onTasksUpdate}
-							todayStats={todayStats}
-						/>
-					)}
-
-					{activeTab === "tasks" && <TaskManagement />}
-
-					{activeTab === "categories" && (
-						<CategoryManagement onCategoriesUpdate={onCategoriesUpdate} />
-					)}
-
-					{activeTab === "statistics" && <Statistics />}
-				</TabTransition>
-			</div>
-		</div>
-	);
-};
+		);
+	},
+);
 
 export default TimingPage;
