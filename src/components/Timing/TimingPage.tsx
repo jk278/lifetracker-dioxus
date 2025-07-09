@@ -4,6 +4,7 @@ import CategoryManagement from "./CategoryManagement";
 import Dashboard from "./Dashboard";
 import Statistics from "./Statistics";
 import { TaskManagement } from "./TaskManagement";
+import { TabTransition } from "../Animation";
 
 interface TimingPageProps {
 	timerStatus: TimerStatus;
@@ -79,30 +80,32 @@ const TimingPage: React.FC<TimingPageProps> = ({
 
 			{/* 对应内容 - 可滚动区域 */}
 			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-				{activeTab === "dashboard" && (
-					<Dashboard
-						timerStatus={timerStatus}
-						tasks={tasks}
-						onStartTimer={onStartTimer}
-						onPauseTimer={onPauseTimer}
-						onResumeTimer={onResumeTimer}
-						onStopTimer={onStopTimer}
-						selectedTaskId={selectedTaskId}
-						setSelectedTaskId={setSelectedTaskId}
-						onTasksUpdate={onTasksUpdate}
-						todayStats={todayStats}
-					/>
-				)}
+				<TabTransition activeKey={activeTab} direction="right">
+					{activeTab === "dashboard" && (
+						<Dashboard
+							timerStatus={timerStatus}
+							tasks={tasks}
+							onStartTimer={onStartTimer}
+							onPauseTimer={onPauseTimer}
+							onResumeTimer={onResumeTimer}
+							onStopTimer={onStopTimer}
+							selectedTaskId={selectedTaskId}
+							setSelectedTaskId={setSelectedTaskId}
+							onTasksUpdate={onTasksUpdate}
+							todayStats={todayStats}
+						/>
+					)}
 
-				{activeTab === "tasks" && (
-					<TaskManagement />
-				)}
+					{activeTab === "tasks" && (
+						<TaskManagement />
+					)}
 
-				{activeTab === "categories" && (
-					<CategoryManagement onCategoriesUpdate={onCategoriesUpdate} />
-				)}
+					{activeTab === "categories" && (
+						<CategoryManagement onCategoriesUpdate={onCategoriesUpdate} />
+					)}
 
-				{activeTab === "statistics" && <Statistics />}
+					{activeTab === "statistics" && <Statistics />}
+				</TabTransition>
 			</div>
 		</div>
 	);

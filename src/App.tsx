@@ -16,6 +16,11 @@ import { useCallback, useEffect, useState } from "react";
 import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
 import {
+	GestureWrapper,
+	InteractiveButton,
+	PageTransition,
+} from "./components/Animation";
+import {
 	DataBackup,
 	DataCleanup,
 	DataExport,
@@ -32,7 +37,7 @@ import TitleBar from "./components/TitleBar";
 import { useDataRefresh } from "./hooks/useDataRefresh";
 import { RouterProvider, useNavigation } from "./hooks/useRouter";
 import { ThemeProvider } from "./hooks/useTheme";
-import type { Task, TimerStatus } from "./types";
+import type { Task, TimeEntry, TimerStatus } from "./types";
 import type { RouteId } from "./types/router";
 
 // 格式化时间函数
@@ -142,7 +147,7 @@ function AppContent() {
 			const totalSeconds = timerStats.total_today_seconds;
 
 			// 2. 获取今日的时间记录，用条目数量作为"任务/会话数量"
-			const todayEntries = await invoke<any[]>("get_today_time_entries");
+			const todayEntries = await invoke<TimeEntry[]>("get_today_time_entries");
 			const taskCount = todayEntries.length;
 
 			// 3. 计算平均时长（秒）
@@ -240,26 +245,33 @@ function AppContent() {
 
 	// 刷新所有数据
 	const refreshAllData = useCallback(async () => {
-		await Promise.all([
-			fetchTimerStatus(),
-			fetchTasks(),
-			fetchTodayStats()
-		]);
+		await Promise.all([fetchTimerStatus(), fetchTasks(), fetchTodayStats()]);
 	}, [fetchTimerStatus, fetchTasks, fetchTodayStats]);
 
 	// 设置数据刷新监听 - 监听所有可能影响主界面的数据变化
 	useDataRefresh(refreshAllData, {
 		refreshTypes: [
-			"task_created", "task_updated", "task_deleted",
-			"category_created", "category_updated", "category_deleted",
-			"timer_started", "timer_stopped", "timer_updated",
-			"transaction_created", "transaction_updated", "transaction_deleted",
-			"all_data_cleared", "sync_completed", "conflicts_resolved", 
-			"data_imported", "database_restored"
+			"task_created",
+			"task_updated",
+			"task_deleted",
+			"category_created",
+			"category_updated",
+			"category_deleted",
+			"timer_started",
+			"timer_stopped",
+			"timer_updated",
+			"transaction_created",
+			"transaction_updated",
+			"transaction_deleted",
+			"all_data_cleared",
+			"sync_completed",
+			"conflicts_resolved",
+			"data_imported",
+			"database_restored",
 		],
 		onRefresh: (changeType) => {
 			console.log(`App主组件收到数据变化通知: ${changeType}`);
-		}
+		},
 	});
 
 	// 开始计时
@@ -484,16 +496,19 @@ function AppContent() {
 								<div className="p-2 space-y-1">
 									{navItems.map(({ id, name, icon: Icon }) => (
 										<div key={id} className="relative h-12">
-											{/* 背景层 - 完整宽度的点击区域 */}
-											<button
+											{/* 交互式按钮 - 完整宽度的点击区域 */}
+											<InteractiveButton
 												onClick={() => navigate(id as RouteId, "direct")}
+												variant="ghost"
 												className={`absolute inset-0 w-full h-12 rounded-lg transition-all duration-200 ${
 													currentRoute === id
 														? "bg-theme-primary/10 hover:bg-theme-primary/15"
 														: "hover:bg-gray-50 dark:hover:bg-gray-700"
 												}`}
 												title={isCollapsed ? name : undefined}
-											/>
+											>
+												<span />
+											</InteractiveButton>
 
 											{/* 固定的图标层 */}
 											<div className="absolute left-2 top-0 w-8 h-12 flex items-center justify-center z-10 pointer-events-none">
@@ -540,39 +555,110 @@ function AppContent() {
 					>
 						<div className="h-full">
 							<ErrorBoundary resetKeys={[currentRoute]}>
-								{currentRoute === "timing" && (
-									<TimingPage
-										timerStatus={timerStatus}
-										tasks={tasks}
-										onStartTimer={startTimer}
-										onPauseTimer={pauseTimer}
-										onResumeTimer={resumeTimer}
-										onStopTimer={stopTimer}
-										selectedTaskId={selectedTaskId}
-										setSelectedTaskId={setSelectedTaskId}
-										onTasksUpdate={fetchTasks}
-										todayStats={todayStats}
-										onCategoriesUpdate={() => fetchTasks()}
-									/>
+								{isMobileLayout ? (
+									<GestureWrapper
+										onSwipeLeft={() => {
+											// 向左滑动切换到下一个页面
+											const navItems = getNavItems(isMobileLayout);
+											const currentIndex = navItems.findIndex(
+												(item) => item.id === currentRoute,
+											);
+											const nextIndex = (currentIndex + 1) % navItems.length;
+											navigate(navItems[nextIndex].id as RouteId, "direct");
+										}}
+										onSwipeRight={() => {
+											// 向右滑动切换到上一个页面
+											const navItems = getNavItems(isMobileLayout);
+											const currentIndex = navItems.findIndex(
+												(item) => item.id === currentRoute,
+											);
+											const prevIndex =
+												(currentIndex - 1 + navItems.length) % navItems.length;
+											navigate(navItems[prevIndex].id as RouteId, "direct");
+										}}
+										className="h-full"
+									>
+										<PageTransition
+											routeKey={currentRoute}
+											direction="horizontal"
+											duration={0.3}
+										>
+											{currentRoute === "timing" && (
+												<TimingPage
+													timerStatus={timerStatus}
+													tasks={tasks}
+													onStartTimer={startTimer}
+													onPauseTimer={pauseTimer}
+													onResumeTimer={resumeTimer}
+													onStopTimer={stopTimer}
+													selectedTaskId={selectedTaskId}
+													setSelectedTaskId={setSelectedTaskId}
+													onTasksUpdate={fetchTasks}
+													todayStats={todayStats}
+													onCategoriesUpdate={() => fetchTasks()}
+												/>
+											)}
+
+											{currentRoute === "accounting" && <AccountingPage />}
+
+											{currentRoute === "notes" && <NotesPage />}
+
+											{currentRoute === "system" && <SystemPage />}
+
+											{/* 直接访问的页面（兼容性） */}
+											{currentRoute === "settings" && <SettingsComponent />}
+											{currentRoute === "about" && <About />}
+											{currentRoute === "data" && <DataManagement />}
+
+											{/* 数据管理子页面 */}
+											{currentRoute === "data-export" && <DataExport />}
+											{currentRoute === "data-import" && <DataImport />}
+											{currentRoute === "data-backup" && <DataBackup />}
+											{currentRoute === "data-sync" && <DataSync />}
+											{currentRoute === "data-cleanup" && <DataCleanup />}
+										</PageTransition>
+									</GestureWrapper>
+								) : (
+									<PageTransition
+										routeKey={currentRoute}
+										direction="vertical"
+										duration={0.3}
+									>
+										{currentRoute === "timing" && (
+											<TimingPage
+												timerStatus={timerStatus}
+												tasks={tasks}
+												onStartTimer={startTimer}
+												onPauseTimer={pauseTimer}
+												onResumeTimer={resumeTimer}
+												onStopTimer={stopTimer}
+												selectedTaskId={selectedTaskId}
+												setSelectedTaskId={setSelectedTaskId}
+												onTasksUpdate={fetchTasks}
+												todayStats={todayStats}
+												onCategoriesUpdate={() => fetchTasks()}
+											/>
+										)}
+
+										{currentRoute === "accounting" && <AccountingPage />}
+
+										{currentRoute === "notes" && <NotesPage />}
+
+										{currentRoute === "system" && <SystemPage />}
+
+										{/* 直接访问的页面（兼容性） */}
+										{currentRoute === "settings" && <SettingsComponent />}
+										{currentRoute === "about" && <About />}
+										{currentRoute === "data" && <DataManagement />}
+
+										{/* 数据管理子页面 */}
+										{currentRoute === "data-export" && <DataExport />}
+										{currentRoute === "data-import" && <DataImport />}
+										{currentRoute === "data-backup" && <DataBackup />}
+										{currentRoute === "data-sync" && <DataSync />}
+										{currentRoute === "data-cleanup" && <DataCleanup />}
+									</PageTransition>
 								)}
-
-								{currentRoute === "accounting" && <AccountingPage />}
-
-								{currentRoute === "notes" && <NotesPage />}
-
-								{currentRoute === "system" && <SystemPage />}
-
-								{/* 直接访问的页面（兼容性） */}
-								{currentRoute === "settings" && <SettingsComponent />}
-								{currentRoute === "about" && <About />}
-								{currentRoute === "data" && <DataManagement />}
-
-								{/* 数据管理子页面 */}
-								{currentRoute === "data-export" && <DataExport />}
-								{currentRoute === "data-import" && <DataImport />}
-								{currentRoute === "data-backup" && <DataBackup />}
-								{currentRoute === "data-sync" && <DataSync />}
-								{currentRoute === "data-cleanup" && <DataCleanup />}
 							</ErrorBoundary>
 						</div>
 					</div>
@@ -583,10 +669,11 @@ function AppContent() {
 					<div className="fixed bottom-0 left-0 right-0 h-16 surface-adaptive border-t border-gray-200 dark:border-gray-700 z-40">
 						<div className="flex h-full">
 							{navItems.map(({ id, name, icon: Icon }) => (
-								<button
+								<InteractiveButton
 									key={id}
 									onClick={() => navigate(id as RouteId, "direct")}
-									className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 ${
+									variant="ghost"
+									className={`flex-1 flex flex-col items-center justify-center space-y-1 transition-colors duration-200 rounded-none ${
 										currentRoute === id
 											? "text-theme-primary bg-theme-primary/5"
 											: "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -594,7 +681,7 @@ function AppContent() {
 								>
 									<Icon size={20} />
 									<span className="text-xs font-medium">{name}</span>
-								</button>
+								</InteractiveButton>
 							))}
 						</div>
 					</div>

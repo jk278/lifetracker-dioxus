@@ -10,6 +10,7 @@ import type {
 	TransactionDto,
 	TransactionType,
 } from "../../types";
+import { TabTransition } from "../Animation";
 import AccountsTab from "./AccountsTab";
 import OverviewTab from "./OverviewTab";
 import StatsTab from "./StatsTab";
@@ -119,20 +120,25 @@ const AccountingPage: React.FC = () => {
 		await Promise.all([
 			fetchAccounts(),
 			fetchTransactions(),
-			fetchFinancialStats()
+			fetchFinancialStats(),
 		]);
 	}, [fetchAccounts, fetchTransactions, fetchFinancialStats]);
 
 	// 设置数据刷新监听 - 监听交易、账户相关的数据变化
 	useDataRefresh(refreshAllData, {
 		refreshTypes: [
-			"transaction_created", "transaction_updated", "transaction_deleted",
-			"all_data_cleared", "sync_completed", "conflicts_resolved", 
-			"data_imported", "database_restored"
+			"transaction_created",
+			"transaction_updated",
+			"transaction_deleted",
+			"all_data_cleared",
+			"sync_completed",
+			"conflicts_resolved",
+			"data_imported",
+			"database_restored",
 		],
 		onRefresh: (changeType) => {
 			console.log(`AccountingPage收到数据变化通知: ${changeType}`);
-		}
+		},
 	});
 
 	// 创建账户
@@ -341,7 +347,9 @@ const AccountingPage: React.FC = () => {
 
 			{/* 内容区域 - 可滚动 */}
 			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-				{renderActiveTab()}
+				<TabTransition activeKey={activeTab} direction="right">
+					{renderActiveTab()}
+				</TabTransition>
 			</div>
 
 			{/* 创建账户弹窗 */}

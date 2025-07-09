@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useDataRefresh } from "../../hooks/useDataRefresh";
+import { AnimatedList, InteractiveButton } from "../Animation";
 
 interface Task {
 	id: string;
@@ -172,13 +173,14 @@ export function TaskManagement() {
 				<h2 className="text-2xl font-bold text-gray-900 dark:text-white">
 					任务管理
 				</h2>
-				<button
+				<InteractiveButton
 					onClick={() => setShowCreateForm(true)}
+					variant="primary"
 					className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 				>
 					<Plus className="h-4 w-4" />
 					<span>新建任务</span>
-				</button>
+				</InteractiveButton>
 			</div>
 
 			{/* 创建任务表单 */}
@@ -282,17 +284,21 @@ export function TaskManagement() {
 			)}
 
 			{/* 任务列表 */}
-			<div className="space-y-4">
-				{loading ? (
-					<div className="flex justify-center py-8">
-						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-					</div>
-				) : tasks.length === 0 ? (
-					<div className="text-center py-8 text-gray-500 dark:text-gray-400">
-						暂无任务，点击"新建任务"开始添加
-					</div>
-				) : (
-					tasks.map((task) => {
+			{loading ? (
+				<div className="flex justify-center py-8">
+					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+				</div>
+			) : tasks.length === 0 ? (
+				<div className="text-center py-8 text-gray-500 dark:text-gray-400">
+					暂无任务，点击"新建任务"开始添加
+				</div>
+			) : (
+				<AnimatedList 
+					animation="slide" 
+					staggerDelay={0.1}
+					className="space-y-4"
+				>
+					{tasks.map((task) => {
 						const isExpanded = expandedTasks.has(task.id);
 						const categoryInfo = getCategoryInfo(task.category_id);
 
@@ -304,8 +310,10 @@ export function TaskManagement() {
 								{/* 任务基本信息 */}
 								<div className="flex items-center justify-between">
 									<div className="flex items-center space-x-3 flex-1">
-										<button
+										<InteractiveButton
 											onClick={() => toggleTaskExpanded(task.id)}
+											variant="ghost"
+											size="sm"
 											className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
 										>
 											{isExpanded ? (
@@ -313,7 +321,7 @@ export function TaskManagement() {
 											) : (
 												<ChevronDown className="h-4 w-4" />
 											)}
-										</button>
+										</InteractiveButton>
 										<div className="flex-1">
 											<h3 className="font-medium text-gray-900 dark:text-white">
 												{task.name}
@@ -342,18 +350,22 @@ export function TaskManagement() {
 										</div>
 									</div>
 									<div className="flex items-center space-x-2">
-										<button
+										<InteractiveButton
 											onClick={() => setEditingTask(task)}
+											variant="ghost"
+											size="sm"
 											className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
 										>
 											<Edit className="h-4 w-4" />
-										</button>
-										<button
+										</InteractiveButton>
+										<InteractiveButton
 											onClick={() => handleDeleteTask(task.id)}
+											variant="ghost"
+											size="sm"
 											className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
 										>
 											<Trash2 className="h-4 w-4" />
-										</button>
+										</InteractiveButton>
 									</div>
 								</div>
 
@@ -392,9 +404,9 @@ export function TaskManagement() {
 								)}
 							</div>
 						);
-					})
-				)}
-			</div>
+					})}
+				</AnimatedList>
+			)}
 
 			{/* 编辑任务模态框 */}
 			{editingTask && (
