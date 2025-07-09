@@ -67,20 +67,28 @@ const TimingPage: React.FC<TimingPageProps> = memo(
 				<div className="flex-shrink-0 surface-adaptive border-b border-gray-200 dark:border-gray-700 overflow-x-auto sticky top-0 z-10 pt-2 md:pt-4">
 					<div className="flex px-0 md:px-6">
 						{tabs.map((tab) => (
-							<button
-								key={tab.key}
-								onClick={() => {
-									setPreviousTab(activeTab);
-									setActiveTab(tab.key as any);
-								}}
-								className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
-									activeTab === tab.key
-										? "text-theme-primary border-theme-primary border-b-2"
-										: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border-b-2 border-transparent"
-								}`}
-							>
-								{tab.label}
-							</button>
+							<div key={tab.key} className="relative">
+								<button
+									onClick={() => {
+										setPreviousTab(activeTab);
+										setActiveTab(tab.key as any);
+									}}
+									className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+										activeTab === tab.key
+											? "text-theme-primary"
+											: "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+									}`}
+								>
+									{tab.label}
+								</button>
+
+								{/* 现代化的选中指示器 - 底部细线 */}
+								<div
+									className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-theme-primary transition-all duration-300 ease-out ${
+										activeTab === tab.key ? "w-8 opacity-100" : "w-0 opacity-0"
+									}`}
+								/>
+							</div>
 						))}
 					</div>
 				</div>
