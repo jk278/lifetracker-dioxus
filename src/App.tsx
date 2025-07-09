@@ -12,7 +12,7 @@ import {
 	Square,
 	Wallet,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
 import {
@@ -35,7 +35,11 @@ import SystemPage from "./components/SystemPage";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
 import { useDataRefresh } from "./hooks/useDataRefresh";
-import { RouterProvider, useNavigation } from "./hooks/useRouter";
+import {
+	getRouteDirection,
+	RouterProvider,
+	useNavigation,
+} from "./hooks/useRouter";
 import { ThemeProvider } from "./hooks/useTheme";
 import type { Task, TimeEntry, TimerStatus } from "./types";
 import type { RouteId } from "./types/router";
@@ -78,6 +82,15 @@ const getNavItems = (isMobileLayout: boolean) => {
 // 主应用组件（现在使用路由系统）
 function AppContent() {
 	const { currentRoute, navigate } = useNavigation();
+
+	// Track previous route via ref for animation direction
+	const previousRouteRef = useRef<RouteId>(currentRoute);
+
+	useEffect(() => {
+		if (currentRoute !== previousRouteRef.current) {
+			previousRouteRef.current = currentRoute;
+		}
+	}, [currentRoute]);
 
 	const [timerStatus, setTimerStatus] = useState<TimerStatus>({
 		state: "stopped",
@@ -443,6 +456,22 @@ function AppContent() {
 	// 获取当前导航菜单项
 	const navItems = getNavItems(isMobileLayout);
 
+	// Calculate animation properties for PageTransition
+	const getPageAnimationCustom = () => {
+		const animationDirection = getRouteDirection(
+			previousRouteRef.current,
+			currentRoute,
+			isMobileLayout,
+		);
+		return {
+			direction: isMobileLayout
+				? "horizontal"
+				: ("vertical" as "horizontal" | "vertical"),
+			animationDirection:
+				animationDirection === "none" ? "forward" : animationDirection,
+		};
+	};
+
 	return (
 		<ErrorBoundary
 			onError={handleError}
@@ -580,8 +609,7 @@ function AppContent() {
 									>
 										<PageTransition
 											routeKey={currentRoute}
-											direction="horizontal"
-											duration={0.3}
+											animationCustom={getPageAnimationCustom()}
 										>
 											{currentRoute === "timing" && (
 												<TimingPage
@@ -621,8 +649,7 @@ function AppContent() {
 								) : (
 									<PageTransition
 										routeKey={currentRoute}
-										direction="vertical"
-										duration={0.3}
+										animationCustom={getPageAnimationCustom()}
 									>
 										{currentRoute === "timing" && (
 											<TimingPage

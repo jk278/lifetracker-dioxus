@@ -21,6 +21,61 @@ const CONFIG_KEY = "lifetracker-router-config";
 // 路由上下文
 const RouterContextInstance = createContext<RouterContext | null>(null);
 
+// 路由顺序定义 - 用于方向检测
+const ROUTE_ORDER = {
+	mobile: ["timing", "accounting", "notes", "system"] as const,
+	desktop: [
+		"timing",
+		"accounting",
+		"notes",
+		"data",
+		"settings",
+		"about",
+	] as const,
+};
+
+// 标签页顺序定义
+const TAB_ORDER = {
+	accounting: ["overview", "accounts", "transactions", "stats"] as const,
+	timing: ["dashboard", "tasks", "categories", "statistics"] as const,
+};
+
+// 方向检测函数
+export function getNavigationDirection(
+	from: string,
+	to: string,
+	orderArray: readonly string[],
+): "forward" | "backward" | "none" {
+	const fromIndex = orderArray.indexOf(from);
+	const toIndex = orderArray.indexOf(to);
+
+	if (fromIndex === -1 || toIndex === -1) return "none";
+
+	if (toIndex > fromIndex) return "forward";
+	if (toIndex < fromIndex) return "backward";
+	return "none";
+}
+
+// 标签页方向检测
+export function getTabDirection(
+	from: string,
+	to: string,
+	tabGroup: keyof typeof TAB_ORDER,
+): "forward" | "backward" | "none" {
+	const orderArray = TAB_ORDER[tabGroup];
+	return getNavigationDirection(from, to, orderArray);
+}
+
+// 路由方向检测
+export function getRouteDirection(
+	from: RouteId,
+	to: RouteId,
+	isMobile: boolean,
+): "forward" | "backward" | "none" {
+	const orderArray = isMobile ? ROUTE_ORDER.mobile : ROUTE_ORDER.desktop;
+	return getNavigationDirection(from, to, orderArray);
+}
+
 // 路由状态管理Hook
 export function useRouterState(initialConfig?: Partial<RouterConfig>) {
 	const [config, setConfig] = useState<RouterConfig>(() => {

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { Task, TimerStatus } from "../../types";
+import { TabTransition } from "../Animation";
 import CategoryManagement from "./CategoryManagement";
 import Dashboard from "./Dashboard";
 import Statistics from "./Statistics";
 import { TaskManagement } from "./TaskManagement";
-import { TabTransition } from "../Animation";
 
 interface TimingPageProps {
 	timerStatus: TimerStatus;
@@ -49,6 +49,9 @@ const TimingPage: React.FC<TimingPageProps> = ({
 	const [activeTab, setActiveTab] = useState<
 		"dashboard" | "tasks" | "categories" | "statistics"
 	>("dashboard");
+	const [previousTab, setPreviousTab] = useState<
+		"dashboard" | "tasks" | "categories" | "statistics"
+	>("dashboard");
 
 	const tabs = [
 		{ key: "dashboard", label: "仪表板" },
@@ -65,7 +68,10 @@ const TimingPage: React.FC<TimingPageProps> = ({
 					{tabs.map((tab) => (
 						<button
 							key={tab.key}
-							onClick={() => setActiveTab(tab.key as any)}
+							onClick={() => {
+								setPreviousTab(activeTab);
+								setActiveTab(tab.key as any);
+							}}
 							className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
 								activeTab === tab.key
 									? "text-theme-primary border-theme-primary border-b-2"
@@ -80,7 +86,12 @@ const TimingPage: React.FC<TimingPageProps> = ({
 
 			{/* 对应内容 - 可滚动区域 */}
 			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-				<TabTransition activeKey={activeTab} direction="right">
+				<TabTransition
+					activeKey={activeTab}
+					direction="right"
+					previousTab={previousTab}
+					tabGroup="timing"
+				>
 					{activeTab === "dashboard" && (
 						<Dashboard
 							timerStatus={timerStatus}
@@ -96,9 +107,7 @@ const TimingPage: React.FC<TimingPageProps> = ({
 						/>
 					)}
 
-					{activeTab === "tasks" && (
-						<TaskManagement />
-					)}
+					{activeTab === "tasks" && <TaskManagement />}
 
 					{activeTab === "categories" && (
 						<CategoryManagement onCategoriesUpdate={onCategoriesUpdate} />

@@ -1,16 +1,20 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { getTabDirection } from "../../hooks/useRouter";
 
 interface TabTransitionProps {
 	children: React.ReactNode;
 	activeKey: string;
 	direction?: "left" | "right";
+	// 新增属性：用于动态方向检测
+	previousTab?: string;
+	tabGroup?: "accounting" | "timing";
 }
 
-// 标签切换动画变体
+// 标签切换动画变体 - 支持动态方向
 const tabVariants = {
-	initial: (direction: "left" | "right") => ({
+	initial: (animationDirection: "forward" | "backward") => ({
 		opacity: 0,
-		x: direction === "right" ? 50 : -50,
+		x: animationDirection === "forward" ? 50 : -50,
 		scale: 0.98,
 	}),
 	in: {
@@ -18,9 +22,9 @@ const tabVariants = {
 		x: 0,
 		scale: 1,
 	},
-	out: (direction: "left" | "right") => ({
+	out: (animationDirection: "forward" | "backward") => ({
 		opacity: 0,
-		x: direction === "right" ? -50 : 50,
+		x: animationDirection === "forward" ? -50 : 50,
 		scale: 0.98,
 	}),
 };
@@ -29,9 +33,21 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 	children,
 	activeKey,
 	direction = "right",
+	previousTab,
+	tabGroup,
 }) => {
 	// 检测移动端并调整动画参数
 	const isMobile = window.innerWidth < 768;
+
+	// 计算动画方向
+	const animationDirection =
+		previousTab && tabGroup
+			? getTabDirection(previousTab, activeKey, tabGroup)
+			: "forward";
+
+	// 如果无法检测方向，使用默认的 forward
+	const finalAnimationDirection =
+		animationDirection === "none" ? "forward" : animationDirection;
 
 	const transition = {
 		type: "spring" as const,
@@ -44,7 +60,7 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 		<AnimatePresence mode="wait">
 			<motion.div
 				key={activeKey}
-				custom={direction}
+				custom={finalAnimationDirection}
 				initial="initial"
 				animate="in"
 				exit="out"

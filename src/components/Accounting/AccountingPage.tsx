@@ -21,6 +21,9 @@ const AccountingPage: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<
 		"overview" | "accounts" | "transactions" | "stats"
 	>("overview");
+	const [previousTab, setPreviousTab] = useState<
+		"overview" | "accounts" | "transactions" | "stats"
+	>("overview");
 	const [accounts, setAccounts] = useState<AccountDto[]>([]);
 	const [transactions, setTransactions] = useState<TransactionDto[]>([]);
 	const [financialStats, setFinancialStats] =
@@ -321,11 +324,12 @@ const AccountingPage: React.FC = () => {
 					].map((tab) => (
 						<button
 							key={tab.key}
-							onClick={() =>
+							onClick={() => {
+								setPreviousTab(activeTab);
 								setActiveTab(
 									tab.key as "overview" | "accounts" | "transactions" | "stats",
-								)
-							}
+								);
+							}}
 							className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
 								activeTab === tab.key
 									? "text-theme-primary border-theme-primary"
@@ -347,7 +351,12 @@ const AccountingPage: React.FC = () => {
 
 			{/* 内容区域 - 可滚动 */}
 			<div className="flex-1 overflow-y-auto py-4 px-4 md:px-6 scroll-container">
-				<TabTransition activeKey={activeTab} direction="right">
+				<TabTransition
+					activeKey={activeTab}
+					direction="right"
+					previousTab={previousTab}
+					tabGroup="accounting"
+				>
 					{renderActiveTab()}
 				</TabTransition>
 			</div>
