@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 import { getTabDirection } from "../../hooks/useRouter";
 
 interface TabTransitionProps {
@@ -49,11 +49,10 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 	const finalAnimationDirection =
 		animationDirection === "none" ? "forward" : animationDirection;
 
-	const transition = {
-		type: "spring" as const,
-		stiffness: isMobile ? 500 : 400,
-		damping: isMobile ? 40 : 35,
-		duration: isMobile ? 0.15 : 0.2,
+	const transition: Transition = {
+		type: "tween",
+		ease: "easeOut",
+		duration: 0.25,
 	};
 
 	return (

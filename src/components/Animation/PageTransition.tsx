@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 
 interface PageTransitionProps {
 	children: React.ReactNode;
@@ -62,10 +62,9 @@ const PageTransition: React.FC<PageTransitionProps> = ({
 	const isMobile = window.innerWidth < 768;
 	const optimizedDuration = isMobile ? Math.min(duration, 0.2) : duration;
 
-	const transition = {
-		type: "spring" as const,
-		stiffness: isMobile ? 400 : 300,
-		damping: isMobile ? 35 : 30,
+	const transition: Transition = {
+		type: "tween",
+		ease: "easeOut",
 		duration: optimizedDuration,
 	};
 
