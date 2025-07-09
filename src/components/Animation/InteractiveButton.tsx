@@ -1,4 +1,5 @@
 import { type MotionProps, motion } from "framer-motion";
+import { useMemo } from "react";
 
 interface InteractiveButtonProps extends Omit<MotionProps, "children"> {
 	children: React.ReactNode;
@@ -20,24 +21,11 @@ const InteractiveButton: React.FC<InteractiveButtonProps> = ({
 	title,
 	...motionProps
 }) => {
-	// 检测移动端并调整动画参数
-	const isMobile = window.innerWidth < 768;
+	// 使用useMemo优化性能
+	const isMobile = useMemo(() => window.innerWidth < 768, []);
 
-	// 动画变体
-	const buttonVariants = {
-		initial: { scale: 1 },
-		hover: {
-			scale: disabled ? 1 : isMobile ? 1.01 : 1.02,
-			transition: { duration: isMobile ? 0.1 : 0.2 },
-		},
-		tap: {
-			scale: disabled ? 1 : isMobile ? 0.97 : 0.98,
-			transition: { duration: isMobile ? 0.05 : 0.1 },
-		},
-	};
-
-	// 样式类名
-	const getVariantClasses = () => {
+	// 样式类名 - 使用useMemo优化
+	const variantClasses = useMemo(() => {
 		switch (variant) {
 			case "primary":
 				return disabled
@@ -58,9 +46,9 @@ const InteractiveButton: React.FC<InteractiveButtonProps> = ({
 			default:
 				return "";
 		}
-	};
+	}, [variant, disabled]);
 
-	const getSizeClasses = () => {
+	const sizeClasses = useMemo(() => {
 		switch (size) {
 			case "sm":
 				return "px-3 py-1.5 text-sm";
@@ -71,29 +59,38 @@ const InteractiveButton: React.FC<InteractiveButtonProps> = ({
 			default:
 				return "px-4 py-2 text-sm";
 		}
-	};
+	}, [size]);
+
+	const buttonClass = useMemo(
+		() => `
+		font-medium rounded-lg 
+		transition-colors duration-200 
+		focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+		${variantClasses}
+		${sizeClasses}
+		${className}
+	`,
+		[variantClasses, sizeClasses, className],
+	);
 
 	return (
 		<motion.button
 			onClick={disabled ? undefined : onClick}
-			variants={buttonVariants}
-			initial="initial"
-			whileHover="hover"
-			whileTap="tap"
+			whileHover={disabled ? {} : { scale: isMobile ? 1.01 : 1.02 }}
+			whileTap={disabled ? {} : { scale: isMobile ? 0.97 : 0.98 }}
+			transition={{ duration: isMobile ? 0.1 : 0.15 }}
 			title={title}
-			className={`
-        font-medium rounded-lg 
-        transition-colors duration-200 
-        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-        ${getVariantClasses()}
-        ${getSizeClasses()}
-        ${className}
-        ${isMobile ? "touch-optimized mobile-optimized" : ""}
-      `}
+			className={buttonClass}
 			style={{
+				// 优化渲染性能
 				willChange: "transform",
 				backfaceVisibility: "hidden",
 				WebkitBackfaceVisibility: "hidden",
+				// 改善移动端性能
+				WebkitTransform: "translateZ(0)",
+				transform: "translateZ(0)",
+				// 避免layout shift
+				contain: "layout style paint",
 			}}
 			{...motionProps}
 		>

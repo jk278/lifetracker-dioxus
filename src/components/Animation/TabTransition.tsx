@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, type Transition } from "framer-motion";
+import { useMemo } from "react";
 import { getTabDirection } from "../../hooks/useRouter";
 
 interface TabTransitionProps {
@@ -10,22 +11,23 @@ interface TabTransitionProps {
 	tabGroup?: "accounting" | "timing";
 }
 
-// 标签切换动画变体 - 支持动态方向
+// 简化的标签切换动画变体 - 去除scale避免回弹
 const tabVariants = {
 	initial: (animationDirection: "forward" | "backward") => ({
 		opacity: 0,
 		x: animationDirection === "forward" ? 50 : -50,
-		scale: 0.98,
+		// 使用更平滑的blur效果替代scale
+		filter: "blur(2px)",
 	}),
 	in: {
 		opacity: 1,
 		x: 0,
-		scale: 1,
+		filter: "blur(0px)",
 	},
 	out: (animationDirection: "forward" | "backward") => ({
 		opacity: 0,
 		x: animationDirection === "forward" ? -50 : 50,
-		scale: 0.98,
+		filter: "blur(2px)",
 	}),
 };
 
@@ -36,40 +38,73 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 	previousTab,
 	tabGroup,
 }) => {
-	// 检测移动端并调整动画参数
-	const isMobile = window.innerWidth < 768;
+	// 使用useMemo优化性能
+	const isMobile = useMemo(() => window.innerWidth < 768, []);
 
 	// 计算动画方向
-	const animationDirection =
-		previousTab && tabGroup
-			? getTabDirection(previousTab, activeKey, tabGroup)
-			: "forward";
+	const animationDirection = useMemo(() => {
+		if (previousTab && tabGroup) {
+			const detected = getTabDirection(previousTab, activeKey, tabGroup);
+			return detected === "none" ? "forward" : detected;
+		}
+		return "forward";
+	}, [previousTab, activeKey, tabGroup]);
 
-	// 如果无法检测方向，使用默认的 forward
-	const finalAnimationDirection =
-		animationDirection === "none" ? "forward" : animationDirection;
-
-	const transition: Transition = {
-		type: "tween",
-		ease: "easeOut",
-		duration: 0.25,
-	};
+	// 优化的transition配置
+	const transition: Transition = useMemo(
+		() => ({
+			type: "tween",
+			ease: [0.4, 0, 0.2, 1], // 使用更平滑的缓动函数
+			duration: isMobile ? 0.2 : 0.25, // 移动端使用更短的持续时间
+			bounce: 0, // 避免bounce效果
+		}),
+		[isMobile],
+	);
 
 	return (
-		<AnimatePresence mode="wait" custom={finalAnimationDirection}>
+		<AnimatePresence
+			mode="wait"
+			custom={animationDirection}
+			// 添加onExitComplete回调
+			onExitComplete={() => {
+				// 清理可能残留的样式
+				if (typeof window !== "undefined") {
+					document.body.style.overflow = "";
+				}
+			}}
+		>
 			<motion.div
 				key={activeKey}
-				custom={finalAnimationDirection}
+				custom={animationDirection}
 				initial="initial"
 				animate="in"
 				exit="out"
 				variants={tabVariants}
 				transition={transition}
-				className={`w-full h-full ${isMobile ? "framer-motion-mobile mobile-optimized" : ""}`}
+				className="w-full h-full"
 				style={{
-					willChange: "transform, opacity",
+					// 优化渲染性能
+					willChange: "transform, opacity, filter",
 					backfaceVisibility: "hidden",
 					WebkitBackfaceVisibility: "hidden",
+					// 改善移动端性能
+					WebkitTransform: "translateZ(0)",
+					transform: "translateZ(0)",
+					// 避免layout shift
+					contain: "layout style paint",
+				}}
+				// 添加动画事件监听
+				onAnimationStart={() => {
+					// 防止在标签切换时出现滚动问题
+					if (typeof window !== "undefined") {
+						document.body.style.overflow = "hidden";
+					}
+				}}
+				onAnimationComplete={() => {
+					// 恢复滚动
+					if (typeof window !== "undefined") {
+						document.body.style.overflow = "";
+					}
 				}}
 			>
 				{children}
