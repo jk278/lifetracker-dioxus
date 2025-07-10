@@ -3,13 +3,12 @@
 //! 提供前端调用的所有后端API命令
 //!
 //! 本模块采用分治策略将原本2000+行的单一文件重构为多个职责单一的子模块：
-//! - task: 任务管理CRUD
-//! - timer: 计时器控制
-//! - category: 分类管理
-//! - statistics: 统计分析
+//! - timing: 时间追踪相关（任务、计时器、分类、统计）
+//! - accounting: 财务管理（账户、交易、预算、分类、统计）
+//! - sync: 数据同步
 //! - data_io: 数据导入导出
 //! - config: 应用配置管理
-//! - accounting: 财务管理（账户、交易、预算）
+//! - notes: 笔记管理
 
 use crate::{config::AppConfig, core::Timer, storage::StorageManager};
 use chrono::{DateTime, Local};
@@ -177,24 +176,28 @@ pub fn get_today_total_seconds(storage: &StorageManager) -> Result<i64, String> 
 // ========== 子模块声明 ==========
 
 pub mod accounting;
-pub mod category;
 pub mod config;
 pub mod data_io;
 pub mod notes;
-pub mod statistics;
 pub mod sync;
-pub mod task;
-pub mod timer;
+pub mod timing;
 
 // ========== 重新导出给外部使用 ==========
 
+// Timing模块导出
+pub use timing::category::{create_category, delete_category, get_categories, update_category};
+pub use timing::statistics::get_statistics;
+pub use timing::task::{create_task, delete_task, get_tasks, update_task};
+pub use timing::timer::{
+    debug_get_time_entries, get_timer_status, get_today_stats, get_today_time_entries, pause_timer,
+    resume_timer, start_timer, stop_timer,
+};
+
+// Accounting模块导出
 pub use accounting::*;
-pub use category::*;
+
+// 其他模块导出
 pub use config::*;
 pub use data_io::*;
-pub use data_io::{backup_database, restore_database};
 pub use notes::*;
-pub use statistics::*;
 pub use sync::*;
-pub use task::*;
-pub use timer::*;

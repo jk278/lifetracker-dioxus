@@ -5,10 +5,12 @@
 //! - transaction: 交易管理命令  
 //! - budget: 预算管理命令
 //! - category: 分类管理命令
+//! - statistics: 财务统计命令
 
 pub mod account;
 pub mod budget;
 pub mod category;
+pub mod statistics;
 pub mod transaction;
 pub mod types;
 
@@ -16,6 +18,7 @@ pub mod types;
 pub use account::*;
 pub use budget::*;
 pub use category::*;
+pub use statistics::*;
 pub use transaction::*;
 
 // 重新导出请求类型

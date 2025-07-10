@@ -1,65 +1,32 @@
-//! # 统计分析命令模块
+//! # 财务统计命令模块
 //!
-//! 负责处理各种统计数据的生成和查询
+//! 负责处理财务相关的统计数据生成和查询
 
-use super::*;
+use crate::tauri_commands::{AppState, FinancialStatsDto};
+use serde::{Deserialize, Serialize};
+use tauri::State;
 
-// ========== 统计分析命令 ==========
+// ========== 财务统计DTO ==========
 
-/// 获取统计数据
-#[tauri::command]
-pub async fn get_statistics(
-    state: State<'_, AppState>,
-    period: Option<String>, // "today", "week", "month", "all"
-) -> Result<StatisticsDto, String> {
-    // TODO: 实现实际的统计数据查询逻辑
-    let stats = StatisticsDto {
-        today: DayStatDto {
-            date: Local::now().format("%Y-%m-%d").to_string(),
-            total_seconds: 7200, // 2小时
-            task_count: 3,
-            active_categories: 2,
-            most_productive_hour: Some(14), // 下午2点
-        },
-        this_week: PeriodStatDto {
-            total_seconds: 36000, // 10小时
-            task_count: 15,
-            active_days: 5,
-            average_daily_seconds: 7200,
-        },
-        this_month: PeriodStatDto {
-            total_seconds: 144000, // 40小时
-            task_count: 60,
-            active_days: 20,
-            average_daily_seconds: 7200,
-        },
-        all_time: PeriodStatDto {
-            total_seconds: 720000, // 200小时
-            task_count: 300,
-            active_days: 100,
-            average_daily_seconds: 7200,
-        },
-        category_stats: vec![
-            CategoryStatDto {
-                category_id: "cat1".to_string(),
-                category_name: "工作".to_string(),
-                total_seconds: 18000,
-                task_count: 10,
-                percentage: 60.0,
-            },
-            CategoryStatDto {
-                category_id: "cat2".to_string(),
-                category_name: "学习".to_string(),
-                total_seconds: 12000,
-                task_count: 8,
-                percentage: 40.0,
-            },
-        ],
-        daily_trend: vec![], // TODO: 添加7天的趋势数据
-    };
-
-    Ok(stats)
+/// 月度趋势数据传输对象
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonthlyTrendDto {
+    pub month: String,
+    pub income: f64,
+    pub expense: f64,
+    pub net: f64,
 }
+
+/// 统一趋势数据传输对象
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrendDto {
+    pub label: String,
+    pub income: f64,
+    pub expense: f64,
+    pub net: f64,
+}
+
+// ========== 财务统计命令 ==========
 
 /// 获取财务统计
 #[tauri::command]
@@ -100,15 +67,6 @@ pub async fn get_financial_stats(
 
     log::debug!("财务统计获取成功");
     Ok(stats_dto)
-}
-
-/// 月度趋势数据传输对象
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MonthlyTrendDto {
-    pub month: String,
-    pub income: f64,
-    pub expense: f64,
-    pub net: f64,
 }
 
 /// 获取月度趋势数据
@@ -168,15 +126,6 @@ pub async fn get_monthly_trend(
     Ok(trend_dto)
 }
 
-/// 统一趋势数据传输对象
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrendDto {
-    pub label: String,
-    pub income: f64,
-    pub expense: f64,
-    pub net: f64,
-}
-
 /// 获取收支趋势（按日/周/月）
 #[tauri::command]
 pub async fn get_financial_trend(
@@ -221,91 +170,4 @@ pub async fn get_financial_trend(
         })
         .collect();
     Ok(dtos)
-}
-
-/// 数据管理统计信息 DTO
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DataStatisticsDto {
-    pub total_tasks: u32,
-    pub total_time_spent: i64,
-    pub total_transactions: u32,
-    pub total_notes: u32,
-    pub database_size: String,
-    pub last_backup: String,
-}
-
-/// 获取数据管理统计信息
-#[tauri::command]
-pub async fn get_data_statistics(state: State<'_, AppState>) -> Result<DataStatisticsDto, String> {
-    log::debug!("[CMD] get_data_statistics: Starting data statistics collection");
-
-    let storage = &state.storage;
-
-    // 获取任务总数
-    let total_tasks = storage
-        .get_database()
-        .get_all_tasks()
-        .map_err(|e| e.to_string())?
-        .len() as u32;
-    log::debug!("[CMD] get_data_statistics: Total tasks: {}", total_tasks);
-
-    // 获取总时间记录（以秒为单位）
-    let total_time_spent = storage
-        .get_database()
-        .get_all_time_entries()
-        .map_err(|e| e.to_string())?
-        .iter()
-        .map(|entry| entry.duration_seconds)
-        .sum::<i64>();
-    log::debug!(
-        "[CMD] get_data_statistics: Total time spent: {} seconds",
-        total_time_spent
-    );
-
-    // 获取交易总数
-    let total_transactions = storage
-        .get_database()
-        .get_all_transactions()
-        .map_err(|e| e.to_string())?
-        .len() as u32;
-    log::debug!(
-        "[CMD] get_data_statistics: Total transactions: {}",
-        total_transactions
-    );
-
-    // 获取笔记总数 (暂时使用0，因为还没有实现笔记功能)
-    let total_notes = 0u32;
-    log::debug!("[CMD] get_data_statistics: Total notes: {}", total_notes);
-
-    // 获取数据库大小
-    let database_size = match storage.get_database_stats() {
-        Ok(stats) => stats.get_formatted_size(),
-        Err(e) => {
-            log::warn!(
-                "[CMD] get_data_statistics: Could not get database size: {}",
-                e
-            );
-            "未知".to_string()
-        }
-    };
-    log::debug!(
-        "[CMD] get_data_statistics: Database size: {}",
-        database_size
-    );
-
-    // 获取最后备份时间 (暂时使用固定值，实际应该从配置或文件系统获取)
-    let last_backup = "从未".to_string();
-    log::debug!("[CMD] get_data_statistics: Last backup: {}", last_backup);
-
-    let stats = DataStatisticsDto {
-        total_tasks,
-        total_time_spent,
-        total_transactions,
-        total_notes,
-        database_size,
-        last_backup,
-    };
-
-    log::debug!("[CMD] get_data_statistics: Statistics collected successfully");
-    Ok(stats)
 }

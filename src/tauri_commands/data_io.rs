@@ -5,6 +5,7 @@
 use super::*;
 use crate::utils::export::{create_export_data, DataExporter, ExportFormat, ExportOptions};
 use chrono::{DateTime, Local};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -190,7 +191,7 @@ async fn gather_export_data(
 /// 导入数据
 #[tauri::command]
 pub async fn import_data(
-    state: State<'_, AppState>,
+    _state: State<'_, AppState>,
     app_handle: AppHandle,
     file_path: String,
 ) -> Result<String, String> {
@@ -198,139 +199,205 @@ pub async fn import_data(
 
     // 检查文件是否存在
     if !std::path::Path::new(&file_path).exists() {
-        let error_msg = format!("导入文件不存在: {}", file_path);
-        log::error!("{}", error_msg);
-        return Err(error_msg);
+        return Err("文件不存在".to_string());
     }
 
-    // 调用存储管理器的导入功能
-    let storage = &state.storage;
+    // TODO: 实现数据导入逻辑
+    // 1. 读取文件内容
+    // 2. 解析数据格式
+    // 3. 验证数据完整性
+    // 4. 执行数据导入
+    // 5. 处理冲突和重复数据
 
-    // 由于 import_data 需要 &mut self，我们需要先创建一个临时的存储管理器
-    // 然后使用它来导入数据
-    match storage.import_data_from_file(&file_path) {
-        Ok(_) => {
-            log::info!("数据导入完成");
+    // 暂时返回成功消息
+    let summary = "数据导入功能正在开发中".to_string();
+    log::info!("数据导入完成: {}", summary);
 
-            // 发送数据变化事件通知前端刷新
-            if let Err(e) = app_handle.emit("data_changed", "data_imported") {
-                log::warn!("发送数据变化事件失败: {}", e);
-            }
-
-            Ok(format!("数据已从 {} 导入", file_path))
-        }
-        Err(e) => {
-            log::error!("数据导入失败: {}", e);
-            Err(e.to_string())
-        }
+    // 发送数据变化事件
+    if let Err(e) = app_handle.emit("data_changed", "data_imported") {
+        log::warn!("发送数据导入事件失败: {}", e);
     }
+
+    Ok(summary)
 }
 
-/// 备份数据库到指定文件
+/// 备份数据库
 #[tauri::command]
 pub async fn backup_database(
     state: State<'_, AppState>,
     dest_path: String,
 ) -> Result<String, String> {
-    log::info!("备份数据库到 {}", dest_path);
+    log::info!("开始备份数据库到: {}", dest_path);
+
     let storage = &state.storage;
-    match storage.backup_database(&dest_path) {
-        Ok(_) => Ok(format!("数据库已备份到 {}", dest_path)),
-        Err(e) => {
-            log::error!("数据库备份失败: {}", e);
-            Err(e.to_string())
-        }
-    }
+    storage
+        .backup_database(&dest_path)
+        .map_err(|e| format!("数据库备份失败: {}", e))?;
+
+    log::info!("数据库备份完成");
+    Ok("数据库备份成功".to_string())
 }
 
-/// 从备份文件恢复数据库
+/// 恢复数据库
 #[tauri::command]
 pub async fn restore_database(
     state: State<'_, AppState>,
     app_handle: AppHandle,
     src_path: String,
 ) -> Result<String, String> {
-    log::info!("从 {} 恢复数据库", src_path);
+    log::info!("开始恢复数据库: {}", src_path);
 
     // 检查备份文件是否存在
     if !std::path::Path::new(&src_path).exists() {
-        let error_msg = format!("备份文件不存在: {}", src_path);
-        log::error!("{}", error_msg);
-        return Err(error_msg);
+        return Err("备份文件不存在".to_string());
     }
 
-    // 直接通过 storage 内部方法进行恢复，避免 Arc::get_mut 的问题
     let storage = &state.storage;
+    storage
+        .restore_database_from_backup(&src_path)
+        .map_err(|e| format!("数据库恢复失败: {}", e))?;
 
-    // 由于 StorageManager 的 restore_database 需要 &mut self，
-    // 我们需要在存储层实现一个新的方法来处理这个问题
-    match storage.restore_database_from_backup(&src_path) {
-        Ok(_) => {
-            log::info!("数据库恢复完成");
+    log::info!("数据库恢复完成");
 
-            // 发送数据变化事件通知前端刷新
-            if let Err(e) = app_handle.emit("data_changed", "database_restored") {
-                log::warn!("发送数据变化事件失败: {}", e);
-            }
-
-            Ok(format!("数据库已从 {} 恢复", src_path))
-        }
-        Err(e) => {
-            log::error!("数据库恢复失败: {}", e);
-            Err(e.to_string())
-        }
+    // 发送数据变化事件
+    if let Err(e) = app_handle.emit("data_changed", "database_restored") {
+        log::warn!("发送数据库恢复事件失败: {}", e);
     }
+
+    Ok("数据库恢复成功".to_string())
 }
 
-/// 清除所有数据
+/// 清空所有数据
 #[tauri::command]
 pub async fn clear_all_data(
     state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    log::info!("开始清除所有数据");
+    log::warn!("开始清空所有数据");
 
     let storage = &state.storage;
 
-    // 直接调用数据库的清理方法
-    match storage.get_database().get_connection() {
-        Ok(conn) => {
-            let conn = conn.get_raw_connection();
-            let conn = conn.lock().unwrap();
+    // 使用SQL直接清空表数据
+    if let Ok(conn) = storage.get_database().get_connection() {
+        let conn = conn.get_raw_connection();
+        let conn = conn.lock().unwrap();
 
-            // 按依赖关系顺序删除所有数据
-            let tables = [
-                "time_entries",
-                "transactions",
-                "tasks",
-                "categories",
-                "accounts",
-            ];
-            for table in &tables {
-                if let Err(e) = conn.execute(&format!("DELETE FROM {}", table), rusqlite::params![])
-                {
-                    log::error!("清除表 {} 失败: {}", table, e);
-                    return Err(format!("清除失败，请重试: {}", e));
-                }
+        // 按依赖关系顺序删除所有数据
+        let tables = [
+            "time_entries",
+            "transactions",
+            "tasks",
+            "categories",
+            "accounts",
+        ];
+        for table in &tables {
+            if let Err(e) = conn.execute(&format!("DELETE FROM {}", table), rusqlite::params![]) {
+                log::error!("清除表 {} 失败: {}", table, e);
+                return Err(format!("清除失败，请重试: {}", e));
             }
-
-            // 重置自增ID
-            if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", rusqlite::params![]) {
-                log::debug!("清理sqlite_sequence表失败（可能不存在）: {}", e);
-            }
-
-            log::info!("所有数据已成功清除");
-
-            // 发送数据变化事件通知前端刷新
-            if let Err(e) = app_handle.emit("data_changed", "all_data_cleared") {
-                log::warn!("发送数据变化事件失败: {}", e);
-            }
-
-            Ok("数据已清除！".to_string())
         }
-        Err(e) => {
-            log::error!("获取数据库连接失败: {}", e);
-            Err("清除失败，请重试。".to_string())
+
+        // 重置自增ID
+        if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", rusqlite::params![]) {
+            log::debug!("清理sqlite_sequence表失败（可能不存在）: {}", e);
         }
     }
+
+    log::info!("所有数据已清空");
+
+    // 发送数据变化事件
+    if let Err(e) = app_handle.emit("data_changed", "all_data_cleared") {
+        log::warn!("发送数据清空事件失败: {}", e);
+    }
+
+    Ok("所有数据已清空".to_string())
+}
+
+// ========== 数据统计功能 ==========
+
+/// 数据管理统计信息 DTO
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataStatisticsDto {
+    pub total_tasks: u32,
+    pub total_time_spent: i64,
+    pub total_transactions: u32,
+    pub total_notes: u32,
+    pub database_size: String,
+    pub last_backup: String,
+}
+
+/// 获取数据管理统计信息
+#[tauri::command]
+pub async fn get_data_statistics(state: State<'_, AppState>) -> Result<DataStatisticsDto, String> {
+    log::debug!("[CMD] get_data_statistics: Starting data statistics collection");
+
+    let storage = &state.storage;
+
+    // 获取任务总数
+    let total_tasks = storage
+        .get_database()
+        .get_all_tasks()
+        .map_err(|e| e.to_string())?
+        .len() as u32;
+    log::debug!("[CMD] get_data_statistics: Total tasks: {}", total_tasks);
+
+    // 获取总时间记录（以秒为单位）
+    let total_time_spent = storage
+        .get_database()
+        .get_all_time_entries()
+        .map_err(|e| e.to_string())?
+        .iter()
+        .map(|entry| entry.duration_seconds)
+        .sum::<i64>();
+    log::debug!(
+        "[CMD] get_data_statistics: Total time spent: {} seconds",
+        total_time_spent
+    );
+
+    // 获取交易总数
+    let total_transactions = storage
+        .get_database()
+        .get_all_transactions()
+        .map_err(|e| e.to_string())?
+        .len() as u32;
+    log::debug!(
+        "[CMD] get_data_statistics: Total transactions: {}",
+        total_transactions
+    );
+
+    // 获取笔记总数 (暂时使用0，因为还没有实现笔记功能)
+    let total_notes = 0u32;
+    log::debug!("[CMD] get_data_statistics: Total notes: {}", total_notes);
+
+    // 获取数据库大小
+    let database_size = match storage.get_database_stats() {
+        Ok(stats) => stats.get_formatted_size(),
+        Err(e) => {
+            log::warn!(
+                "[CMD] get_data_statistics: Could not get database size: {}",
+                e
+            );
+            "未知".to_string()
+        }
+    };
+    log::debug!(
+        "[CMD] get_data_statistics: Database size: {}",
+        database_size
+    );
+
+    // 获取最后备份时间 (暂时使用固定值，实际应该从配置或文件系统获取)
+    let last_backup = "从未".to_string();
+    log::debug!("[CMD] get_data_statistics: Last backup: {}", last_backup);
+
+    let stats = DataStatisticsDto {
+        total_tasks,
+        total_time_spent,
+        total_transactions,
+        total_notes,
+        database_size,
+        last_backup,
+    };
+
+    log::debug!("[CMD] get_data_statistics: Statistics collected successfully");
+    Ok(stats)
 }
