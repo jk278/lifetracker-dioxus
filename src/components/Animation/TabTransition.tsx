@@ -8,7 +8,7 @@ interface TabTransitionProps {
 	direction?: "left" | "right";
 	// 新增属性：用于动态方向检测
 	previousTab?: string;
-	tabGroup?: "accounting" | "timing";
+	tabGroup?: "accounting" | "timing" | "notes";
 }
 
 // 简化的标签切换动画变体 - 去除scale避免回弹

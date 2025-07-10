@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use uuid::Uuid;
 
 /// 数据库版本
-const CURRENT_DB_VERSION: i32 = 4;
+const CURRENT_DB_VERSION: i32 = 5;
 
 /// 迁移管理器
 ///
@@ -105,6 +105,7 @@ impl<'conn> MigrationManager<'conn> {
             2 => self.migration_v2(),
             3 => self.migration_v3(),
             4 => self.migration_v4(),
+            5 => self.migration_v5(),
             _ => {
                 warn!("未知的迁移版本: {}", version);
                 Err(AppError::InvalidInput(format!(
@@ -399,6 +400,110 @@ impl<'conn> MigrationManager<'conn> {
         tx.commit()?;
 
         info!("迁移 v4 完成");
+        Ok(())
+    }
+
+    /// 迁移到版本5：创建笔记表
+    fn migration_v5(&self) -> Result<()> {
+        info!("运行迁移 v5: 创建笔记表");
+
+        // 开始事务
+        let tx = self.connection.unchecked_transaction()?;
+
+        // 创建笔记表
+        tx.execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                mood TEXT,
+                tags TEXT NOT NULL DEFAULT '[]',
+                is_favorite BOOLEAN NOT NULL DEFAULT 0,
+                is_archived BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建笔记表索引
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_mood ON notes(mood)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_is_favorite ON notes(is_favorite)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_is_archived ON notes(is_archived)",
+            [],
+        )?;
+
+        tx.execute(
+            "CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title)",
+            [],
+        )?;
+
+        // 创建全文搜索索引（用于搜索笔记内容）
+        tx.execute(
+            r#"
+            CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(
+                title,
+                content,
+                content='notes',
+                content_rowid='rowid'
+            )
+            "#,
+            [],
+        )?;
+
+        // 创建触发器以保持 FTS 索引同步
+        tx.execute(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS notes_fts_insert AFTER INSERT ON notes BEGIN
+                INSERT INTO notes_fts(rowid, title, content) VALUES (new.rowid, new.title, new.content);
+            END
+            "#,
+            [],
+        )?;
+
+        tx.execute(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS notes_fts_update AFTER UPDATE ON notes BEGIN
+                UPDATE notes_fts SET title = new.title, content = new.content WHERE rowid = new.rowid;
+            END
+            "#,
+            [],
+        )?;
+
+        tx.execute(
+            r#"
+            CREATE TRIGGER IF NOT EXISTS notes_fts_delete AFTER DELETE ON notes BEGIN
+                DELETE FROM notes_fts WHERE rowid = old.rowid;
+            END
+            "#,
+            [],
+        )?;
+
+        // 提交事务
+        tx.commit()?;
+
+        info!("迁移 v5 完成");
         Ok(())
     }
 
@@ -782,10 +887,16 @@ impl<'conn> MigrationManager<'conn> {
             .query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))
             .unwrap_or(0);
 
+        let notes_count: i64 = self
+            .connection
+            .query_row("SELECT COUNT(*) FROM notes", [], |row| row.get(0))
+            .unwrap_or(0);
+
         let stats = DatabaseStats {
             database_size_bytes: database_size,
             time_entries_count,
             categories_count,
+            notes_count,
             current_version: self.get_current_version()?,
         };
 
@@ -833,6 +944,8 @@ pub struct DatabaseStats {
     pub time_entries_count: i64,
     /// 分类数量
     pub categories_count: i64,
+    /// 笔记数量
+    pub notes_count: i64,
     /// 当前数据库版本
     pub current_version: i32,
 }

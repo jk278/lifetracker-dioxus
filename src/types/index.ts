@@ -374,3 +374,79 @@ export type TransactionDto = Transaction;
 export type TransactionCategoryDto = TransactionCategory;
 export type BudgetDto = Budget;
 export type FinancialStatsDto = FinancialStats;
+
+// ==================== 笔记功能类型定义 ====================
+
+// 心情枚举
+export type MoodType = "happy" | "sad" | "neutral" | "excited" | "stressed" | "relaxed" | "anxious" | "confident";
+
+// 笔记类型
+export interface Note {
+	id: string;
+	title: string;
+	content: string;
+	mood?: MoodType;
+	tags: string[];
+	is_favorite: boolean;
+	is_archived: boolean;
+	created_at: string;
+	updated_at: string;
+}
+
+// 创建笔记请求类型
+export interface CreateNoteRequest {
+	title: string;
+	content: string;
+	mood?: MoodType;
+	tags?: string[];
+	is_favorite?: boolean;
+}
+
+// 更新笔记请求类型
+export interface UpdateNoteRequest {
+	title?: string;
+	content?: string;
+	mood?: MoodType;
+	tags?: string[];
+	is_favorite?: boolean;
+	is_archived?: boolean;
+}
+
+// 笔记查询参数类型
+export interface NotesQueryRequest {
+	search?: string;
+	tags?: string[];
+	mood?: MoodType;
+	is_favorite?: boolean;
+	is_archived?: boolean;
+	start_date?: string;
+	end_date?: string;
+	limit?: number;
+	offset?: number;
+}
+
+// 笔记统计类型
+export interface NotesStats {
+	total_notes: number;
+	favorite_notes: number;
+	archived_notes: number;
+	notes_this_week: number;
+	notes_this_month: number;
+	most_used_tags: {
+		tag: string;
+		count: number;
+	}[];
+	mood_distribution: {
+		mood: MoodType;
+		count: number;
+		percentage: number;
+	}[];
+	daily_notes_trend: {
+		date: string;
+		count: number;
+	}[];
+}
+
+// 笔记 DTO 类型别名
+export type NoteDto = Note;
+export type NotesStatsDto = NotesStats;

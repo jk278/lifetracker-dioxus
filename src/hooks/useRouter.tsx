@@ -38,6 +38,7 @@ const ROUTE_ORDER = {
 const TAB_ORDER = {
 	accounting: ["overview", "accounts", "transactions", "stats"] as const,
 	timing: ["dashboard", "tasks", "categories", "statistics"] as const,
+	notes: ["overview", "editor", "library", "stats"] as const,
 };
 
 // 方向检测函数

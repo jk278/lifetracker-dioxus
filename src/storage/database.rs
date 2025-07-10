@@ -1735,25 +1735,22 @@ impl Database {
 
         match self
             .connection
-            .query_row(sql, &[&key], |row| Ok(row.get::<_, String>("value")?))
+            .query_row(sql, &[&key], |row| Ok(row.get::<_, String>(0)?))
         {
             Ok(value) => Ok(Some(value)),
             Err(AppError::Database(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
-            Err(other) => Err(other),
+            Err(e) => Err(e),
         }
     }
 
-    /// 设置值
+    /// 设置配置值
     pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         let sql = r#"
             INSERT OR REPLACE INTO settings (key, value, updated_at)
-            VALUES (?1, ?2, ?3)
+            VALUES (?1, ?2, CURRENT_TIMESTAMP)
         "#;
 
-        self.connection
-            .execute(sql, &[&key, &value, &Local::now().to_rfc3339()])?;
-
-        log::debug!("设置存储: {} = {}", key, value);
+        self.connection.execute(sql, &[&key, &value])?;
         Ok(())
     }
 
@@ -1761,26 +1758,24 @@ impl Database {
     pub fn delete_setting(&self, key: &str) -> Result<()> {
         let sql = "DELETE FROM settings WHERE key = ?1";
         self.connection.execute(sql, &[&key])?;
-        log::debug!("删除设置: {}", key);
         Ok(())
     }
 
     /// 获取所有设置
     pub fn get_all_settings(&self) -> Result<HashMap<String, String>> {
-        let sql = "SELECT key, value FROM settings";
+        let sql = "SELECT key, value FROM settings ORDER BY key";
 
         self.connection.read(|conn| {
             let mut stmt = conn.prepare(sql)?;
-            let settings_iter = stmt.query_map([], |row| {
-                Ok((row.get::<_, String>("key")?, row.get::<_, String>("value")?))
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
             })?;
 
             let mut settings = HashMap::new();
-            for setting in settings_iter {
-                let (key, value) = setting?;
+            for row in rows {
+                let (key, value) = row?;
                 settings.insert(key, value);
             }
-
             Ok(settings)
         })
     }
@@ -1907,6 +1902,586 @@ impl Database {
             "cancelled" => Ok(crate::storage::TransactionStatus::Cancelled),
             _ => Err(rusqlite::Error::InvalidQuery),
         }
+    }
+
+    // ==================== 笔记操作 ====================
+
+    /// 插入笔记
+    pub fn insert_note(&self, note: &Note) -> Result<i64> {
+        let sql = r#"
+            INSERT INTO notes (
+                id, title, content, mood, tags, is_favorite, is_archived, 
+                created_at, updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+        "#;
+
+        let tags_json = serde_json::to_string(&note.tags)?;
+
+        self.connection.execute(
+            sql,
+            &[
+                &note.id.to_string(),
+                &note.title,
+                &note.content,
+                &note.mood,
+                &tags_json,
+                &note.is_favorite,
+                &note.is_archived,
+                &note.created_at.to_rfc3339(),
+                &note.updated_at.to_rfc3339(),
+            ],
+        )?;
+
+        Ok(1) // 返回插入的行数
+    }
+
+    /// 获取所有笔记
+    pub fn get_all_notes(&self) -> Result<Vec<Note>> {
+        let sql = r#"
+            SELECT id, title, content, mood, tags, is_favorite, is_archived, 
+                   created_at, updated_at
+            FROM notes 
+            ORDER BY updated_at DESC
+        "#;
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
+            let rows = stmt.query_map([], |row| {
+                let id_str: String = row.get(0)?;
+                let tags_json: String = row.get(4)?;
+                let created_at_str: String = row.get(7)?;
+                let updated_at_str: String = row.get(8)?;
+
+                let id = Uuid::parse_str(&id_str).map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        format!("Invalid UUID: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        4,
+                        format!("Invalid JSON: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
+                let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+                    .map_err(|e| {
+                        rusqlite::Error::InvalidColumnType(
+                            7,
+                            format!("Invalid datetime: {}", e).into(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
+                    .with_timezone(&Local);
+                let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+                    .map_err(|e| {
+                        rusqlite::Error::InvalidColumnType(
+                            8,
+                            format!("Invalid datetime: {}", e).into(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
+                    .with_timezone(&Local);
+
+                Ok(Note {
+                    id,
+                    title: row.get(1)?,
+                    content: row.get(2)?,
+                    mood: row.get(3)?,
+                    tags,
+                    is_favorite: row.get(5)?,
+                    is_archived: row.get(6)?,
+                    created_at,
+                    updated_at,
+                })
+            })?;
+
+            let mut notes = Vec::new();
+            for row in rows {
+                notes.push(row?);
+            }
+            Ok(notes)
+        })
+    }
+
+    /// 根据ID获取笔记
+    pub fn get_note_by_id(&self, id: Uuid) -> Result<Option<Note>> {
+        let sql = r#"
+            SELECT id, title, content, mood, tags, is_favorite, is_archived, 
+                   created_at, updated_at
+            FROM notes 
+            WHERE id = ?1
+        "#;
+
+        match self.connection.query_row(sql, &[&id.to_string()], |row| {
+            let id_str: String = row.get(0)?;
+            let tags_json: String = row.get(4)?;
+            let created_at_str: String = row.get(7)?;
+            let updated_at_str: String = row.get(8)?;
+
+            let id = Uuid::parse_str(&id_str).map_err(|e| {
+                rusqlite::Error::InvalidColumnType(
+                    0,
+                    format!("Invalid UUID: {}", e).into(),
+                    rusqlite::types::Type::Text,
+                )
+            })?;
+            let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                rusqlite::Error::InvalidColumnType(
+                    4,
+                    format!("Invalid JSON: {}", e).into(),
+                    rusqlite::types::Type::Text,
+                )
+            })?;
+            let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+                .map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        7,
+                        format!("Invalid datetime: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
+                .with_timezone(&Local);
+            let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+                .map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        8,
+                        format!("Invalid datetime: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?
+                .with_timezone(&Local);
+
+            Ok(Note {
+                id,
+                title: row.get(1)?,
+                content: row.get(2)?,
+                mood: row.get(3)?,
+                tags,
+                is_favorite: row.get(5)?,
+                is_archived: row.get(6)?,
+                created_at,
+                updated_at,
+            })
+        }) {
+            Ok(note) => Ok(Some(note)),
+            Err(AppError::Database(rusqlite::Error::QueryReturnedNoRows)) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// 更新笔记
+    pub fn update_note(&self, id: Uuid, update: &NoteUpdate) -> Result<()> {
+        let mut sql_parts = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        if let Some(title) = &update.title {
+            sql_parts.push("title = ?");
+            params.push(Box::new(title.clone()));
+        }
+
+        if let Some(content) = &update.content {
+            sql_parts.push("content = ?");
+            params.push(Box::new(content.clone()));
+        }
+
+        if let Some(mood) = &update.mood {
+            sql_parts.push("mood = ?");
+            params.push(Box::new(mood.clone()));
+        }
+
+        if let Some(tags) = &update.tags {
+            sql_parts.push("tags = ?");
+            let tags_json = serde_json::to_string(tags)?;
+            params.push(Box::new(tags_json));
+        }
+
+        if let Some(is_favorite) = &update.is_favorite {
+            sql_parts.push("is_favorite = ?");
+            params.push(Box::new(*is_favorite));
+        }
+
+        if let Some(is_archived) = &update.is_archived {
+            sql_parts.push("is_archived = ?");
+            params.push(Box::new(*is_archived));
+        }
+
+        // 始终更新 updated_at
+        sql_parts.push("updated_at = ?");
+        params.push(Box::new(update.updated_at.to_rfc3339()));
+
+        if sql_parts.is_empty() {
+            return Ok(()); // 没有需要更新的字段
+        }
+
+        let sql = format!("UPDATE notes SET {} WHERE id = ?", sql_parts.join(", "));
+        params.push(Box::new(id.to_string()));
+
+        // 转换参数为引用
+        let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+        self.connection.execute(&sql, &param_refs)?;
+        Ok(())
+    }
+
+    /// 删除笔记
+    pub fn delete_note(&self, id: Uuid) -> Result<()> {
+        let sql = "DELETE FROM notes WHERE id = ?1";
+        self.connection.execute(sql, &[&id.to_string()])?;
+        Ok(())
+    }
+
+    /// 根据查询条件搜索笔记
+    pub fn search_notes(&self, query: &NoteQuery) -> Result<Vec<Note>> {
+        let mut where_conditions = Vec::new();
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+        // 构建搜索条件
+        if let Some(search) = &query.search {
+            // 使用 FTS 进行全文搜索
+            where_conditions
+                .push("notes.id IN (SELECT notes.id FROM notes_fts WHERE notes_fts MATCH ?)");
+            params.push(Box::new(search.clone()));
+        }
+
+        if let Some(tags) = &query.tags {
+            for tag in tags {
+                where_conditions.push("JSON_EXTRACT(tags, '$') LIKE ?");
+                params.push(Box::new(format!("%\"{}\"%%", tag)));
+            }
+        }
+
+        if let Some(mood) = &query.mood {
+            where_conditions.push("mood = ?");
+            params.push(Box::new(mood.clone()));
+        }
+
+        if let Some(is_favorite) = query.is_favorite {
+            where_conditions.push("is_favorite = ?");
+            params.push(Box::new(is_favorite));
+        }
+
+        if let Some(is_archived) = query.is_archived {
+            where_conditions.push("is_archived = ?");
+            params.push(Box::new(is_archived));
+        }
+
+        if let Some(created_from) = &query.created_from {
+            where_conditions.push("created_at >= ?");
+            params.push(Box::new(created_from.to_rfc3339()));
+        }
+
+        if let Some(created_to) = &query.created_to {
+            where_conditions.push("created_at <= ?");
+            params.push(Box::new(created_to.to_rfc3339()));
+        }
+
+        // 构建 ORDER BY 子句
+        let order_by = match query.sort_by.as_ref().unwrap_or(&NoteSortBy::UpdatedAt) {
+            NoteSortBy::CreatedAt => "created_at",
+            NoteSortBy::UpdatedAt => "updated_at",
+            NoteSortBy::Title => "title",
+            NoteSortBy::Mood => "mood",
+        };
+
+        let sort_order = match query.sort_order.as_ref().unwrap_or(&SortOrder::Desc) {
+            SortOrder::Asc => "ASC",
+            SortOrder::Desc => "DESC",
+        };
+
+        // 构建完整的 SQL 查询
+        let mut sql = format!(
+            r#"
+            SELECT id, title, content, mood, tags, is_favorite, is_archived, 
+                   created_at, updated_at
+            FROM notes 
+            {}
+            ORDER BY {} {}
+            "#,
+            if where_conditions.is_empty() {
+                String::new()
+            } else {
+                format!("WHERE {}", where_conditions.join(" AND "))
+            },
+            order_by,
+            sort_order
+        );
+
+        // 添加分页
+        if let Some(limit) = query.limit {
+            sql.push_str(&format!(" LIMIT {}", limit));
+            if let Some(offset) = query.offset {
+                sql.push_str(&format!(" OFFSET {}", offset));
+            }
+        }
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(&sql)?;
+            let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+            let rows = stmt.query_map(&param_refs[..], |row| {
+                let id_str: String = row.get(0)?;
+                let tags_json: String = row.get(4)?;
+                let created_at_str: String = row.get(7)?;
+                let updated_at_str: String = row.get(8)?;
+
+                let id = Uuid::parse_str(&id_str).map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        0,
+                        format!("Invalid UUID: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).map_err(|e| {
+                    rusqlite::Error::InvalidColumnType(
+                        4,
+                        format!("Invalid JSON: {}", e).into(),
+                        rusqlite::types::Type::Text,
+                    )
+                })?;
+                let created_at = DateTime::parse_from_rfc3339(&created_at_str)
+                    .map_err(|e| {
+                        rusqlite::Error::InvalidColumnType(
+                            7,
+                            format!("Invalid datetime: {}", e).into(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
+                    .with_timezone(&Local);
+                let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+                    .map_err(|e| {
+                        rusqlite::Error::InvalidColumnType(
+                            8,
+                            format!("Invalid datetime: {}", e).into(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?
+                    .with_timezone(&Local);
+
+                Ok(Note {
+                    id,
+                    title: row.get(1)?,
+                    content: row.get(2)?,
+                    mood: row.get(3)?,
+                    tags,
+                    is_favorite: row.get(5)?,
+                    is_archived: row.get(6)?,
+                    created_at,
+                    updated_at,
+                })
+            })?;
+
+            let mut notes = Vec::new();
+            for row in rows {
+                notes.push(row?);
+            }
+            Ok(notes)
+        })
+    }
+
+    /// 获取所有笔记标签
+    pub fn get_all_note_tags(&self) -> Result<Vec<String>> {
+        let sql = "SELECT DISTINCT tags FROM notes WHERE tags != '[]'";
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
+            let rows = stmt.query_map([], |row| {
+                let tags_json: String = row.get(0)?;
+                Ok(tags_json)
+            })?;
+
+            let mut all_tags = std::collections::HashSet::new();
+            for row in rows {
+                let tags_json = row?;
+                if let Ok(tags) = serde_json::from_str::<Vec<String>>(&tags_json) {
+                    for tag in tags {
+                        all_tags.insert(tag);
+                    }
+                }
+            }
+
+            let mut tags_vec: Vec<String> = all_tags.into_iter().collect();
+            tags_vec.sort();
+            Ok(tags_vec)
+        })
+    }
+
+    /// 获取笔记统计信息
+    pub fn get_notes_stats(&self) -> Result<NoteStats> {
+        let total_notes = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes",
+            &[] as &[&dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        let favorite_notes = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE is_favorite = 1",
+            &[] as &[&dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        let archived_notes = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE is_archived = 1",
+            &[] as &[&dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        // 计算本周笔记数
+        let week_start = Local::now().date_naive() - chrono::Duration::days(7);
+        let week_start_str = week_start.to_string();
+        let notes_this_week = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE created_at >= ?",
+            &[&week_start_str as &dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        // 计算本月笔记数
+        let month_start = Local::now().date_naive() - chrono::Duration::days(30);
+        let month_start_str = month_start.to_string();
+        let notes_this_month = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE created_at >= ?",
+            &[&month_start_str as &dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        // 获取标签统计
+        let most_used_tags = self.get_tag_stats()?;
+
+        // 获取心情分布
+        let mood_distribution = self.get_mood_stats()?;
+
+        // 获取每日笔记趋势（最近30天）
+        let daily_notes_trend = self.get_daily_notes_trend(30)?;
+
+        Ok(NoteStats {
+            total_notes,
+            favorite_notes,
+            archived_notes,
+            notes_this_week,
+            notes_this_month,
+            most_used_tags,
+            mood_distribution,
+            daily_notes_trend,
+        })
+    }
+
+    /// 获取标签统计
+    fn get_tag_stats(&self) -> Result<Vec<super::models::TagStats>> {
+        let all_tags = self.get_all_note_tags()?;
+        let total_notes = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE tags != '[]'",
+            &[] as &[&dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        let mut tag_stats = Vec::new();
+        for tag in all_tags {
+            let search_pattern = format!("%\"{}\"%%", tag);
+            let count = self.connection.query_row(
+                "SELECT COUNT(*) FROM notes WHERE JSON_EXTRACT(tags, '$') LIKE ?",
+                &[&search_pattern as &dyn rusqlite::ToSql],
+                |row| Ok(row.get::<_, i64>(0)?),
+            )?;
+
+            let percentage = if total_notes > 0 {
+                (count as f64 / total_notes as f64) * 100.0
+            } else {
+                0.0
+            };
+
+            tag_stats.push(super::models::TagStats {
+                tag,
+                count,
+                percentage,
+            });
+        }
+
+        // 按使用次数排序
+        tag_stats.sort_by(|a, b| b.count.cmp(&a.count));
+        tag_stats.truncate(10); // 只返回前10个最常用的标签
+
+        Ok(tag_stats)
+    }
+
+    /// 获取心情分布统计
+    fn get_mood_stats(&self) -> Result<Vec<super::models::MoodStats>> {
+        let sql = r#"
+            SELECT mood, COUNT(*) as count
+            FROM notes 
+            WHERE mood IS NOT NULL 
+            GROUP BY mood 
+            ORDER BY count DESC
+        "#;
+
+        let total_notes_with_mood = self.connection.query_row(
+            "SELECT COUNT(*) FROM notes WHERE mood IS NOT NULL",
+            &[] as &[&dyn rusqlite::ToSql],
+            |row| Ok(row.get::<_, i64>(0)?),
+        )?;
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
+            let rows = stmt.query_map([], |row| {
+                let mood: String = row.get(0)?;
+                let count: i64 = row.get(1)?;
+                Ok((mood, count))
+            })?;
+
+            let mut mood_stats = Vec::new();
+            for row in rows {
+                let (mood, count) = row?;
+                let percentage = if total_notes_with_mood > 0 {
+                    (count as f64 / total_notes_with_mood as f64) * 100.0
+                } else {
+                    0.0
+                };
+
+                mood_stats.push(super::models::MoodStats {
+                    mood,
+                    count,
+                    percentage,
+                });
+            }
+            Ok(mood_stats)
+        })
+    }
+
+    /// 获取每日笔记趋势
+    fn get_daily_notes_trend(&self, days: i32) -> Result<Vec<super::models::DailyNoteStats>> {
+        let start_date = Local::now().date_naive() - chrono::Duration::days(days as i64);
+
+        let sql = r#"
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM notes 
+            WHERE created_at >= ?
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        "#;
+
+        self.connection.read(|conn| {
+            let mut stmt = conn.prepare(sql)?;
+            let rows = stmt.query_map([&start_date.to_string()], |row| {
+                let date_str: String = row.get(0)?;
+                let count: i64 = row.get(1)?;
+                let date =
+                    chrono::NaiveDate::parse_from_str(&date_str, "%Y-%m-%d").map_err(|e| {
+                        rusqlite::Error::InvalidColumnType(
+                            0,
+                            format!("Invalid date: {}", e).into(),
+                            rusqlite::types::Type::Text,
+                        )
+                    })?;
+                Ok(super::models::DailyNoteStats { date, count })
+            })?;
+
+            let mut trend = Vec::new();
+            for row in rows {
+                trend.push(row?);
+            }
+            Ok(trend)
+        })
     }
 }
 

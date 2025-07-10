@@ -764,3 +764,317 @@ pub struct DatabaseStats {
     pub size_mb: f64,
     pub last_updated: chrono::DateTime<chrono::Local>,
 }
+
+// ==================== 笔记模型 ====================
+
+/// 笔记完整模型
+///
+/// 对应数据库中的 notes 表
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Note {
+    /// 唯一标识符
+    pub id: Uuid,
+    /// 笔记标题
+    pub title: String,
+    /// 笔记内容
+    pub content: String,
+    /// 心情状态（可选）
+    pub mood: Option<String>,
+    /// 标签列表
+    pub tags: Vec<String>,
+    /// 是否收藏
+    pub is_favorite: bool,
+    /// 是否归档
+    pub is_archived: bool,
+    /// 创建时间
+    pub created_at: DateTime<Local>,
+    /// 更新时间
+    pub updated_at: DateTime<Local>,
+}
+
+/// 笔记插入模型
+///
+/// 用于插入新的笔记到数据库
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteInsert {
+    /// 唯一标识符
+    pub id: Uuid,
+    /// 笔记标题
+    pub title: String,
+    /// 笔记内容
+    pub content: String,
+    /// 心情状态（可选）
+    pub mood: Option<String>,
+    /// 标签列表
+    pub tags: Vec<String>,
+    /// 是否收藏
+    pub is_favorite: bool,
+    /// 是否归档
+    pub is_archived: bool,
+    /// 创建时间
+    pub created_at: DateTime<Local>,
+    /// 更新时间
+    pub updated_at: DateTime<Local>,
+}
+
+/// 笔记更新模型
+///
+/// 用于更新现有的笔记
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NoteUpdate {
+    /// 笔记标题（可选）
+    pub title: Option<String>,
+    /// 笔记内容（可选）
+    pub content: Option<String>,
+    /// 心情状态（可选）
+    pub mood: Option<Option<String>>,
+    /// 标签列表（可选）
+    pub tags: Option<Vec<String>>,
+    /// 是否收藏（可选）
+    pub is_favorite: Option<bool>,
+    /// 是否归档（可选）
+    pub is_archived: Option<bool>,
+    /// 更新时间
+    pub updated_at: DateTime<Local>,
+}
+
+/// 笔记查询模型
+///
+/// 用于查询和过滤笔记
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct NoteQuery {
+    /// 标题或内容搜索（模糊匹配）
+    pub search: Option<String>,
+    /// 标签过滤
+    pub tags: Option<Vec<String>>,
+    /// 心情过滤
+    pub mood: Option<String>,
+    /// 是否收藏过滤
+    pub is_favorite: Option<bool>,
+    /// 是否归档过滤
+    pub is_archived: Option<bool>,
+    /// 创建时间范围开始
+    pub created_from: Option<DateTime<Local>>,
+    /// 创建时间范围结束
+    pub created_to: Option<DateTime<Local>>,
+    /// 排序字段
+    pub sort_by: Option<NoteSortBy>,
+    /// 排序方向
+    pub sort_order: Option<SortOrder>,
+    /// 分页：偏移量
+    pub offset: Option<i64>,
+    /// 分页：限制数量
+    pub limit: Option<i64>,
+}
+
+/// 笔记排序字段
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NoteSortBy {
+    /// 按创建时间排序
+    CreatedAt,
+    /// 按更新时间排序
+    UpdatedAt,
+    /// 按标题排序
+    Title,
+    /// 按心情排序
+    Mood,
+}
+
+/// 笔记统计模型
+///
+/// 用于表示笔记相关的统计数据
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NoteStats {
+    /// 总笔记数
+    pub total_notes: i64,
+    /// 收藏笔记数
+    pub favorite_notes: i64,
+    /// 归档笔记数
+    pub archived_notes: i64,
+    /// 本周笔记数
+    pub notes_this_week: i64,
+    /// 本月笔记数
+    pub notes_this_month: i64,
+    /// 最常用标签
+    pub most_used_tags: Vec<TagStats>,
+    /// 心情分布
+    pub mood_distribution: Vec<MoodStats>,
+    /// 每日笔记趋势
+    pub daily_notes_trend: Vec<DailyNoteStats>,
+}
+
+/// 标签统计
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TagStats {
+    /// 标签名称
+    pub tag: String,
+    /// 使用次数
+    pub count: i64,
+    /// 使用百分比
+    pub percentage: f64,
+}
+
+/// 心情统计
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MoodStats {
+    /// 心情类型
+    pub mood: String,
+    /// 次数
+    pub count: i64,
+    /// 百分比
+    pub percentage: f64,
+}
+
+/// 每日笔记统计
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DailyNoteStats {
+    /// 日期
+    pub date: chrono::NaiveDate,
+    /// 笔记数量
+    pub count: i64,
+}
+
+// ==================== 笔记模型实现 ====================
+
+impl Note {
+    /// 创建新的笔记
+    pub fn new(title: String, content: String) -> Self {
+        let now = Local::now();
+        Self {
+            id: Uuid::new_v4(),
+            title,
+            content,
+            mood: None,
+            tags: Vec::new(),
+            is_favorite: false,
+            is_archived: false,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    /// 设置心情
+    pub fn set_mood(&mut self, mood: Option<String>) {
+        self.mood = mood;
+        self.updated_at = Local::now();
+    }
+
+    /// 添加标签
+    pub fn add_tag(&mut self, tag: String) {
+        if !self.tags.contains(&tag) {
+            self.tags.push(tag);
+            self.updated_at = Local::now();
+        }
+    }
+
+    /// 移除标签
+    pub fn remove_tag(&mut self, tag: &str) {
+        if let Some(pos) = self.tags.iter().position(|t| t == tag) {
+            self.tags.remove(pos);
+            self.updated_at = Local::now();
+        }
+    }
+
+    /// 设置收藏状态
+    pub fn set_favorite(&mut self, is_favorite: bool) {
+        self.is_favorite = is_favorite;
+        self.updated_at = Local::now();
+    }
+
+    /// 设置归档状态
+    pub fn set_archived(&mut self, is_archived: bool) {
+        self.is_archived = is_archived;
+        self.updated_at = Local::now();
+    }
+
+    /// 更新内容
+    pub fn update_content(&mut self, title: Option<String>, content: Option<String>) {
+        if let Some(title) = title {
+            self.title = title;
+        }
+        if let Some(content) = content {
+            self.content = content;
+        }
+        self.updated_at = Local::now();
+    }
+
+    /// 获取内容预览（前100个字符）
+    pub fn content_preview(&self) -> String {
+        if self.content.len() > 100 {
+            format!("{}...", &self.content[..100])
+        } else {
+            self.content.clone()
+        }
+    }
+
+    /// 检查是否包含标签
+    pub fn has_tag(&self, tag: &str) -> bool {
+        self.tags.contains(&tag.to_string())
+    }
+
+    /// 获取格式化的创建时间
+    pub fn formatted_created_at(&self) -> String {
+        self.created_at.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+
+    /// 获取格式化的更新时间
+    pub fn formatted_updated_at(&self) -> String {
+        self.updated_at.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+}
+
+impl From<Note> for NoteInsert {
+    fn from(note: Note) -> Self {
+        Self {
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            mood: note.mood,
+            tags: note.tags,
+            is_favorite: note.is_favorite,
+            is_archived: note.is_archived,
+            created_at: note.created_at,
+            updated_at: note.updated_at,
+        }
+    }
+}
+
+impl Default for NoteSortBy {
+    fn default() -> Self {
+        Self::UpdatedAt
+    }
+}
+
+impl NoteStats {
+    /// 创建空的统计数据
+    pub fn empty() -> Self {
+        Self {
+            total_notes: 0,
+            favorite_notes: 0,
+            archived_notes: 0,
+            notes_this_week: 0,
+            notes_this_month: 0,
+            most_used_tags: Vec::new(),
+            mood_distribution: Vec::new(),
+            daily_notes_trend: Vec::new(),
+        }
+    }
+
+    /// 计算收藏率
+    pub fn favorite_rate(&self) -> f64 {
+        if self.total_notes == 0 {
+            0.0
+        } else {
+            (self.favorite_notes as f64 / self.total_notes as f64) * 100.0
+        }
+    }
+
+    /// 计算归档率
+    pub fn archive_rate(&self) -> f64 {
+        if self.total_notes == 0 {
+            0.0
+        } else {
+            (self.archived_notes as f64 / self.total_notes as f64) * 100.0
+        }
+    }
+}

@@ -557,27 +557,79 @@ impl StorageManager {
         self.database.get_recent_time_entries(limit)
     }
 
-    /// 执行数据库维护操作
-    pub fn maintenance(&self) -> crate::errors::Result<()> {
-        log::info!("开始数据库维护操作");
+    // ==================== 笔记操作 ====================
 
-        // 检查完整性
-        if !self.check_integrity()? {
-            log::error!("数据库完整性检查失败");
-            return Err(AppError::Storage("数据库完整性检查失败".to_string()));
+    /// 插入笔记
+    pub async fn insert_note(&self, note: &Note) -> crate::errors::Result<()> {
+        self.database.insert_note(note)?;
+        Ok(())
+    }
+
+    /// 获取所有笔记
+    pub async fn get_notes(&self, query: &NoteQuery) -> crate::errors::Result<Vec<Note>> {
+        if let Some(search) = &query.search {
+            // 如果有搜索条件，使用搜索方法
+            self.database.search_notes(query)
+        } else {
+            // 否则获取所有笔记
+            self.database.get_all_notes()
+        }
+    }
+
+    /// 根据ID获取笔记
+    pub async fn get_note_by_id(&self, id: uuid::Uuid) -> crate::errors::Result<Option<Note>> {
+        self.database.get_note_by_id(id)
+    }
+
+    /// 更新笔记
+    pub async fn update_note(
+        &self,
+        id: uuid::Uuid,
+        update: &NoteUpdate,
+    ) -> crate::errors::Result<()> {
+        self.database.update_note(id, update)?;
+        Ok(())
+    }
+
+    /// 删除笔记
+    pub async fn delete_note(&self, id: uuid::Uuid) -> crate::errors::Result<()> {
+        self.database.delete_note(id)?;
+        Ok(())
+    }
+
+    /// 搜索笔记
+    pub async fn search_notes(&self, query: &NoteQuery) -> crate::errors::Result<Vec<Note>> {
+        self.database.search_notes(query)
+    }
+
+    /// 获取笔记统计信息
+    pub async fn get_notes_stats(&self) -> crate::errors::Result<NoteStats> {
+        self.database.get_notes_stats()
+    }
+
+    /// 获取所有笔记标签
+    pub async fn get_all_note_tags(&self) -> crate::errors::Result<Vec<String>> {
+        self.database.get_all_note_tags()
+    }
+
+    /// 数据库维护
+    pub fn maintenance(&self) -> crate::errors::Result<()> {
+        // VACUUM 操作：回收空间并整理数据库
+        self.database.get_connection()?.execute("VACUUM", &[])?;
+
+        // ANALYZE 操作：更新查询优化器的统计信息
+        self.database.get_connection()?.execute("ANALYZE", &[])?;
+
+        // 重建FTS索引（如果存在笔记表）
+        if let Ok(_) = self
+            .database
+            .get_connection()?
+            .execute("INSERT INTO notes_fts(notes_fts) VALUES('rebuild')", &[])
+        {
+            log::debug!("FTS索引重建完成");
         }
 
-        // 优化数据库
-        self.optimize_database()?;
-
-        // 获取并记录统计信息
-        let stats = self.get_database_stats()?;
-        log::info!(
-            "数据库维护完成 - 总记录数: {}, 数据库大小: {}",
-            stats.get_total_records(),
-            stats.get_formatted_size()
-        );
-
+        log::info!("数据库维护完成");
         Ok(())
     }
 }

@@ -115,6 +115,17 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
             tauri_commands::sync::debug_webdav_config,
             tauri_commands::sync::get_pending_conflicts,
             tauri_commands::sync::resolve_conflicts,
+            // 笔记相关命令
+            tauri_commands::notes::get_notes,
+            tauri_commands::notes::get_note_by_id,
+            tauri_commands::notes::create_note,
+            tauri_commands::notes::update_note,
+            tauri_commands::notes::delete_note,
+            tauri_commands::notes::toggle_note_favorite,
+            tauri_commands::notes::toggle_note_archive,
+            tauri_commands::notes::search_notes,
+            tauri_commands::notes::get_notes_stats,
+            tauri_commands::notes::get_note_tags,
         ])
 }
 
