@@ -12,10 +12,12 @@ interface TabTransitionProps {
 }
 
 // 简化的标签切换动画变体 - 去除scale避免回弹
+type AniDir = "forward" | "backward" | "none";
+
 const tabVariants = {
-	initial: (animationDirection: "forward" | "backward") => ({
+	initial: (dir: AniDir) => ({
 		opacity: 0,
-		x: animationDirection === "forward" ? 50 : -50,
+		x: dir === "forward" ? 50 : dir === "backward" ? -50 : 0,
 		// 使用更平滑的blur效果替代scale
 		filter: "blur(2px)",
 	}),
@@ -24,9 +26,9 @@ const tabVariants = {
 		x: 0,
 		filter: "blur(0px)",
 	},
-	out: (animationDirection: "forward" | "backward") => ({
+	out: (dir: AniDir) => ({
 		opacity: 0,
-		x: animationDirection === "forward" ? -50 : 50,
+		x: dir === "forward" ? -50 : dir === "backward" ? 50 : 0,
 		filter: "blur(2px)",
 	}),
 };
@@ -42,12 +44,11 @@ const TabTransition: React.FC<TabTransitionProps> = ({
 	const isMobile = useMemo(() => window.innerWidth < 768, []);
 
 	// 计算动画方向
-	const animationDirection = useMemo(() => {
+	const animationDirection: AniDir = useMemo(() => {
 		if (previousTab && tabGroup) {
-			const detected = getTabDirection(previousTab, activeKey, tabGroup);
-			return detected === "none" ? "forward" : detected;
+			return getTabDirection(previousTab, activeKey, tabGroup);
 		}
-		return "forward";
+		return "none";
 	}, [previousTab, activeKey, tabGroup]);
 
 	// 优化的transition配置
