@@ -1,12 +1,12 @@
 import { ArrowLeft, Clock, Github, Globe, Heart, Mail } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../hooks/useRouter";
 
 const About: React.FC = () => {
 	const { state, actions } = useRouter();
 
-	// 判断是否从系统页面进入
-	const isFromSystemPage = state.source === "system";
+	// 固定首次进入时是否从系统页面进入，避免动画期间按钮消失
+	const showBackButton = useRef(state.source === "system").current;
 
 	const [showDetails, setShowDetails] = useState(false);
 	const [showSystemInfo, setShowSystemInfo] = useState(false);
@@ -93,9 +93,13 @@ const About: React.FC = () => {
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
 						{/* 仅在从系统页面进入时显示返回按钮 */}
-						{isFromSystemPage && (
+						{showBackButton && (
 							<button
-								onClick={actions.goBack}
+								onClick={() => {
+									if (state.canGoBack) {
+										actions.goBack();
+									}
+								}}
 								className="flex items-center justify-center w-8 h-8 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
 								title="返回"
 							>

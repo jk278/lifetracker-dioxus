@@ -10,13 +10,15 @@ import {
 	Trash2,
 	Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigation } from "../../hooks/useRouter";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDataRefresh } from "../../hooks/useDataRefresh";
+import { useNavigation } from "../../hooks/useRouter";
 
 export function DataManagement() {
 	const { navigate, canGoBack, goBack } = useNavigation();
-	const isFromSystemPage = canGoBack;
+
+	// 固定首次进入时是否可返回，避免 goBack 后按钮立刻消失
+	const showBackButton = useRef(canGoBack).current;
 
 	// 数据统计状态
 	const [statistics, setStatistics] = useState({
@@ -64,7 +66,7 @@ export function DataManagement() {
 			console.log(`数据管理页面收到数据变化通知: ${changeType}`);
 			// 数据变化后清除之前的状态消息
 			setOperationStatus({ type: null, message: "" });
-		}
+		},
 	});
 
 	// 初始化获取统计信息
@@ -108,8 +110,10 @@ export function DataManagement() {
 	const handleBack = useCallback(() => {
 		if (canGoBack) {
 			goBack();
+		} else {
+			navigate("system", "direct");
 		}
-	}, [canGoBack, goBack]);
+	}, [canGoBack, goBack, navigate]);
 
 	// 功能卡片数据
 	const features = [
@@ -162,13 +166,17 @@ export function DataManagement() {
 
 	return (
 		<div className="h-full flex flex-col">
-			{/* 固定顶部导航栏 */}
+			{/* 顶部工具栏 */}
 			<div className="flex-shrink-0 px-4 md:px-6 py-4 border-b border-gray-200 dark:border-gray-700 surface-adaptive">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-3">
-						{isFromSystemPage && (
+						{showBackButton && (
 							<button
-								onClick={handleBack}
+								onClick={() => {
+									if (canGoBack) {
+										goBack();
+									}
+								}}
 								className="flex items-center justify-center w-8 h-8 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
 								title="返回"
 							>

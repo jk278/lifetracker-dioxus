@@ -13,24 +13,14 @@ import {
 	Wallet,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import About from "./components/About";
 import AccountingPage from "./components/Accounting/AccountingPage";
 import {
 	GestureWrapper,
 	InteractiveButton,
 	PageTransition,
 } from "./components/Animation";
-import {
-	DataBackup,
-	DataCleanup,
-	DataExport,
-	DataImport,
-	DataManagement,
-	DataSync,
-} from "./components/DataManagement";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import NotesPage from "./components/NotesPage";
-import SettingsComponent from "./components/Settings";
 import SystemPage from "./components/SystemPage";
 import TimingPage from "./components/Timing/TimingPage";
 import TitleBar from "./components/TitleBar";
@@ -83,14 +73,32 @@ const getNavItems = (isMobileLayout: boolean) => {
 function AppContent() {
 	const { currentRoute, navigate } = useNavigation();
 
-	// Track previous route via ref for animation direction
-	const previousRouteRef = useRef<RouteId>(currentRoute);
+	// 系统子页面列表（与 SystemPage 保持同步）
+	const SYSTEM_SUB_PAGES: RouteId[] = [
+		"data",
+		"settings",
+		"about",
+		"data-export",
+		"data-import",
+		"data-backup",
+		"data-sync",
+		"data-cleanup",
+	];
+
+	// 计算在PageTransition中使用的routeKey：对于系统及其子页面使用统一的"system"，避免父页面退出动画
+	const pageRouteKey =
+		currentRoute === "system" || SYSTEM_SUB_PAGES.includes(currentRoute)
+			? "system"
+			: currentRoute;
+
+	// Track previous pageRouteKey via ref for animation direction
+	const previousPageKeyRef = useRef<string>(pageRouteKey);
 
 	useEffect(() => {
-		if (currentRoute !== previousRouteRef.current) {
-			previousRouteRef.current = currentRoute;
+		if (pageRouteKey !== previousPageKeyRef.current) {
+			previousPageKeyRef.current = pageRouteKey;
 		}
-	}, [currentRoute]);
+	}, [pageRouteKey]);
 
 	const [timerStatus, setTimerStatus] = useState<TimerStatus>({
 		state: "stopped",
@@ -473,16 +481,65 @@ function AppContent() {
 	// Calculate animation properties for PageTransition
 	const getPageAnimationCustom = () => {
 		const animationDirection = getRouteDirection(
-			previousRouteRef.current,
-			currentRoute,
+			previousPageKeyRef.current as RouteId,
+			pageRouteKey as RouteId,
 			isMobileLayout,
 		);
+
+		// 判断是否为系统子页面切换
+		const isSystemSubPage = SYSTEM_SUB_PAGES.includes(currentRoute);
+		const wasSystemSubPage = SYSTEM_SUB_PAGES.includes(
+			previousPageKeyRef.current as RouteId,
+		);
+		const isSystemMainPage = currentRoute === "system";
+		const wasSystemMainPage = previousPageKeyRef.current === "system";
+
+		// 如果从系统子页面返回到系统主页面，不使用动画
+		if (wasSystemSubPage && isSystemMainPage) {
+			return {
+				direction: "horizontal" as "horizontal" | "vertical",
+				animationDirection: "none" as "forward" | "backward" | "none",
+				type: "slide" as "slide" | "fade",
+			};
+		}
+
+		// 从系统主页面进入子页面，使用fade动画
+		if (wasSystemMainPage && isSystemSubPage) {
+			return {
+				direction: "horizontal" as "horizontal" | "vertical",
+				animationDirection: "forward" as "forward" | "backward" | "none",
+				type: "fade" as "slide" | "fade",
+			};
+		}
+
+		// 系统子页面之间的切换，使用fade动画
+		if (isSystemSubPage && wasSystemSubPage) {
+			return {
+				direction: "horizontal" as "horizontal" | "vertical",
+				animationDirection: "forward" as "forward" | "backward" | "none",
+				type: "fade" as "slide" | "fade",
+			};
+		}
+
+		// 从系统页面（包括system或其子页面）切换到原始菜单，使用backward动画
+		if ((wasSystemMainPage || wasSystemSubPage) && ["timing", "accounting", "notes"].includes(currentRoute)) {
+			return {
+				direction: isMobileLayout
+					? "horizontal"
+					: ("vertical" as "horizontal" | "vertical"),
+				animationDirection: "backward" as "forward" | "backward" | "none",
+				type: "slide" as "slide" | "fade",
+			};
+		}
+
+		// 其他页面使用slide动画
 		return {
 			direction: isMobileLayout
 				? "horizontal"
 				: ("vertical" as "horizontal" | "vertical"),
 			animationDirection:
 				animationDirection === "none" ? "forward" : animationDirection,
+			type: "slide" as "slide" | "fade",
 		};
 	};
 
@@ -622,7 +679,7 @@ function AppContent() {
 										className="h-full"
 									>
 										<PageTransition
-											routeKey={currentRoute}
+											routeKey={pageRouteKey}
 											animationCustom={getPageAnimationCustom()}
 										>
 											{currentRoute === "timing" && (
@@ -645,24 +702,16 @@ function AppContent() {
 
 											{currentRoute === "notes" && <NotesPage />}
 
-											{currentRoute === "system" && <SystemPage />}
-
-											{/* 直接访问的页面（兼容性） */}
-											{currentRoute === "settings" && <SettingsComponent />}
-											{currentRoute === "about" && <About />}
-											{currentRoute === "data" && <DataManagement />}
-
-											{/* 数据管理子页面 */}
-											{currentRoute === "data-export" && <DataExport />}
-											{currentRoute === "data-import" && <DataImport />}
-											{currentRoute === "data-backup" && <DataBackup />}
-											{currentRoute === "data-sync" && <DataSync />}
-											{currentRoute === "data-cleanup" && <DataCleanup />}
+											{/* 系统页面 - 处理所有系统相关路由 */}
+											{(currentRoute === "system" ||
+												SYSTEM_SUB_PAGES.includes(currentRoute)) && (
+												<SystemPage />
+											)}
 										</PageTransition>
 									</GestureWrapper>
 								) : (
 									<PageTransition
-										routeKey={currentRoute}
+										routeKey={pageRouteKey}
 										animationCustom={getPageAnimationCustom()}
 									>
 										{currentRoute === "timing" && (
@@ -685,19 +734,11 @@ function AppContent() {
 
 										{currentRoute === "notes" && <NotesPage />}
 
-										{currentRoute === "system" && <SystemPage />}
-
-										{/* 直接访问的页面（兼容性） */}
-										{currentRoute === "settings" && <SettingsComponent />}
-										{currentRoute === "about" && <About />}
-										{currentRoute === "data" && <DataManagement />}
-
-										{/* 数据管理子页面 */}
-										{currentRoute === "data-export" && <DataExport />}
-										{currentRoute === "data-import" && <DataImport />}
-										{currentRoute === "data-backup" && <DataBackup />}
-										{currentRoute === "data-sync" && <DataSync />}
-										{currentRoute === "data-cleanup" && <DataCleanup />}
+										{/* 系统页面 - 处理所有系统相关路由 */}
+										{(currentRoute === "system" ||
+											SYSTEM_SUB_PAGES.includes(currentRoute)) && (
+											<SystemPage />
+										)}
 									</PageTransition>
 								)}
 							</ErrorBoundary>

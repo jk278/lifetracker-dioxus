@@ -8,11 +8,19 @@ interface PageTransitionProps {
 	animationCustom: {
 		direction: "horizontal" | "vertical";
 		animationDirection: "forward" | "backward" | "none";
+		// 新增：动画类型
+		type?: "slide" | "fade";
+		// 新增：只显示退出动画，不显示进入动画
+		exitOnly?: boolean;
+		// 新增：跳过退出动画，直接消失
+		skipExitAnimation?: boolean;
+		// 新增：退出动画延迟时间（秒）
+		exitDelay?: number;
 	};
 	duration?: number;
 }
 
-// 简化的动画变体，去除scale以避免回弹
+// 滑动动画变体
 const slideVariants = {
 	initial: (custom: PageTransitionProps["animationCustom"]) => {
 		const { direction, animationDirection } = custom;
@@ -66,8 +74,43 @@ const slideVariants = {
 			x,
 			y,
 			filter: "blur(4px)",
+			// 退出动画专用的 transition 配置
+			transition: {
+				type: "tween" as const,
+				ease: [0.4, 0, 0.2, 1] as const,
+				duration: custom.skipExitAnimation ? 0.05 : 0.3,
+				delay: custom.exitDelay ?? 0,
+				bounce: 0,
+			},
 		};
 	},
+};
+
+// 淡入淡出动画变体 - 用于子页面（更明显的缩放与透明度）
+const fadeVariants = {
+	initial: {
+		opacity: 0,
+		scale: 0.9, // 更明显的缩放
+		filter: "blur(4px)",
+	},
+	in: {
+		opacity: 1,
+		scale: 1,
+		filter: "blur(0px)",
+	},
+	out: (custom: PageTransitionProps["animationCustom"]) => ({
+		opacity: 0,
+		scale: 0.9, // 与initial保持一致
+		filter: "blur(4px)",
+		// 退出动画专用的 transition 配置
+		transition: {
+			type: "tween" as const,
+			ease: [0.4, 0, 0.2, 1] as const,
+			duration: custom.skipExitAnimation ? 0.05 : 0.24, // fade动画稍快一些
+			delay: custom.exitDelay ?? 0,
+			bounce: 0,
+		},
+	}),
 };
 
 const PageTransition: React.FC<PageTransitionProps> = ({
@@ -83,22 +126,48 @@ const PageTransition: React.FC<PageTransitionProps> = ({
 		[duration, isMobile],
 	);
 
-	// 优化的transition配置
-	const transition: Transition = useMemo(
-		() => ({
-			type: "tween",
-			ease: [0.4, 0, 0.2, 1], // 使用更平滑的缓动函数
-			duration: optimizedDuration,
-			// 避免bounce效果
+	// 根据动画类型选择变体
+	const variants = useMemo(() => {
+		const baseVariants =
+			animationCustom.type === "fade" ? fadeVariants : slideVariants;
+
+		// 如果是exitOnly模式，修改initial状态为直接显示
+		if (animationCustom.exitOnly) {
+			return {
+				...baseVariants,
+				initial: baseVariants.in, // 直接显示，不使用进入动画
+			};
+		}
+
+		return baseVariants;
+	}, [animationCustom.type, animationCustom.exitOnly]);
+
+	// 优化的transition配置 - 仅用于进入动画
+	const transition: Transition = useMemo(() => {
+		const baseTransition = {
+			type: "tween" as const,
+			ease: [0.4, 0, 0.2, 1] as const,
+			duration:
+				animationCustom.type === "fade" ? optimizedDuration * 0.8 : optimizedDuration,
 			bounce: 0,
-		}),
-		[optimizedDuration],
-	);
+		};
+
+		return baseTransition;
+	}, [
+		optimizedDuration,
+		animationCustom.type,
+	]);
+
+	// 如果动画方向是"none"，直接返回内容，不使用动画
+	if (animationCustom.animationDirection === "none") {
+		return <div className="w-full h-full">{children}</div>;
+	}
 
 	return (
 		<AnimatePresence
 			mode="wait"
 			custom={animationCustom}
+			initial={false}
 			// 添加onExitComplete回调以确保动画完全结束
 			onExitComplete={() => {
 				// 清理可能残留的样式
@@ -113,7 +182,7 @@ const PageTransition: React.FC<PageTransitionProps> = ({
 				initial="initial"
 				animate="in"
 				exit="out"
-				variants={slideVariants}
+				variants={variants}
 				transition={transition}
 				className="w-full h-full"
 				style={{
