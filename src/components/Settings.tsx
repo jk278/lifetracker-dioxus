@@ -59,6 +59,12 @@ const Settings: React.FC<SettingsProps> = () => {
 		try {
 			const appConfig = await invoke<AppConfig>("get_config");
 			setConfig(appConfig);
+			
+			// 同步主题设置：如果后端配置的主题与前端不一致，则更新前端主题
+			// 这样确保配置页面显示的主题状态与实际保存的一致
+			if (appConfig.theme && appConfig.theme !== theme) {
+				setTheme(appConfig.theme as any);
+			}
 		} catch (error) {
 			console.error("获取配置失败:", error);
 		} finally {
@@ -69,7 +75,15 @@ const Settings: React.FC<SettingsProps> = () => {
 	const saveConfig = async () => {
 		setSaving(true);
 		try {
-			await invoke("update_config", { config });
+			// 同步当前主题设置到配置中
+			const configToSave = {
+				...config,
+				theme: theme, // 同步主题模式
+				// 注意：themeColor 由前端 useTheme hook 管理，存储在 localStorage
+				// 后端配置主要处理其他业务配置
+			};
+			
+			await invoke("update_config", { config: configToSave });
 			alert("设置保存成功！");
 		} catch (error) {
 			console.error("保存配置失败:", error);

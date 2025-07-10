@@ -317,9 +317,9 @@ export function TaskManagement() {
 											className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
 										>
 											{isExpanded ? (
-												<ChevronUp className="h-4 w-4" />
+												<ChevronUp className="h-4 w-4 text-gray-500 dark:text-gray-400" />
 											) : (
-												<ChevronDown className="h-4 w-4" />
+												<ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
 											)}
 										</InteractiveButton>
 										<div className="flex-1">

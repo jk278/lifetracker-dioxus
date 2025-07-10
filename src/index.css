@@ -370,3 +370,12 @@ code {
 .bg-surface {
 	background-color: var(--theme-surface);
 }
+
+/* 暗色模式聚焦效果 */
+.dark .ring-theme-primary {
+  --tw-ring-color: rgb(from var(--theme-primary) r g b / 0.5); /* 50% 透明度，更柔和 */
+}
+
+.dark .focus\:ring-2:focus {
+  --tw-ring-offset-width: 1px; /* 从 2px 减到 1px */
+}

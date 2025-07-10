@@ -17,8 +17,22 @@ pub async fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String>
 /// 更新应用配置
 #[tauri::command]
 pub async fn update_config(state: State<'_, AppState>, config: AppConfig) -> Result<bool, String> {
-    let mut state_config = state.config.lock().unwrap();
-    *state_config = config;
+    // 更新内存中的配置
+    {
+        let mut state_config = state.config.lock().unwrap();
+        *state_config = config.clone();
+    }
+
+    // 持久化保存到配置文件
+    let mut config_manager =
+        crate::config::create_config_manager().map_err(|e| format!("创建配置管理器失败: {}", e))?;
+
+    *config_manager.config_mut() = config;
+    config_manager
+        .save()
+        .map_err(|e| format!("保存配置文件失败: {}", e))?;
+
+    log::info!("配置已成功更新并保存到文件");
     Ok(true)
 }
 

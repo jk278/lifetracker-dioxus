@@ -56,6 +56,7 @@ pub fn create_app_builder() -> tauri::Builder<tauri::Wry> {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             tauri_commands::config::get_config,
+            tauri_commands::config::update_config,
             tauri_commands::config::set_window_theme,
             tauri_commands::task::get_tasks,
             tauri_commands::task::create_task,
