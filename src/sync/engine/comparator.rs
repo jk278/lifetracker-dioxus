@@ -484,76 +484,17 @@ impl DataComparator {
 
     /// 保存冲突详情到全局状态
     async fn save_conflict_details(&self, conflict_result: &ConflictDetectionResult) -> Result<()> {
-        use crate::tauri_commands::sync::conflicts::PENDING_CONFLICTS;
-        use crate::tauri_commands::sync::types::ConflictItem;
+        // TODO: 在 Dioxus 版本中重新实现冲突管理
+        // use crate::tauri_commands::sync::conflicts::PENDING_CONFLICTS;
+        // use crate::tauri_commands::sync::types::ConflictItem;
 
-        // 创建冲突项
-        let conflict_item = ConflictItem {
-            id: "data_integrity_conflict".to_string(),
-            name: "数据完整性冲突".to_string(),
-            local_modified: chrono::Local::now().to_rfc3339(),
-            remote_modified: Some(chrono::Local::now().to_rfc3339()),
-            conflict_type: match conflict_result.conflict_type {
-                super::integrity_checker::ConflictType::DataLossRisk => {
-                    "data_loss_risk".to_string()
-                }
-                super::integrity_checker::ConflictType::DataVolumeConflict => {
-                    "data_volume_conflict".to_string()
-                }
-                super::integrity_checker::ConflictType::DataIntegrityConflict => {
-                    "data_integrity_conflict".to_string()
-                }
-                super::integrity_checker::ConflictType::StructuralConflict => {
-                    "structural_conflict".to_string()
-                }
-                super::integrity_checker::ConflictType::TimestampConflict => {
-                    "timestamp_conflict".to_string()
-                }
-                _ => "unknown_conflict".to_string(),
-            },
-            local_preview: serde_json::json!({
-                "tasks": conflict_result.local_stats.tasks,
-                "time_entries": conflict_result.local_stats.time_entries,
-                "transactions": conflict_result.local_stats.transactions,
-                "data_size": conflict_result.local_stats.data_size,
-                "user_message": conflict_result.user_message
-            }),
-            remote_preview: serde_json::json!({
-                "tasks": conflict_result.remote_stats.tasks,
-                "time_entries": conflict_result.remote_stats.time_entries,
-                "transactions": conflict_result.remote_stats.transactions,
-                "data_size": conflict_result.remote_stats.data_size,
-                "risk_level": match conflict_result.risk_assessment.risk_level {
-                    RiskLevel::Safe => "safe",
-                    RiskLevel::NeedsConfirmation => "needs_confirmation",
-                    RiskLevel::HighRisk => "high_risk",
-                    RiskLevel::Dangerous => "dangerous",
-                }
-            }),
-            file_size: conflict_result.local_stats.data_size as u64,
-            local_hash: format!(
-                "{:x}",
-                md5::compute(
-                    serde_json::to_string(&conflict_result.local_stats).unwrap_or_default()
-                )
-            ),
-            remote_hash: Some(format!(
-                "{:x}",
-                md5::compute(
-                    serde_json::to_string(&conflict_result.remote_stats).unwrap_or_default()
-                )
-            )),
-        };
-
-        // 保存到全局状态
-        let mut pending_conflicts = PENDING_CONFLICTS.lock().unwrap();
-        pending_conflicts.clear(); // 清除旧的冲突
-        pending_conflicts.push(conflict_item);
-
+        // TODO: 在 Dioxus 版本中重新实现冲突详情保存
         log::info!(
-            "已保存冲突详情到全局状态，冲突类型: {:?}",
+            "检测到数据冲突，类型: {:?} - 在 Dioxus 版本中暂时跳过冲突管理",
             conflict_result.conflict_type
         );
+
+        // 暂时返回成功，后续实现 Dioxus 版本的冲突管理
         Ok(())
     }
 }

@@ -62,6 +62,18 @@ pub enum BudgetPeriod {
     Yearly,
 }
 
+/// 趋势数据粒度枚举
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TrendGranularity {
+    /// 按天
+    Day,
+    /// 按周
+    Week,
+    /// 按月
+    Month,
+}
+
 // ==================== 账户模型 ====================
 
 /// 账户完整模型
@@ -381,6 +393,17 @@ pub struct FinancialReport {
     pub monthly_trend: Vec<MonthlyTrend>,
     /// 账户余额
     pub account_balances: Vec<AccountBalance>,
+}
+
+/// 趋势数据模型
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TrendData {
+    /// 时间标签（如"2024-01", "W27", "01-15"）
+    pub label: String,
+    /// 收入金额
+    pub income: f64,
+    /// 支出金额
+    pub expense: f64,
 }
 
 // ==================== 查询模型 ====================

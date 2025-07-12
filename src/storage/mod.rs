@@ -45,6 +45,9 @@ pub use accounting_models::{
     // 枚举类型
     TransactionType,
     TransactionUpdate,
+    // 趋势数据模型
+    TrendData,
+    TrendGranularity,
 };
 
 use crate::errors::AppError;

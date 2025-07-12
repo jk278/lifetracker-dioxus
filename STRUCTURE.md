@@ -15,8 +15,9 @@
 | 关键利益相关者 | 终端用户、开发者、开源社区 |
 
 > [!NOTE] 约束  
-> - **技术**：Tauri+Rust，React18+TypeScript，SQLite  
+> - **技术**：Dioxus 0.6 + Rust + SQLite（从 Tauri+React 迁移中）  
 > - **组织**：单人开发+社区贡献，需保持易维护性  
+> - **架构**：模块化设计，单一职责，文件不超过500行  
 
 ---
 
@@ -27,37 +28,59 @@
 ```mermaid
 graph TD
   classDef box fill:#f0f8ff,stroke:#333,stroke-width:1px;
-  subgraph "Frontend (React + TS)"
-    App["App.tsx"]:::box
-    Dashboard["Dashboard.tsx"]:::box
-    TimingPage["TimingPage.tsx"]:::box
-    TaskManagement["TaskManagement.tsx"]:::box
-    CategoryManagement["CategoryManagement.tsx"]:::box
-    AccountingManagement["AccountingManagement.tsx"]:::box
-    Statistics["Statistics.tsx"]:::box
+  classDef dioxus fill:#e8f5e8,stroke:#333,stroke-width:2px;
+  subgraph "Frontend (Dioxus + Rust)"
+    App["app.rs"]:::dioxus
+    Dashboard["dashboard.rs"]:::dioxus
+    subgraph "timing/"
+      TimingPage["timing_page.rs"]:::dioxus
+      TimingDashboard["dashboard.rs"]:::dioxus  
+      TaskManagement["task_management.rs"]:::dioxus
+      CategoryManagement["category_management.rs"]:::dioxus
+      Statistics["statistics.rs"]:::dioxus
+    end
+    subgraph "accounting/"
+      AccountingPage["accounting_page.rs"]:::dioxus
+      Overview["overview.rs"]:::dioxus
+      Accounts["accounts.rs"]:::dioxus
+      Transactions["transactions.rs"]:::dioxus
+    end
+    subgraph "diary/"
+      DiaryPage["diary_page.rs"]:::dioxus
+      Editor["editor.rs"]:::dioxus
+      Library["library.rs"]:::dioxus
+    end
+    subgraph "settings/ ✅"
+      SettingsPage["settings.rs"]:::dioxus
+      About["about.rs"]:::dioxus
+      SystemPage["system_page.rs"]:::dioxus
+      DataManagement["data_management/"]:::dioxus
+    end
     App --> Dashboard
     App --> TimingPage
-    Dashboard --> TaskManagement
-    Dashboard --> CategoryManagement
-    Dashboard --> AccountingManagement
-    Dashboard --> Statistics
+    App --> AccountingPage
+    App --> DiaryPage
+    App --> SettingsPage
+    TimingPage --> TimingDashboard
+    TimingPage --> TaskManagement
+    TimingPage --> CategoryManagement
+    TimingPage --> Statistics
   end
-  subgraph "Backend (Rust + Tauri)"
-    TimerCmd["tauri_commands.rs::start_timer"]:::box
+  subgraph "Core Logic (Rust)"
     TaskCore["core/task.rs"]:::box
     CategoryCore["core/category.rs"]:::box
     AccountingCore["core/accounting.rs"]:::box
     AnalyticsCore["core/analytics.rs"]:::box
+    TimerCore["core/timer.rs"]:::box
   end
   subgraph "Storage (SQLite)"
     DB[("storage/database.rs")]:::box
   end
-  App -->|"invoke"| TimerCmd
-  TaskManagement -->|"invoke get_tasks"| TaskCore
-  CategoryManagement -->|"invoke"| CategoryCore
-  AccountingManagement -->|"invoke"| AccountingCore
-  Statistics -->|"invoke"| AnalyticsCore
-  TimerCmd --> TimerCore["core/timer.rs"]
+  TaskManagement -->|"直接调用"| TaskCore
+  CategoryManagement -->|"直接调用"| CategoryCore
+  Overview -->|"直接调用"| AccountingCore
+  Statistics -->|"直接调用"| AnalyticsCore
+  TimingDashboard -->|"直接调用"| TimerCore
   TimerCore --> DB
   TaskCore --> DB
   CategoryCore --> DB
@@ -65,22 +88,27 @@ graph TD
   AnalyticsCore --> DB
 ```
 
-上图梳理了 **前端 💻、后端 🦀、存储 🗄️** 三层。  
-调用路径采用 _Tauri invoke_ —— React 组件直接向 Rust 命令发送请求，Rust 模块再与 SQLite 交互。
+上图梳理了 **前端 💻、核心逻辑 🦀、存储 🗄️** 三层。  
+调用路径采用 _直接函数调用_ —— Dioxus 组件直接调用 Rust 核心逻辑，无需 JSON 序列化，性能更优。
 
 ### 2.2 模块描述表
 
 | 层级 | 模块 | 主要文件 | 职责 | 交互接口 |
 |------|------|----------|------|----------|
-| Frontend | `Dashboard.tsx` | `src/components/Dashboard.tsx` | 首页路由&布局 | ➡️ 子组件 · invoke |
-|  | `TimingPage.tsx` | ⏱️ 时间追踪 UI | invoke(`start_timer`,`get_timer_status`) |
-| Backend | `core/timer.rs` | 精确计时&状态机 | CRUD Timer ↔️ DB |
-|  | `tauri_commands.rs` | 暴露异步命令 | bridge UI ⇄ Core |
+| Frontend | `app.rs` | `src/components/app.rs` | 主应用&路由 | ➡️ 子组件 |
+|  | `timing/` | `src/components/timing/` | ⏱️ 时间追踪模块 | 直接调用 core |
+|  | `accounting/` | `src/components/accounting/` | 💰 财务管理模块 | 直接调用 core |
+|  | `diary/` | `src/components/diary/` | 📝 日记功能模块 | 直接调用 core |
+|  | `settings/` | `src/components/settings/` | ⚙️ 设置管理模块 ✅ | 直接调用 core |
+| Core Logic | `core/timer.rs` | 精确计时&状态机 | CRUD Timer ↔️ DB |
+|  | `core/task.rs` | 任务管理逻辑 | 业务规则 ↔️ DB |
+|  | `core/accounting.rs` | 财务业务逻辑 | 交易规则 ↔️ DB |
 | Storage | `storage/database.rs` | 连接池 + migration | 提供事务化 API |
 
 > [!TIP] 设计决策  
-> - **无 Redux/Zustand**：小型状态直接用 React Hooks，降低复杂度。  
-> - **Rust ↔️ UI 强隔离**：业务规则全部落在 Rust，前端仅显示。  
+> - **模块化架构**：每个功能模块独立成目录，单一职责，文件不超过500行。  
+> - **Dioxus 组件**：使用 Rust 原生组件，无需 JSON 序列化，性能更优。  
+> - **业务逻辑分离**：所有业务规则在 `core/` 模块，UI 组件仅负责展示。  
 
 ---
 
@@ -90,35 +118,31 @@ graph TD
 
 ```mermaid
 sequenceDiagram
-  participant UI as TimingPage
-  participant JSBridge as Tauri JS Bridge
-  participant TimerCmd as tauri_commands::start_timer
-  participant CoreTimer as core::timer
+  participant UI as timing/dashboard.rs
+  participant Core as core::timer
   participant DB as SQLite
 
-  UI->>JSBridge: invoke("start_timer", taskId)
-  JSBridge->>TimerCmd: start_timer(taskId)
-  TimerCmd->>CoreTimer: start(taskId)
-  CoreTimer->>DB: UPDATE timer state
-  CoreTimer-->>TimerCmd: Result Ok
-  TimerCmd-->>JSBridge: Ok
-  JSBridge-->>UI: update state
+  UI->>Core: timer.start(taskId)
+  Core->>DB: UPDATE timer state
+  Core-->>UI: Result<(), AppError>
+  UI->>UI: use_signal.set(new_state)
+  UI->>UI: re-render component
 ```
 
 > [!INFO] 关键链路解析  
-> 1. UI 发起 `invoke("start_timer")` → **无前端业务逻辑**，只负责触发。  
-> 2. `tauri_commands.rs::start_timer` 进行参数校验，异步进入 `core::timer::start`。  
-> 3. `core::timer` 更新 `tasks` 与 `timer_status` 两张表，确保 **ACID**。  
-> 4. 更新完成后广播事件回 UI，触发状态刷新。
+> 1. Dioxus 组件直接调用 `core::timer::start` → **无 JSON 序列化开销**。  
+> 2. `core::timer` 进行参数校验，异步更新数据库。  
+> 3. 更新 `tasks` 与 `timer_status` 两张表，确保 **ACID**。  
+> 4. 返回 `Result` 直接给 UI，触发 `use_signal` 状态更新。
 
 ### 3.2 💰 财务流水录入简述
 
 | 步骤 | 触发者 | 处理 | 结果 |
 |------|--------|------|------|
-| 1 | `AccountingManagement.tsx` | 校验表单 | 调用 `invoke("add_transaction")` |
-| 2 | `tauri_commands.rs` | JSON → Rust struct | `core::accounting::add` |
-| 3 | `core::accounting` | 插入 `accounting_entries` | 返回 `id` |
-| 4 | UI | 更新本地 cache | Toast ✅ |
+| 1 | `accounting/transactions.rs` | 校验表单 | 直接调用 `core::accounting::add` |
+| 2 | `core::accounting` | 插入 `accounting_entries` | 返回 `Result<id, AppError>` |
+| 3 | UI | 接收结果，更新 `use_signal` | Toast ✅ |
+| 4 | 组件 | 自动重新渲染 | 显示新记录 |
 
 > [!WARNING] 一致性保证  
 > 所有财务写操作均在 **单事务** 内完成；失败自动回滚，防止脏数据。
@@ -129,9 +153,9 @@ sequenceDiagram
 
 | 环境 | 技术栈 | 描述 |
 |------|--------|------|
-| 开发 | Vite + pnpm + hot-reload | `pnpm tauri:dev` |
-| 生产 | Tauri bundle | Win / macOS / Linux 自带 SQLite |
-| CI/CD | GitHub Actions | Rust + Node 矩阵构建，产物上传 Release |
+| 开发 | Dioxus CLI + hot-reload | `dx serve` |
+| 生产 | Dioxus bundle | Win / macOS / Linux / Web 自带 SQLite |
+| CI/CD | GitHub Actions | Rust 矩阵构建，产物上传 Release |
 
 ---
 
@@ -139,10 +163,10 @@ sequenceDiagram
 
 > [!INFO] 统一错误处理  
 > - Rust 端统一 `AppError` 实现 `thiserror::Error`  
-> - 前端捕获 `invoke` 异常，映射为用户友好提示  
+> - Dioxus 组件直接处理 `Result` 类型，映射为用户友好提示  
 
 > [!TIP] 主题系统  
-> `useTheme.tsx` + Tailwind `dark:`，状态持久化到 `config/theme.rs`，避免闪白。  
+> 使用 Dioxus 状态管理 + CSS 类名切换，状态持久化到 `config/theme.rs`，避免闪白。  
 
 ---
 
@@ -164,15 +188,16 @@ sequenceDiagram
 
 | 术语 | 解释 |
 |------|------|
-| **Invoke** | Tauri JS Bridge 调用 Rust 命令 |
+| **Dioxus 组件** | Rust 原生 UI 组件，无需 JSON 序列化 |
 | **Core 模块** | 纯业务逻辑，无 UI/IO |
+| **use_signal** | Dioxus 响应式状态管理 |
 | **TimerStatus** | { state, elapsed_seconds, total_today_seconds } |
 
 ---
 
 ### 🏁 总结
 
-LifeTracker 采用 **前端轻逻辑 + 后端强规则** 的分层模式，在 **单体 Tauri** 架构内实现了“时间、财务、日记、习惯、统计”五大功能。  
+LifeTracker 采用 **模块化 + 单一职责** 的分层模式，在 **Dioxus** 架构内实现了"时间、财务、日记、习惯、统计"五大功能。  
 通过本报告，你已获得：
 
 1. 架构蓝图 🗺️  
@@ -180,5 +205,5 @@ LifeTracker 采用 **前端轻逻辑 + 后端强规则** 的分层模式，在 *
 3. 模块&部署全貌 📦  
 
 > [!INFO] 下一步  
-> - 若需深入贡献，可优先阅读 `core/` 与 `tauri_commands.rs`。  
+> - 若需深入贡献，可优先阅读 `core/` 与 `components/` 模块。  
 > - 遵循本文档中的 **设计原则 & 质量目标**，持续演进即可。
