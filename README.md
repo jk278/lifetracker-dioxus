@@ -112,8 +112,15 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 #### 2. 安装 CMake
 ```bash
 # Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y cmake pkg-config libssl-dev libglib2.0-dev libgtk-3-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev
+sudo apt update
+# cmake dependencies
+sudo apt install -y cmake pkg-config libssl-dev
+# dioxus-cli dependency
+sudo apt install -y libglib2.0-dev
+# cargo check using dependencies
+sudo apt install -y libgtk-3-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev
+# cargo build using dependencies
+sudo apt install -y libxdo-dev
 
 # CentOS/RHEL
 sudo yum install cmake
