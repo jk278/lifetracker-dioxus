@@ -2,10 +2,25 @@
 //!
 //! 生活追踪应用的核心功能模块
 
+// lib.rs 是一个 Rust 库（crate）的根文件。当你创建一个 Rust 库项目时，这个文件是默认的入口点。
+// 一个 Rust 项目可以有一个 lib.rs（库），也可以有一个 main.rs（二进制可执行文件），或者两者都有。
+// lib.rs 和 mod.rs 的主要区别：
+// 1. lib.rs 是库的根模块（crate root），mod.rs 是目录的模块根文件（module root for a directory）。
+// 2. lib.rs 位于项目根目录的 src/ 下，mod.rs 位于任何作为模块的目录中.
+// 3. lib.rs 定义整个库的入口和公共接口，mod.rs 声明和组织当前目录下的子模块。
+// 4. 一个库项目只有一个 lib.rs，而一个目录可以有多个 mod.rs（一个模块目录可以有一个 mod.rs）。
+// 5. lib.rs 可包含模块、公共 API、类型、函数、常量和宏，而 mod.rs 不能。
+
+// 导入一些常用的库和模块。
+// once_cell::sync::Lazy 是一个线程安全的延迟初始化宏，用于创建单例实例。
+// std::sync::Arc 是 Rust 中的智能指针，用于在多线程环境中共享数据。
+// tokio::sync::RwLock 是 Rust 中的读写锁，用于在多线程环境中保护共享数据。
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+// 定义了库的公共 API，通过 pub 关键字声明的项（函数、结构体、枚举、模块等）将从这里暴露给其他 crate 使用。
+// 它负责声明和组织库内部的所有模块。
 pub mod config;
 pub mod core;
 pub mod errors;

@@ -21,6 +21,9 @@ dioxus-desktop = "0.6"
 dioxus-web = "0.6"
 dioxus-router = "0.6"
 
+# Dioxus 图标库
+dioxus-free-icons = { version = "0.8", features = ["bootstrap"] }
+
 # 异步支持
 tokio = { version = "1.38.0", features = ["full"] }
 futures = "0.3"

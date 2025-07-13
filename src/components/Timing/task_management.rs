@@ -465,11 +465,11 @@ fn EnhancedTaskItem(
     let tags: Vec<String> = serde_json::from_str(&task.tags).unwrap_or_default();
 
     // 预计算CSS类名
-    let status_class = format!(
+    let _status_class = format!(
         "text-sm font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-600 {}",
         status_color
     );
-    let priority_class = format!(
+    let _priority_class = format!(
         "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium {}",
         priority_color
     );

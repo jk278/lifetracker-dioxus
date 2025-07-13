@@ -28,6 +28,7 @@ pub struct WebDavProvider {
 struct WebDavResponseParser;
 
 /// WebDAV 请求构建器
+#[allow(dead_code)]
 struct WebDavRequestBuilder {
     client: Client,
     base_url: String,
@@ -229,6 +230,7 @@ impl WebDavProvider {
     }
 
     /// 发送 PUT 请求上传文件
+    #[allow(dead_code)]
     async fn put_file(&self, path: &str, data: &[u8]) -> Result<()> {
         let url = self.build_remote_path(path);
 
@@ -252,6 +254,7 @@ impl WebDavProvider {
     }
 
     /// 发送 GET 请求下载文件
+    #[allow(dead_code)]
     async fn get_file(&self, path: &str) -> Result<Vec<u8>> {
         let url = self.build_remote_path(path);
 
@@ -278,6 +281,7 @@ impl WebDavProvider {
     }
 
     /// 发送 DELETE 请求删除文件
+    #[allow(dead_code)]
     async fn delete_file(&self, path: &str) -> Result<()> {
         let url = self.build_remote_path(path);
 

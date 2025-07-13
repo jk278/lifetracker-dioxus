@@ -3,7 +3,7 @@
 //! 包含时间追踪的统计分析和图表展示功能
 
 use dioxus::prelude::*;
-use life_tracker::get_app_state_sync;
+// use life_tracker::get_app_state_sync; // 暂时注释未使用的导入
 
 /// 统计报告主组件
 #[component]

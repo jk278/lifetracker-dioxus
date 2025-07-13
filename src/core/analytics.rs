@@ -176,10 +176,7 @@ impl Analytics {
             return;
         }
 
-        let date = task
-            .completed_at
-            .unwrap_or_else(Local::now)
-            .date_naive();
+        let date = task.completed_at.unwrap_or_else(Local::now).date_naive();
 
         let stats = self
             .historical_stats

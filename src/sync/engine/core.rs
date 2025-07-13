@@ -19,6 +19,7 @@ use tokio::time::interval;
 /// 同步引擎
 pub struct SyncEngine {
     /// 存储管理器
+    #[allow(dead_code)]
     storage: Arc<StorageManager>,
     /// 同步配置
     config: SyncConfig,
@@ -373,6 +374,7 @@ impl SyncEngine {
     }
 
     /// 创建增量同步策略
+    #[allow(dead_code)]
     async fn create_incremental_sync_strategy(&self) -> Result<SyncStrategy> {
         let last_sync_time = self.get_last_sync_time()?;
 
@@ -386,6 +388,7 @@ impl SyncEngine {
     }
 
     /// 获取上次同步时间
+    #[allow(dead_code)]
     fn get_last_sync_time(&self) -> Result<Option<DateTime<Local>>> {
         if let Some(last_result) = self.get_last_result() {
             Ok(Some(last_result.end_time))
@@ -395,6 +398,7 @@ impl SyncEngine {
     }
 
     /// 执行增量同步
+    #[allow(dead_code)]
     async fn perform_incremental_sync(&self, strategy: &SyncStrategy) -> Result<SyncResult> {
         log::info!("执行增量同步");
 
@@ -502,6 +506,7 @@ impl SyncEngine {
     }
 
     /// 计算数据哈希
+    #[allow(dead_code)]
     fn calculate_hash(&self, data: &[u8]) -> String {
         let crypto = crate::utils::crypto::CryptoManager::new();
         crypto.calculate_hash(data)

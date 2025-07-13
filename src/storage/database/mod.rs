@@ -3,8 +3,8 @@
 //! 重构后的模块化数据库操作接口
 
 pub mod connection;
-pub mod time_entries;
 pub mod tasks;
+pub mod time_entries;
 pub mod utils;
 
 // 重新导出主要结构体和函数
@@ -79,12 +79,18 @@ impl Database {
     // ==================== 时间记录操作代理方法 ====================
 
     /// 插入时间记录
-    pub fn insert_time_entry(&self, entry: &crate::storage::models::TimeEntryInsert) -> Result<i64> {
+    pub fn insert_time_entry(
+        &self,
+        entry: &crate::storage::models::TimeEntryInsert,
+    ) -> Result<i64> {
         self.time_entries().insert(entry)
     }
 
     /// 根据ID获取时间记录
-    pub fn get_time_entry_by_id(&self, id: uuid::Uuid) -> Result<Option<crate::storage::models::TimeEntry>> {
+    pub fn get_time_entry_by_id(
+        &self,
+        id: uuid::Uuid,
+    ) -> Result<Option<crate::storage::models::TimeEntry>> {
         self.time_entries().get_by_id(id)
     }
 
@@ -98,12 +104,19 @@ impl Database {
     }
 
     /// 获取指定分类的时间记录
-    pub fn get_time_entries_by_category(&self, category_id: uuid::Uuid) -> Result<Vec<crate::storage::models::TimeEntry>> {
+    pub fn get_time_entries_by_category(
+        &self,
+        category_id: uuid::Uuid,
+    ) -> Result<Vec<crate::storage::models::TimeEntry>> {
         self.time_entries().get_by_category(category_id)
     }
 
     /// 更新时间记录
-    pub fn update_time_entry(&self, id: uuid::Uuid, entry: &crate::storage::models::TimeEntryInsert) -> Result<()> {
+    pub fn update_time_entry(
+        &self,
+        id: uuid::Uuid,
+        entry: &crate::storage::models::TimeEntryInsert,
+    ) -> Result<()> {
         self.time_entries().update(id, entry)
     }
 
@@ -125,12 +138,19 @@ impl Database {
     }
 
     /// 根据ID获取任务
-    pub fn get_task_by_id(&self, id: uuid::Uuid) -> Result<Option<crate::storage::task_models::TaskModel>> {
+    pub fn get_task_by_id(
+        &self,
+        id: uuid::Uuid,
+    ) -> Result<Option<crate::storage::task_models::TaskModel>> {
         self.tasks().get_by_id(id)
     }
 
     /// 更新任务
-    pub fn update_task(&self, id: uuid::Uuid, task: &crate::storage::task_models::TaskUpdate) -> Result<()> {
+    pub fn update_task(
+        &self,
+        id: uuid::Uuid,
+        task: &crate::storage::task_models::TaskUpdate,
+    ) -> Result<()> {
         self.tasks().update(id, task)
     }
 
@@ -140,12 +160,18 @@ impl Database {
     }
 
     /// 根据分类获取任务
-    pub fn get_tasks_by_category(&self, category_id: uuid::Uuid) -> Result<Vec<crate::storage::task_models::TaskModel>> {
+    pub fn get_tasks_by_category(
+        &self,
+        category_id: uuid::Uuid,
+    ) -> Result<Vec<crate::storage::task_models::TaskModel>> {
         self.tasks().get_by_category(category_id)
     }
 
     /// 获取最近的时间记录
-    pub fn get_recent_time_entries(&self, limit: usize) -> Result<Vec<crate::storage::models::TimeEntry>> {
+    pub fn get_recent_time_entries(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<crate::storage::models::TimeEntry>> {
         let sql = r#"
             SELECT id, task_name, category_id, start_time, end_time,
                    duration_seconds, description, tags, created_at, updated_at
@@ -166,9 +192,11 @@ impl Database {
                     category_id: row
                         .get::<_, Option<String>>("category_id")?
                         .and_then(|s| uuid::Uuid::parse_str(&s).ok()),
-                    start_time: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>("start_time")?)
-                        .unwrap()
-                        .with_timezone(&chrono::Local),
+                    start_time: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<_, String>("start_time")?,
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Local),
                     end_time: row
                         .get::<_, Option<String>>("end_time")?
                         .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -176,9 +204,11 @@ impl Database {
                     duration_seconds: row.get("duration_seconds")?,
                     description: row.get("description")?,
                     tags,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                        .unwrap()
-                        .with_timezone(&chrono::Local),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<_, String>("created_at")?,
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Local),
                     updated_at: row
                         .get::<_, Option<String>>("updated_at")?
                         .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -215,9 +245,11 @@ impl Database {
                     category_id: row
                         .get::<_, Option<String>>("category_id")?
                         .and_then(|s| uuid::Uuid::parse_str(&s).ok()),
-                    start_time: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>("start_time")?)
-                        .unwrap()
-                        .with_timezone(&chrono::Local),
+                    start_time: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<_, String>("start_time")?,
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Local),
                     end_time: row
                         .get::<_, Option<String>>("end_time")?
                         .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -225,9 +257,11 @@ impl Database {
                     duration_seconds: row.get("duration_seconds")?,
                     description: row.get("description")?,
                     tags,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                        .unwrap()
-                        .with_timezone(&chrono::Local),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<_, String>("created_at")?,
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Local),
                     updated_at: row
                         .get::<_, Option<String>>("updated_at")?
                         .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -262,9 +296,11 @@ impl Database {
                     description: row.get("description")?,
                     color: row.get("color")?,
                     icon: row.get("icon")?,
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<_, String>("created_at")?)
-                        .unwrap()
-                        .with_timezone(&chrono::Local),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<_, String>("created_at")?,
+                    )
+                    .unwrap()
+                    .with_timezone(&chrono::Local),
                     updated_at: row
                         .get::<_, Option<String>>("updated_at")?
                         .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -292,7 +328,9 @@ impl Database {
     /// 插入笔记
     pub fn insert_note(&self, _note: &crate::storage::models::Note) -> Result<i64> {
         // TODO: 实现笔记插入逻辑
-        Err(crate::errors::AppError::System("笔记功能尚未实现".to_string()))
+        Err(crate::errors::AppError::System(
+            "笔记功能尚未实现".to_string(),
+        ))
     }
 
     /// 获取所有笔记
@@ -308,19 +346,30 @@ impl Database {
     }
 
     /// 更新笔记
-    pub fn update_note(&self, _id: uuid::Uuid, _update: &crate::storage::models::NoteUpdate) -> Result<()> {
+    pub fn update_note(
+        &self,
+        _id: uuid::Uuid,
+        _update: &crate::storage::models::NoteUpdate,
+    ) -> Result<()> {
         // TODO: 实现笔记更新逻辑
-        Err(crate::errors::AppError::System("笔记功能尚未实现".to_string()))
+        Err(crate::errors::AppError::System(
+            "笔记功能尚未实现".to_string(),
+        ))
     }
 
     /// 删除笔记
     pub fn delete_note(&self, _id: uuid::Uuid) -> Result<()> {
         // TODO: 实现笔记删除逻辑
-        Err(crate::errors::AppError::System("笔记功能尚未实现".to_string()))
+        Err(crate::errors::AppError::System(
+            "笔记功能尚未实现".to_string(),
+        ))
     }
 
     /// 搜索笔记
-    pub fn search_notes(&self, _query: &crate::storage::models::NoteQuery) -> Result<Vec<crate::storage::models::Note>> {
+    pub fn search_notes(
+        &self,
+        _query: &crate::storage::models::NoteQuery,
+    ) -> Result<Vec<crate::storage::models::Note>> {
         // TODO: 实现笔记搜索逻辑
         Ok(vec![])
     }
@@ -390,7 +439,10 @@ impl Database {
     }
 
     /// 插入交易记录
-    pub fn insert_transaction(&self, _transaction: &crate::storage::TransactionInsert) -> Result<i64> {
+    pub fn insert_transaction(
+        &self,
+        _transaction: &crate::storage::TransactionInsert,
+    ) -> Result<i64> {
         // TODO: 实现交易记录插入逻辑
         Ok(0)
     }

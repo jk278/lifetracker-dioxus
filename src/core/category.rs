@@ -12,8 +12,7 @@ use uuid::Uuid;
 /// 分类颜色预设
 ///
 /// 提供常用的分类颜色选择
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CategoryColor {
     /// 红色 - 紧急重要
     Red,
@@ -88,12 +87,10 @@ impl CategoryColor {
     }
 }
 
-
 /// 分类图标枚举
 ///
 /// 提供常用的分类图标选择
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Copy, Default)]
 pub enum CategoryIcon {
     /// 工作
     Work,
@@ -162,7 +159,6 @@ impl CategoryIcon {
         }
     }
 }
-
 
 /// 分类结构体
 ///
@@ -498,7 +494,8 @@ impl CategoryManager {
                 category.name.to_lowercase().contains(&query_lower)
                     || category
                         .description
-                        .as_ref().is_some_and(|desc| desc.to_lowercase().contains(&query_lower))
+                        .as_ref()
+                        .is_some_and(|desc| desc.to_lowercase().contains(&query_lower))
             })
             .collect()
     }

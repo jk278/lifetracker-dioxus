@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 /// 计时器状态枚举
 ///
 /// 表示计时器的当前状态
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub enum TimerState {
     /// 停止状态 - 计时器未启动
     #[default]
@@ -32,7 +31,6 @@ pub enum TimerState {
         paused_duration: Duration,
     },
 }
-
 
 /// 计时器核心结构体
 ///

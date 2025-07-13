@@ -11,8 +11,7 @@ use uuid::Uuid;
 /// 任务优先级枚举
 ///
 /// 表示任务的优先级级别
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub enum Priority {
     /// 低优先级
     Low,
@@ -25,12 +24,10 @@ pub enum Priority {
     Urgent,
 }
 
-
 /// 任务状态枚举
 ///
 /// 表示任务的当前状态
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize, Default)]
 pub enum TaskStatus {
     /// 活动状态 - 正在进行的任务
     #[default]
@@ -42,7 +39,6 @@ pub enum TaskStatus {
     /// 取消状态 - 被取消的任务
     Cancelled,
 }
-
 
 /// 任务结构体
 ///
@@ -317,7 +313,8 @@ impl TaskManager {
                 task.name.to_lowercase().contains(&query_lower)
                     || task
                         .description
-                        .as_ref().is_some_and(|desc| desc.to_lowercase().contains(&query_lower))
+                        .as_ref()
+                        .is_some_and(|desc| desc.to_lowercase().contains(&query_lower))
                     || task
                         .tags
                         .iter()

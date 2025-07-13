@@ -395,7 +395,7 @@ pub fn GestureWrapper(props: GestureWrapperProps) -> Element {
         div {
             class: "touch-manipulation {props.class}",
             ontouchstart: move |e| {
-                if let Some(touch) = e.touches().first() {
+                if let Some(_touch) = e.touches().first() {
                     // Note: TouchPoint API may differ in different Dioxus versions
                     // Using placeholder coordinates for now
                     touch_start.set((0.0, 0.0)); // TODO: 实现正确的触摸坐标获取
@@ -404,7 +404,7 @@ pub fn GestureWrapper(props: GestureWrapperProps) -> Element {
             },
             ontouchend: move |e| {
                 if is_touching() {
-                    if let Some(touch) = e.touches().first() {
+                    if let Some(_touch) = e.touches().first() {
                         let (start_x, start_y) = touch_start();
                         // TODO: 实现正确的触摸坐标获取
                         let end_x = 0.0;

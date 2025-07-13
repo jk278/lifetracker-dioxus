@@ -67,11 +67,11 @@ struct ExportFormat {
 #[component]
 pub fn DataExport(props: DataExportProps) -> Element {
     // 状态管理
-    let mut is_exporting = use_signal(|| false);
+    let is_exporting = use_signal(|| false);
     let mut export_format = use_signal(|| "json".to_string());
     let mut export_options = use_signal(|| ExportOptions::default());
     let mut date_range = use_signal(|| DateRange::default());
-    let mut export_result = use_signal(|| ExportResult::None);
+    let export_result = use_signal(|| ExportResult::None);
 
     // 导出格式选项
     let export_formats = use_memo(|| {
