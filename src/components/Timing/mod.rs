@@ -14,4 +14,4 @@ pub mod timing_page;
 // pub use dashboard::TimingDashboard; // 暂时注释未使用的导入
 // pub use statistics::StatisticsPlaceholder; // 暂时注释未使用的导入
 // pub use task_management::TaskManagementContent; // 暂时注释未使用的导入
-// pub use timing_page::TimingPage; // 暂时注释未使用的导入
+pub use timing_page::TimingPage;

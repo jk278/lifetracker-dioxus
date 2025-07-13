@@ -24,10 +24,11 @@ pub mod about;
 // 该模块负责财务管理相关的 UI 组件和逻辑。
 #[path = "Accounting/mod.rs"]
 pub mod accounting; // 现在是模块化的 accounting/ 目录
-// 声明 `animation` 模块，包含各种 UI 动画组件。
+                    // 声明 `animation` 模块，包含各种 UI 动画组件。
 pub mod animation;
 // 声明 `app` 模块，通常包含主应用组件 (`App`)，是整个应用的根组件和路由入口。
 pub mod app;
+pub mod simple_working_app;
 // 声明 `common` 模块，包含通用的、可复用的 UI 组件，如按钮、输入框、卡片等。
 pub mod common;
 // 声明 `dashboard` 模块，包含仪表盘页面或其子组件。
@@ -37,7 +38,7 @@ pub mod data_management;
 // 声明 `diary` 模块，并使用 `#[path = "diary/mod.rs"]` 指定其文件路径。
 // 该模块负责日记/笔记功能相关的 UI 组件和逻辑。
 pub mod diary; // 现在是模块化的 diary/ 目录
-// 声明 `habits` 模块，包含习惯打卡功能相关的 UI 组件和逻辑。
+               // 声明 `habits` 模块，包含习惯打卡功能相关的 UI 组件和逻辑。
 pub mod habits;
 // 声明 `settings` 模块，包含应用设置相关的 UI 组件。
 pub mod settings;
@@ -47,7 +48,7 @@ pub mod system_page;
 // 该模块负责时间追踪功能相关的 UI 组件和逻辑。
 #[path = "Timing/mod.rs"]
 pub mod timing; // 现在是模块化的 timing/ 目录
-// 声明 `title_bar` 模块，包含应用标题栏组件。
+                // 声明 `title_bar` 模块，包含应用标题栏组件。
 pub mod title_bar;
 
 // 重新导出主要组件

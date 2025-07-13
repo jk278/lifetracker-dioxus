@@ -104,8 +104,6 @@ pub fn DataExport(props: DataExportProps) -> Element {
         ]
     });
 
-
-
     rsx! {
         div { class: "h-full flex flex-col",
 
@@ -302,7 +300,7 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                 let export_format = export_format.read().clone();
                                 let export_options = export_options.read().clone();
                                 let date_range = date_range.read().clone();
-                                
+
                                 spawn(async move {
                                     is_exporting.set(true);
                                     export_result.set(ExportResult::None);

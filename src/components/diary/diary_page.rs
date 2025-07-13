@@ -3,6 +3,7 @@
 //! 日记模块的主入口，包含标签页导航
 
 use super::{NotesEditor, NotesLibrary, NotesOverview, NotesStats};
+use crate::components::common::{Button, ButtonVariant, Card};
 use dioxus::prelude::*;
 
 /// 日记页面的子标签
@@ -65,14 +66,11 @@ pub fn DiaryPage() -> Element {
                         div {
                             key: "{tab:?}",
                             class: "relative",
-                            button {
-                                class: if *active_tab.read() == tab {
-                                    "px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap text-blue-600"
-                                } else {
-                                    "px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                                },
+                            Button {
+                                variant: if *active_tab.read() == tab { ButtonVariant::Primary } else { ButtonVariant::Ghost },
+                                icon: tab.icon(),
                                 onclick: move |_| active_tab.set(tab),
-                                span { class: "mr-2", "{tab.icon()}" }
+                                class: "px-4 py-2 whitespace-nowrap",
                                 "{tab.label()}"
                             }
                             // 选中指示器

@@ -3,10 +3,7 @@
 //! 应用的主页面，显示各功能模块的概览和快速导航
 
 use dioxus::prelude::*;
-use dioxus_router::prelude::*;
 // use dioxus_free_icons::{icons::bs_icons::*, Icon}; // 临时注释掉避免版本冲突
-
-use super::app::Route;
 
 /// 主仪表板组件
 #[component]
@@ -230,9 +227,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "今日: 2小时30分" }
                             }
-                            Link {
-                                to: Route::TaskManagement {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 导航到时间追踪页面 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "开始追踪" }
                             }
@@ -264,9 +261,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "本月结余: +¥1,280" }
                             }
-                            Link {
-                                to: Route::Financial {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 导航到财务页面 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "查看财务" }
                             }
@@ -298,9 +295,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "本月: 8 篇新笔记" }
                             }
-                            Link {
-                                to: Route::Diary {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-purple-500 to-violet-600 text-white px-6 py-3 rounded-xl hover:from-purple-600 hover:to-violet-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 导航到日记页面 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "写日记" }
                             }
@@ -332,9 +329,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "本周完成率: 85%" }
                             }
-                            Link {
-                                to: Route::Habits {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-amber-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 导航到习惯页面 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "查看习惯" }
                             }
@@ -366,9 +363,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "生成综合报告" }
                             }
-                            Link {
-                                to: Route::Statistics {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-indigo-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 查看统计 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "查看统计" }
                             }
@@ -400,9 +397,9 @@ pub fn Dashboard() -> Element {
                                 span { class: "w-4 h-4", "📊" }
                                 span { "个性化配置" }
                             }
-                            Link {
-                                to: Route::Settings {},
+                            button {
                                 class: "group/btn bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-3 rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-2",
+                                onclick: move |_| { /* TODO: 打开设置 */ },
                                 span { class: "w-4 h-4 group-hover/btn:scale-110 transition-transform", "📊" }
                                 span { "打开设置" }
                             }
@@ -425,9 +422,9 @@ pub fn Dashboard() -> Element {
                         class: "grid grid-cols-2 md:grid-cols-4 gap-6",
 
                         // 开始计时
-                        Link {
-                            to: Route::TaskManagement {},
+                        button {
                             class: "group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-800/10 hover:from-blue-100 hover:to-blue-200/70 dark:hover:from-blue-800/30 dark:hover:to-blue-700/20 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-blue-200/30 dark:border-blue-700/30",
+                            onclick: move |_| { /* TODO: 开始计时 */ },
                             div { 
                                 class: "bg-blue-500 p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg",
                                 span { class: "w-8 h-8 text-white", "📊" }
@@ -436,9 +433,9 @@ pub fn Dashboard() -> Element {
                         }
 
                         // 记录支出
-                        Link {
-                            to: Route::Financial {},
+                        button {
                             class: "group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-800/10 hover:from-green-100 hover:to-green-200/70 dark:hover:from-green-800/30 dark:hover:to-green-700/20 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-green-200/30 dark:border-green-700/30",
+                            onclick: move |_| { /* TODO: 记录支出 */ },
                             div { 
                                 class: "bg-green-500 p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg",
                                 span { class: "w-8 h-8 text-white", "📊" }
@@ -447,9 +444,9 @@ pub fn Dashboard() -> Element {
                         }
 
                         // 写日记
-                        Link {
-                            to: Route::Diary {},
+                        button {
                             class: "group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/10 hover:from-purple-100 hover:to-purple-200/70 dark:hover:from-purple-800/30 dark:hover:to-purple-700/20 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-purple-200/30 dark:border-purple-700/30",
+                            onclick: move |_| { /* TODO: 写日记 */ },
                             div { 
                                 class: "bg-purple-500 p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg",
                                 span { class: "w-8 h-8 text-white", "📊" }
@@ -458,9 +455,9 @@ pub fn Dashboard() -> Element {
                         }
 
                         // 习惯打卡
-                        Link {
-                            to: Route::Habits {},
+                        button {
                             class: "group flex flex-col items-center p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-800/10 hover:from-orange-100 hover:to-orange-200/70 dark:hover:from-orange-800/30 dark:hover:to-orange-700/20 transition-all duration-300 hover:scale-110 hover:shadow-lg border border-orange-200/30 dark:border-orange-700/30",
+                            onclick: move |_| { /* TODO: 习惯打卡 */ },
                             div { 
                                 class: "bg-orange-500 p-4 rounded-2xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg",
                                 span { class: "w-8 h-8 text-white", "📊" }

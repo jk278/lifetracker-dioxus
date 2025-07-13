@@ -2,6 +2,7 @@
 //!
 //! 包含计时器、统计卡片、快速操作等功能
 
+use crate::components::common::{Button, ButtonSize, ButtonVariant, Card};
 use dioxus::prelude::*;
 use life_tracker::get_app_state_sync;
 use life_tracker::storage::task_models::TaskModel;
@@ -141,8 +142,9 @@ fn TimerWidget(
     };
 
     rsx! {
-        div {
-            class: "bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8",
+        Card {
+            shadow: true,
+            class: "p-8",
 
             div {
                 class: "text-center space-y-6",
@@ -339,8 +341,10 @@ fn StatCard(
     };
 
     rsx! {
-        div {
-            class: "bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 text-center hover:shadow-xl transition-shadow",
+        Card {
+            hover: true,
+            shadow: true,
+            class: "p-6 text-center",
 
             div { class: "text-4xl mb-3", "{icon}" }
             h3 { class: "text-lg font-semibold text-gray-800 dark:text-white mb-2", "{title}" }
@@ -353,32 +357,35 @@ fn StatCard(
 #[component]
 fn QuickActions() -> Element {
     rsx! {
-        div {
-            class: "bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6",
+        Card {
+            shadow: true,
+            class: "p-6",
 
             h2 { class: "text-xl font-semibold text-gray-800 dark:text-white mb-4", "快速操作" }
 
             div {
                 class: "grid grid-cols-1 md:grid-cols-2 gap-4",
 
-                button {
-                    class: "flex items-center justify-center space-x-3 p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors",
+                Button {
+                    variant: ButtonVariant::Primary,
+                    full_width: true,
+                    icon: "🚀",
                     onclick: move |_| {
                         // TODO: 快速开始新任务
                         log::info!("快速开始新任务");
                     },
-                    span { class: "text-xl", "🚀" }
-                    span { class: "font-medium", "快速开始" }
+                    "快速开始"
                 }
 
-                button {
-                    class: "flex items-center justify-center space-x-3 p-4 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors",
+                Button {
+                    variant: ButtonVariant::Secondary,
+                    full_width: true,
+                    icon: "📊",
                     onclick: move |_| {
                         // TODO: 查看统计
                         log::info!("查看统计");
                     },
-                    span { class: "text-xl", "📊" }
-                    span { class: "font-medium", "查看统计" }
+                    "查看统计"
                 }
             }
         }

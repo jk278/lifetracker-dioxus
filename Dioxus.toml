@@ -1,0 +1,18 @@
+[application]
+name = "LifeTracker"
+
+[web.app]
+title = "LifeTracker - 生活追踪应用"
+
+[web.watcher]
+index_on_404 = true
+
+[web.resource.dev]
+# CSS 样式文件
+style = []
+# 脚本文件
+script = []
+
+[bundle]
+identifier = "com.lifetracker.app"
+publisher = "LifeTracker Team"

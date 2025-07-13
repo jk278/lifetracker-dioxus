@@ -2,8 +2,12 @@
 //!
 //! 包含应用配置、主题设置等功能
 
+use super::common::{
+    Button, ButtonVariant, Card, ErrorBoundary, ErrorInfo, ErrorType, Input, Loading,
+};
 use dioxus::prelude::*;
 use life_tracker::config::{get_default_config_path, AppConfig, ConfigManager};
+use life_tracker::{get_theme_mode, set_theme_mode, ThemeMode};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SettingsPageProps {
@@ -19,8 +23,8 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
     let saving = use_signal(|| false);
     let error_message = use_signal(|| None::<String>);
 
-    // 主题状态
-    let theme_mode = use_signal(|| "system".to_string());
+    // 主题状态 - 使用全局主题状态
+    let theme_mode = use_signal(|| get_theme_mode().to_string());
     let theme_color = use_signal(|| "blue".to_string());
 
     // 加载配置
@@ -100,8 +104,15 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
 
         move |new_theme: String| {
             theme_mode.set(new_theme.clone());
+            
+            // 更新全局主题状态
+            let theme_mode_enum = ThemeMode::from_string(&new_theme);
+            if let Err(e) = set_theme_mode(theme_mode_enum.clone()) {
+                log::error!("设置主题模式失败: {}", e);
+            }
+            
+            // 更新配置
             let mut current_config = config.read().clone();
-
             match new_theme.as_str() {
                 "dark" => {
                     current_config.ui.dark_mode = true;
@@ -113,7 +124,8 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                 }
                 "system" => {
                     current_config.ui.theme = "system".to_string();
-                    // 系统主题的处理逻辑
+                    // 根据系统检测设置dark_mode
+                    current_config.ui.dark_mode = theme_mode_enum.is_dark();
                 }
                 _ => {}
             }
@@ -194,7 +206,7 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
     if *loading.read() {
         return rsx! {
             div { class: "flex justify-center items-center h-64",
-                div { class: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" }
+                Loading { text: "加载设置中..." }
             }
         };
     }
@@ -223,14 +235,14 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                             "设置"
                         }
                     }
-                    button {
-                        class: "flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors",
-                        disabled: *saving.read(),
+                    Button {
+                        variant: ButtonVariant::Primary,
+                        loading: *saving.read(),
+                        icon: "💾",
                         onclick: move |_| {
                             let save_config = save_config.clone();
                             save_config()
                         },
-                        "💾 "
                         if *saving.read() { "保存中..." } else { "保存设置" }
                     }
                 }
@@ -247,7 +259,7 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
             div { class: "flex-1 overflow-y-auto py-4 px-4 md:px-6 space-y-6",
 
                 // 界面设置
-                div { class: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6",
+                Card { shadow: true, class: "p-6",
                     div { class: "flex items-center mb-4",
                         span { class: "text-2xl mr-2", "🎨" }
                         h3 { class: "text-lg font-semibold text-gray-900 dark:text-white",
@@ -315,7 +327,7 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                 }
 
                 // 常规设置
-                div { class: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6",
+                Card { shadow: true, class: "p-6",
                     div { class: "flex items-center mb-4",
                         span { class: "text-2xl mr-2", "⚙️" }
                         h3 { class: "text-lg font-semibold text-gray-900 dark:text-white",
@@ -405,7 +417,7 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                 }
 
                 // 通知设置
-                div { class: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6",
+                Card { shadow: true, class: "p-6",
                     div { class: "flex items-center mb-4",
                         span { class: "text-2xl mr-2", "🔔" }
                         h3 { class: "text-lg font-semibold text-gray-900 dark:text-white",
@@ -457,7 +469,7 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                 }
 
                 // 数据设置
-                div { class: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg p-6",
+                Card { shadow: true, class: "p-6",
                     div { class: "flex items-center mb-4",
                         span { class: "text-2xl mr-2", "💾" }
                         h3 { class: "text-lg font-semibold text-gray-900 dark:text-white",

@@ -32,6 +32,56 @@ pub mod utils;
 pub use errors::{AppError, Result};
 pub use storage::database::Database;
 
+/// 主题模式枚举
+#[derive(Debug, Clone, PartialEq)]
+pub enum ThemeMode {
+    /// 浅色模式
+    Light,
+    /// 深色模式
+    Dark,
+    /// 跟随系统
+    System,
+}
+
+impl Default for ThemeMode {
+    fn default() -> Self {
+        ThemeMode::System
+    }
+}
+
+impl ThemeMode {
+    /// 转换为字符串
+    pub fn to_string(&self) -> String {
+        match self {
+            ThemeMode::Light => "light".to_string(),
+            ThemeMode::Dark => "dark".to_string(),
+            ThemeMode::System => "system".to_string(),
+        }
+    }
+    
+    /// 从字符串创建
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "light" => ThemeMode::Light,
+            "dark" => ThemeMode::Dark,
+            "system" => ThemeMode::System,
+            _ => ThemeMode::System,
+        }
+    }
+    
+    /// 判断是否为深色模式
+    pub fn is_dark(&self) -> bool {
+        match self {
+            ThemeMode::Dark => true,
+            ThemeMode::Light => false,
+            ThemeMode::System => {
+                // 使用config模块的系统主题检测
+                config::theme::ThemeConfig::detect_system_theme() == "dark"
+            }
+        }
+    }
+}
+
 /// 应用全局状态
 #[derive(Clone)]
 pub struct AppState {
@@ -41,6 +91,8 @@ pub struct AppState {
     pub config: config::AppConfig,
     /// 初始化状态
     pub initialized: bool,
+    /// 当前主题模式
+    pub theme_mode: ThemeMode,
 }
 
 impl Default for AppState {
@@ -49,6 +101,7 @@ impl Default for AppState {
             database: None,
             config: config::AppConfig::default(),
             initialized: false,
+            theme_mode: ThemeMode::default(),
         }
     }
 }
@@ -66,6 +119,24 @@ impl AppState {
         // 初始化数据库（同步方式）
         let database = Database::new("./data/lifetracker.db")?;
         database.run_migrations()?;
+
+        // 加载配置并设置主题
+        if let Ok(config_path) = config::get_default_config_path() {
+            if let Ok(config_manager) = config::ConfigManager::new(config_path) {
+                self.config = config_manager.config().clone();
+                
+                // 根据配置设置主题模式
+                self.theme_mode = if self.config.ui.theme == "system" {
+                    ThemeMode::System
+                } else if self.config.ui.dark_mode {
+                    ThemeMode::Dark
+                } else {
+                    ThemeMode::Light
+                };
+                
+                log::info!("已加载配置，主题模式: {:?}", self.theme_mode);
+            }
+        }
 
         self.database = Some(Arc::new(database));
         self.initialized = true;
@@ -117,6 +188,42 @@ pub async fn get_app_state() -> AppState {
 /// 设置全局应用状态
 pub async fn set_app_state(state: AppState) {
     *APP_STATE.write().await = state;
+}
+
+/// 获取当前主题模式
+pub fn get_theme_mode() -> ThemeMode {
+    get_app_state_sync().theme_mode
+}
+
+/// 设置主题模式
+pub fn set_theme_mode(theme_mode: ThemeMode) -> Result<()> {
+    match APP_STATE.try_write() {
+        Ok(mut state) => {
+            state.theme_mode = theme_mode;
+            Ok(())
+        }
+        Err(_) => Err(AppError::System("无法获取应用状态写锁".to_string())),
+    }
+}
+
+/// 切换主题模式
+pub fn toggle_theme() -> Result<ThemeMode> {
+    let current_theme = get_theme_mode();
+    let new_theme = match current_theme {
+        ThemeMode::Light => ThemeMode::Dark,
+        ThemeMode::Dark => ThemeMode::Light,
+        ThemeMode::System => {
+            // 如果当前是系统模式，根据检测到的系统主题切换到相反模式
+            if current_theme.is_dark() {
+                ThemeMode::Light
+            } else {
+                ThemeMode::Dark
+            }
+        }
+    };
+    
+    set_theme_mode(new_theme.clone())?;
+    Ok(new_theme)
 }
 
 /// 关闭应用

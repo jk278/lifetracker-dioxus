@@ -21,7 +21,7 @@ pub struct TransactionsTabProps {
 pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
     // 复制数据的简单方法避免生命周期问题
     let transactions = props.transactions.clone();
-    
+
     /// 格式化金额显示
     fn format_amount(amount: f64, currency: &str) -> String {
         match currency {

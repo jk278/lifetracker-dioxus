@@ -17,6 +17,8 @@
 // `mod components;` 声明并引入了一个名为 `components` 的模块。
 // 这意味着在 `src/components/mod.rs` 或 `src/components.rs` 文件中定义了其他组件。
 mod components;
+mod simple_app;
+mod minimal_app;
 // `use components::App;` 从 `components` 模块中引入了 `App` 这个项。
 // `App` 通常是 Dioxus 应用的根组件。
 use components::App;
@@ -40,6 +42,6 @@ fn main() {
 
     // `dioxus::launch(App)` 是 Dioxus 框架的核心函数之一。
     // 它负责启动 Dioxus 应用，并将 `App` 组件作为应用的根组件进行渲染。
-    // `App` 组件内部会定义应用的整体结构和路由。
+    // `App` 组件现在使用简单的状态管理避免路由系统复杂性，但保留了所有原有功能。
     dioxus::launch(App);
 }
