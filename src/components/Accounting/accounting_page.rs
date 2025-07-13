@@ -17,7 +17,7 @@ pub fn AccountingPage() -> Element {
     let mut accounts = use_signal(|| Vec::<Account>::new());
     let mut transactions = use_signal(|| Vec::<Transaction>::new());
     let mut financial_stats = use_signal(|| None::<FinancialStats>);
-    let mut error = use_signal(|| None::<String>);
+    let error = use_signal(|| None::<String>);
 
     // 弹窗状态
     let mut is_create_account_open = use_signal(|| false);
@@ -43,10 +43,10 @@ pub fn AccountingPage() -> Element {
     };
 
     // 处理编辑交易
-    let handle_edit_transaction = move |_transaction: Transaction| {
+    let handle_edit_transaction = move |transaction_id: uuid::Uuid| {
         // 这里处理编辑交易逻辑
         // 现在暂时只是打印日志
-        log::info!("Edit transaction: {}", _transaction.id);
+        log::info!("Edit transaction: {}", transaction_id);
     };
 
     // 关闭弹窗

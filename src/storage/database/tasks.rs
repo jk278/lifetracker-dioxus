@@ -7,7 +7,6 @@ use super::utils::{datetime_from_str, uuid_from_str};
 use crate::errors::{AppError, Result};
 use crate::storage::task_models::{TaskInsert, TaskModel, TaskUpdate};
 use chrono::{DateTime, Local};
-use rusqlite::params;
 use serde_json;
 use uuid::Uuid;
 

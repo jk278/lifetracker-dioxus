@@ -11,13 +11,10 @@ use crate::sync::{
     ConflictStrategy, SyncConfig, SyncDirection, SyncEvent, SyncEventListener, SyncItem,
     SyncResult, SyncStatus,
 };
-use crate::utils::crypto::{decrypt_password, encrypt_password};
 use chrono::{DateTime, Local};
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::time::{interval, sleep};
+use tokio::time::interval;
 
 /// 同步引擎
 pub struct SyncEngine {
@@ -50,7 +47,7 @@ pub struct SyncEngine {
 impl SyncEngine {
     /// 创建新的同步引擎
     pub fn new(storage: Arc<StorageManager>, config: SyncConfig) -> Result<Self> {
-        let storage_clone = storage.clone();
+        let _storage_clone = storage.clone();
 
         Ok(Self {
             storage: storage.clone(),
@@ -592,7 +589,7 @@ impl SyncEngine {
     /// 手动解决冲突
     pub async fn resolve_conflicts_manually(
         &self,
-        resolutions: &[(String, super::types::ConflictResolution)],
+        _resolutions: &[(String, super::types::ConflictResolution)],
     ) -> Result<Vec<SyncItem>> {
         // 这里可以实现手动冲突解决逻辑
         // 目前返回空列表

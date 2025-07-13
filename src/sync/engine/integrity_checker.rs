@@ -2,7 +2,7 @@
 //!
 //! 负责检查数据完整性、评估数据丢失风险、分类操作安全级别
 
-use crate::errors::{AppError, Result};
+use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -158,7 +158,7 @@ impl DataIntegrityChecker {
         );
 
         // 2. 检查数据完整性
-        let integrity_issues = self.check_data_integrity(&local_stats, &remote_stats)?;
+        let _integrity_issues = self.check_data_integrity(&local_stats, &remote_stats)?;
 
         // 3. 评估数据丢失风险
         let risk_assessment = self.assess_data_loss_risk(&local_stats, &remote_stats)?;

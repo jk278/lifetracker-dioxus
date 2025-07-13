@@ -101,7 +101,7 @@ pub fn SystemPage(props: SystemPageProps) -> Element {
                                 class: "p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-600 dark:hover:border-blue-400 transition-all duration-200 text-left group shadow-lg hover:shadow-xl",
                                 onclick: {
                                     let item_id = item.id.clone();
-                                    let handle_navigate = handle_navigate_to_sub_page.clone();
+                                    let mut handle_navigate = handle_navigate_to_sub_page.clone();
                                     move |_| handle_navigate(item_id.clone())
                                 },
 

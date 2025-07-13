@@ -6,8 +6,7 @@ use crate::errors::{AppError, Result};
 use crate::sync::{SyncConfig, SyncDirection, SyncItem, SyncProvider, SyncStatus};
 use crate::utils::crypto::decrypt_password;
 use chrono::{DateTime, Local, TimeZone};
-use reqwest::{Client, Response};
-use std::collections::HashMap;
+use reqwest::Client;
 use std::time::Duration;
 
 /// WebDAV 同步提供者

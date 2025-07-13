@@ -3,10 +3,8 @@
 //! 管理数据库表结构的创建、更新和版本控制
 
 use crate::errors::{AppError, Result};
-use chrono::Local;
 use log::{debug, info, warn};
 use rusqlite::Connection;
-use uuid::Uuid;
 
 /// 数据库版本
 const CURRENT_DB_VERSION: i32 = 5;
@@ -21,7 +19,7 @@ pub struct MigrationManager<'conn> {
 
 impl<'conn> MigrationManager<'conn> {
     /// 创建新的迁移管理器（拥有连接）
-    pub fn new(connection: Connection) -> MigrationManager<'static> {
+    pub fn new(_connection: Connection) -> MigrationManager<'static> {
         // 这个方法现在返回一个拥有连接的实例
         // 为了保持向后兼容性，我们需要一个不同的方法
         unimplemented!("Use new_with_connection instead for referenced connections")

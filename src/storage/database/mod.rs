@@ -12,7 +12,7 @@ pub use connection::DatabaseConnection;
 pub use tasks::TasksRepository;
 pub use time_entries::TimeEntriesRepository;
 
-use crate::errors::{AppError, Result};
+use crate::errors::Result;
 use std::path::Path;
 
 /// 数据库管理器
@@ -330,10 +330,13 @@ impl Database {
         // TODO: 实现获取笔记统计逻辑
         Ok(crate::storage::models::NoteStats {
             total_notes: 0,
-            total_words: 0,
-            total_characters: 0,
-            tags_count: 0,
-            last_updated: chrono::Local::now(),
+            favorite_notes: 0,
+            archived_notes: 0,
+            notes_this_week: 0,
+            notes_this_month: 0,
+            most_used_tags: vec![],
+            mood_distribution: vec![],
+            daily_notes_trend: vec![],
         })
     }
 
@@ -341,6 +344,61 @@ impl Database {
     pub fn get_all_note_tags(&self) -> Result<Vec<String>> {
         // TODO: 实现获取所有笔记标签逻辑
         Ok(vec![])
+    }
+
+    // ==================== 设置管理方法 ====================
+
+    /// 获取设置值
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+        let sql = "SELECT value FROM settings WHERE key = ?1";
+        self.connection.read(|conn| {
+            match conn.query_row(sql, [key], |row| Ok(row.get::<_, String>("value")?)) {
+                Ok(value) => Ok(Some(value)),
+                Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+                Err(e) => Err(e.into()),
+            }
+        })
+    }
+
+    /// 设置配置值
+    pub fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+        let sql = "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)";
+        self.connection.write(|conn| {
+            conn.execute(sql, [key, value, &chrono::Local::now().to_rfc3339()])?;
+            Ok(())
+        })
+    }
+
+    // ==================== 记账数据方法（占位实现） ====================
+
+    /// 获取所有账户
+    pub fn get_all_accounts(&self) -> Result<Vec<crate::storage::models::Account>> {
+        // TODO: 实现账户查询逻辑
+        Ok(vec![])
+    }
+
+    /// 获取所有交易记录
+    pub fn get_all_transactions(&self) -> Result<Vec<crate::storage::models::Transaction>> {
+        // TODO: 实现交易记录查询逻辑
+        Ok(vec![])
+    }
+
+    /// 插入账户
+    pub fn insert_account(&self, _account: &crate::storage::AccountInsert) -> Result<i64> {
+        // TODO: 实现账户插入逻辑
+        Ok(0)
+    }
+
+    /// 插入交易记录
+    pub fn insert_transaction(&self, _transaction: &crate::storage::TransactionInsert) -> Result<i64> {
+        // TODO: 实现交易记录插入逻辑
+        Ok(0)
+    }
+
+    /// 插入分类
+    pub fn insert_category(&self, _category: &crate::storage::CategoryInsert) -> Result<i64> {
+        // TODO: 实现分类插入逻辑
+        Ok(0)
     }
 
     // ==================== 遗留的方法（待迁移） ====================

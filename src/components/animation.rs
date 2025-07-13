@@ -65,9 +65,10 @@ pub fn PageTransition(props: PageTransitionProps) -> Element {
             animation_state.set(AnimationState::Exiting);
 
             // 延迟后切换到新内容
+            let route_key_clone = props.route_key.clone();
             spawn(async move {
                 gloo::timers::future::sleep(Duration::from_millis(props.duration as u64)).await;
-                current_key.set(props.route_key.clone());
+                current_key.set(route_key_clone);
 
                 if !props.exit_only {
                     animation_state.set(AnimationState::Entering);
@@ -251,9 +252,10 @@ pub fn TabTransition(props: TabTransitionProps) -> Element {
         if current_key.read().clone() != props.tab_key {
             animation_state.set(AnimationState::Exiting);
 
+            let tab_key_clone = props.tab_key.clone();
             spawn(async move {
                 gloo::timers::future::sleep(Duration::from_millis(props.duration as u64)).await;
-                current_key.set(props.tab_key.clone());
+                current_key.set(tab_key_clone);
                 animation_state.set(AnimationState::Entering);
                 gloo::timers::future::sleep(Duration::from_millis(50)).await;
                 animation_state.set(AnimationState::Entered);
@@ -386,8 +388,8 @@ pub struct GestureWrapperProps {
 /// 手势包装器组件
 #[component]
 pub fn GestureWrapper(props: GestureWrapperProps) -> Element {
-    let touch_start = use_signal(|| (0.0, 0.0));
-    let is_touching = use_signal(|| false);
+    let mut touch_start = use_signal(|| (0.0, 0.0));
+    let mut is_touching = use_signal(|| false);
 
     rsx! {
         div {

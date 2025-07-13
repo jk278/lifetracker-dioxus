@@ -4,6 +4,7 @@
 
 use dioxus::prelude::*;
 use life_tracker::get_app_state_sync;
+use life_tracker::storage::models::CategoryModel;
 use life_tracker::storage::task_models::TaskModel;
 use std::collections::HashSet;
 
@@ -431,7 +432,7 @@ fn EnhancedTaskList(
 #[component]
 fn EnhancedTaskItem(
     task: TaskModel,
-    categories: Vec<life_tracker::storage::models::CategoryModel>,
+    categories: Vec<CategoryModel>,
     is_expanded: bool,
     on_delete: EventHandler<uuid::Uuid>,
     on_edit: EventHandler<TaskModel>,
@@ -462,6 +463,16 @@ fn EnhancedTaskItem(
 
     // 解析标签
     let tags: Vec<String> = serde_json::from_str(&task.tags).unwrap_or_default();
+
+    // 预计算CSS类名
+    let status_class = format!(
+        "text-sm font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-600 {}",
+        status_color
+    );
+    let priority_class = format!(
+        "flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium {}",
+        priority_color
+    );
 
     rsx! {
         div {
@@ -520,7 +531,7 @@ fn EnhancedTaskItem(
                         span {
                             class: "flex items-center space-x-1",
                             span { "📅" }
-                            span { "{task.created_at.format(\"%m-%d %H:%M\")}" }
+                            span { {task.created_at.format("%m-%d %H:%M").to_string()} }
                         }
                     }
 
@@ -591,14 +602,20 @@ fn EnhancedTaskItem(
                         if let Some(due_date) = &task.due_date {
                             div {
                                 span { class: "font-medium text-gray-700 dark:text-gray-300", "截止日期: " }
-                                span { class: "text-gray-600 dark:text-gray-400", "{due_date.format(\"%Y-%m-%d %H:%M\")}" }
+                                span {
+                                    class: "text-gray-600 dark:text-gray-400",
+                                    {due_date.format("%Y-%m-%d %H:%M").to_string()}
+                                }
                             }
                         }
 
                         if let Some(updated_at) = &task.updated_at {
                             div {
                                 span { class: "font-medium text-gray-700 dark:text-gray-300", "最后更新: " }
-                                span { class: "text-gray-600 dark:text-gray-400", "{updated_at.format(\"%Y-%m-%d %H:%M\")}" }
+                                span {
+                                    class: "text-gray-600 dark:text-gray-400",
+                                    {updated_at.format("%Y-%m-%d %H:%M").to_string()}
+                                }
                             }
                         }
                     }

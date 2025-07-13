@@ -3,7 +3,6 @@
 //! 定义同步引擎各模块间共享的数据结构和枚举
 
 use chrono::{DateTime, Local};
-use serde::{Deserialize, Serialize};
 
 /// 数据比较结果
 #[derive(Debug, Clone, PartialEq)]

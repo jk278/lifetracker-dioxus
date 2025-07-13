@@ -368,7 +368,7 @@ pub fn NotesStats() -> Element {
                                 div { class: "flex-1 flex items-end w-full",
                                     div {
                                         class: "bg-blue-500 dark:bg-blue-400 w-full rounded-t-sm transition-all duration-300 hover:bg-blue-600 dark:hover:bg-blue-300",
-                                        style: "height: {if trend.count > 0 { (trend.count as f32 / 4.0 * 100.0) as i32 } else { 4 }}%",
+                                        style: format!("height: {}%", if trend.count > 0 { (trend.count as f32 / 4.0 * 100.0) as i32 } else { 4 }),
                                         title: "{trend.count} 篇笔记"
                                     }
                                 }

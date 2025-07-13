@@ -283,7 +283,10 @@ pub fn DataImport(props: DataImportProps) -> Element {
                             }
                             button {
                                 class: "px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700",
-                                onclick: move |_| confirm_import(),
+                                onclick: move |_| {
+                                    let confirm_import = confirm_import.clone();
+                                    confirm_import()
+                                },
                                 "确认导入"
                             }
                         }

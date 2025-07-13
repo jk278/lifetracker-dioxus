@@ -104,68 +104,7 @@ pub fn DataExport(props: DataExportProps) -> Element {
         ]
     });
 
-    // 处理导出选项变化
-    let handle_option_change = {
-        let mut export_options = export_options.clone();
-        move |key: String, value: bool| {
-            let mut options = export_options.read().clone();
-            match key.as_str() {
-                "include_categories" => options.include_categories = value,
-                "include_statistics" => options.include_statistics = value,
-                "include_metadata" => options.include_metadata = value,
-                "group_by_date" => options.group_by_date = value,
-                "group_by_category" => options.group_by_category = value,
-                _ => {}
-            }
-            export_options.set(options);
-        }
-    };
 
-    // 处理日期范围变化
-    let handle_date_change = {
-        let mut date_range = date_range.clone();
-        move |key: String, value: String| {
-            let mut range = date_range.read().clone();
-            match key.as_str() {
-                "start" => range.start = value,
-                "end" => range.end = value,
-                _ => {}
-            }
-            date_range.set(range);
-        }
-    };
-
-    // 处理导出
-    let handle_export = {
-        let mut is_exporting = is_exporting.clone();
-        let mut export_result = export_result.clone();
-        let export_format = export_format.read().clone();
-        let export_options = export_options.read().clone();
-        let date_range = date_range.read().clone();
-
-        move || {
-            spawn(async move {
-                is_exporting.set(true);
-                export_result.set(ExportResult::None);
-
-                // 模拟导出过程
-                tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
-
-                match perform_export(&export_format, &export_options, &date_range).await {
-                    Ok(message) => {
-                        export_result.set(ExportResult::Success(message));
-                        log::info!("Export completed successfully: {}", message);
-                    }
-                    Err(e) => {
-                        export_result.set(ExportResult::Error(format!("导出失败: {}", e)));
-                        log::error!("Export failed: {}", e);
-                    }
-                }
-
-                is_exporting.set(false);
-            });
-        }
-    };
 
     rsx! {
         div { class: "h-full flex flex-col",
@@ -207,9 +146,7 @@ pub fn DataExport(props: DataExportProps) -> Element {
                         select {
                             class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
                             value: export_format.read().clone(),
-                            onchange: move |evt| {
-                                export_format.set(evt.value());
-                            },
+                            onchange: move |e| export_format.set(e.value()),
                             for format in export_formats.read().iter() {
                                 option { value: "{format.value}", "{format.label} - {format.description}" }
                             }
@@ -231,11 +168,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "date",
                                     class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
                                     value: date_range.read().start.clone(),
-                                    onchange: {
-                                        let handle_date_change = handle_date_change.clone();
-                                        move |evt| {
-                                            handle_date_change("start".to_string(), evt.value());
-                                        }
+                                    onchange: move |e| {
+                                        let mut range = date_range.read().clone();
+                                        range.start = e.value();
+                                        date_range.set(range);
                                     }
                                 }
                             }
@@ -247,11 +183,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "date",
                                     class: "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
                                     value: date_range.read().end.clone(),
-                                    onchange: {
-                                        let handle_date_change = handle_date_change.clone();
-                                        move |evt| {
-                                            handle_date_change("end".to_string(), evt.value());
-                                        }
+                                    onchange: move |e| {
+                                        let mut range = date_range.read().clone();
+                                        range.end = e.value();
+                                        date_range.set(range);
                                     }
                                 }
                             }
@@ -271,11 +206,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "checkbox",
                                     class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
                                     checked: export_options.read().include_categories,
-                                    onchange: {
-                                        let handle_option_change = handle_option_change.clone();
-                                        move |evt| {
-                                            handle_option_change("include_categories".to_string(), evt.checked());
-                                        }
+                                    onchange: move |e| {
+                                        let mut options = export_options.read().clone();
+                                        options.include_categories = e.value() == "true";
+                                        export_options.set(options);
                                     }
                                 }
                                 span { class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -289,11 +223,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "checkbox",
                                     class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
                                     checked: export_options.read().include_statistics,
-                                    onchange: {
-                                        let handle_option_change = handle_option_change.clone();
-                                        move |evt| {
-                                            handle_option_change("include_statistics".to_string(), evt.checked());
-                                        }
+                                    onchange: move |e| {
+                                        let mut options = export_options.read().clone();
+                                        options.include_statistics = e.value() == "true";
+                                        export_options.set(options);
                                     }
                                 }
                                 span { class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -307,11 +240,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "checkbox",
                                     class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
                                     checked: export_options.read().include_metadata,
-                                    onchange: {
-                                        let handle_option_change = handle_option_change.clone();
-                                        move |evt| {
-                                            handle_option_change("include_metadata".to_string(), evt.checked());
-                                        }
+                                    onchange: move |e| {
+                                        let mut options = export_options.read().clone();
+                                        options.include_metadata = e.value() == "true";
+                                        export_options.set(options);
                                     }
                                 }
                                 span { class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -325,11 +257,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "checkbox",
                                     class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
                                     checked: export_options.read().group_by_date,
-                                    onchange: {
-                                        let handle_option_change = handle_option_change.clone();
-                                        move |evt| {
-                                            handle_option_change("group_by_date".to_string(), evt.checked());
-                                        }
+                                    onchange: move |e| {
+                                        let mut options = export_options.read().clone();
+                                        options.group_by_date = e.value() == "true";
+                                        export_options.set(options);
                                     }
                                 }
                                 span { class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -343,11 +274,10 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                     r#type: "checkbox",
                                     class: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded",
                                     checked: export_options.read().group_by_category,
-                                    onchange: {
-                                        let handle_option_change = handle_option_change.clone();
-                                        move |evt| {
-                                            handle_option_change("group_by_category".to_string(), evt.checked());
-                                        }
+                                    onchange: move |e| {
+                                        let mut options = export_options.read().clone();
+                                        options.group_by_category = e.value() == "true";
+                                        export_options.set(options);
                                     }
                                 }
                                 span { class: "ml-2 text-sm text-gray-700 dark:text-gray-300",
@@ -366,7 +296,34 @@ pub fn DataExport(props: DataExportProps) -> Element {
                                 "w-full px-4 py-2 rounded-md font-medium text-white transition-colors bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                             },
                             disabled: is_exporting(),
-                            onclick: move |_| handle_export(),
+                            onclick: move |_| {
+                                let mut is_exporting = is_exporting.clone();
+                                let mut export_result = export_result.clone();
+                                let export_format = export_format.read().clone();
+                                let export_options = export_options.read().clone();
+                                let date_range = date_range.read().clone();
+                                
+                                spawn(async move {
+                                    is_exporting.set(true);
+                                    export_result.set(ExportResult::None);
+
+                                    // 模拟导出过程
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(2000)).await;
+
+                                    match perform_export(&export_format, &export_options, &date_range).await {
+                                        Ok(message) => {
+                                            log::info!("Export completed successfully: {}", message);
+                                            export_result.set(ExportResult::Success(message));
+                                        }
+                                        Err(e) => {
+                                            export_result.set(ExportResult::Error(format!("导出失败: {}", e)));
+                                            log::error!("Export failed: {}", e);
+                                        }
+                                    }
+
+                                    is_exporting.set(false);
+                                });
+                            },
 
                             if is_exporting() {
                                 span { class: "flex items-center justify-center",

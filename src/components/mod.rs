@@ -3,6 +3,7 @@
 //! 包含所有UI组件的定义和组织
 
 pub mod about;
+#[path = "Accounting/mod.rs"]
 pub mod accounting; // 现在是模块化的 accounting/ 目录
 pub mod animation;
 pub mod app;
@@ -13,6 +14,7 @@ pub mod diary; // 现在是模块化的 diary/ 目录
 pub mod habits;
 pub mod settings;
 pub mod system_page;
+#[path = "Timing/mod.rs"]
 pub mod timing; // 现在是模块化的 timing/ 目录
 pub mod title_bar;
 

@@ -24,7 +24,7 @@ pub fn FinancialTrendChart(props: FinancialTrendChartProps) -> Element {
         // TODO: 实现移动端检测
         if false {
             // 暂时禁用移动端检测
-            let update_mobile = move |_| {
+            let mut update_mobile = move |_| {
                 // TODO: 实现移动端检测
                 is_mobile.set(false);
             };

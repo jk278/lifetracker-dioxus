@@ -3,7 +3,7 @@
 //! 处理同步过程中的数据冲突
 
 use crate::errors::{AppError, Result};
-use crate::sync::{ConflictStrategy, SyncItem, SyncResult};
+use crate::sync::{ConflictStrategy, SyncItem};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 

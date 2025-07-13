@@ -509,8 +509,8 @@ impl StorageManager {
     /// 获取每日统计范围
     pub fn get_daily_stats_range(
         &self,
-        start_date: chrono::NaiveDate,
-        end_date: chrono::NaiveDate,
+        _start_date: chrono::NaiveDate,
+        _end_date: chrono::NaiveDate,
     ) -> crate::errors::Result<Vec<crate::storage::models::DailyStats>> {
         // 这里应该实现实际的查询逻辑
         // 暂时返回空向量
@@ -520,8 +520,8 @@ impl StorageManager {
     /// 获取每周统计范围
     pub fn get_weekly_stats_range(
         &self,
-        start_date: chrono::NaiveDate,
-        end_date: chrono::NaiveDate,
+        _start_date: chrono::NaiveDate,
+        _end_date: chrono::NaiveDate,
     ) -> crate::errors::Result<Vec<crate::storage::models::WeeklyStats>> {
         // 这里应该实现实际的查询逻辑
         // 暂时返回空向量
@@ -531,8 +531,8 @@ impl StorageManager {
     /// 获取每月统计范围
     pub fn get_monthly_stats_range(
         &self,
-        start_date: chrono::NaiveDate,
-        end_date: chrono::NaiveDate,
+        _start_date: chrono::NaiveDate,
+        _end_date: chrono::NaiveDate,
     ) -> crate::errors::Result<Vec<crate::storage::models::MonthlyStats>> {
         // 这里应该实现实际的查询逻辑
         // 暂时返回空向量
@@ -542,8 +542,8 @@ impl StorageManager {
     /// 获取分类统计
     pub fn get_category_stats(
         &self,
-        start_date: chrono::NaiveDate,
-        end_date: chrono::NaiveDate,
+        _start_date: chrono::NaiveDate,
+        _end_date: chrono::NaiveDate,
     ) -> crate::errors::Result<Vec<crate::storage::models::CategoryStats>> {
         // 这里应该实现实际的查询逻辑
         // 暂时返回空向量
@@ -570,7 +570,7 @@ impl StorageManager {
 
     /// 获取所有笔记
     pub async fn get_notes(&self, query: &NoteQuery) -> crate::errors::Result<Vec<Note>> {
-        if let Some(search) = &query.search {
+        if let Some(_search) = &query.search {
             // 如果有搜索条件，使用搜索方法
             self.database.search_notes(query)
         } else {

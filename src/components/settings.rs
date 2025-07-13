@@ -226,7 +226,10 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                     button {
                         class: "flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors",
                         disabled: *saving.read(),
-                        onclick: move |_| save_config(),
+                        onclick: move |_| {
+                            let save_config = save_config.clone();
+                            save_config()
+                        },
                         "💾 "
                         if *saving.read() { "保存中..." } else { "保存设置" }
                     }

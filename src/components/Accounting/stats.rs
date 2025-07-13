@@ -16,12 +16,12 @@ pub struct StatsTabProps {
 #[component]
 pub fn StatsTab(props: StatsTabProps) -> Element {
     // 趋势数据状态
-    let mut trend_data = use_signal(|| Vec::<TrendData>::new());
-    let mut trend_loading = use_signal(|| false);
-    let mut trend_error = use_signal(|| None::<String>);
+    let trend_data = use_signal(|| Vec::<TrendData>::new());
+    let trend_loading = use_signal(|| false);
+    let trend_error = use_signal(|| None::<String>);
 
     // 图表显示控制 (从localStorage恢复)
-    let mut show_income = use_signal(|| {
+    let show_income = use_signal(|| {
         if let Ok(Some(storage)) = web_sys::window().unwrap().local_storage() {
             if let Ok(Some(saved)) = storage.get_item("financial-trend-show-income") {
                 return saved.parse::<bool>().unwrap_or(true);
@@ -30,7 +30,7 @@ pub fn StatsTab(props: StatsTabProps) -> Element {
         true
     });
 
-    let mut show_expense = use_signal(|| {
+    let show_expense = use_signal(|| {
         if let Ok(Some(storage)) = web_sys::window().unwrap().local_storage() {
             if let Ok(Some(saved)) = storage.get_item("financial-trend-show-expense") {
                 return saved.parse::<bool>().unwrap_or(true);
@@ -40,7 +40,7 @@ pub fn StatsTab(props: StatsTabProps) -> Element {
     });
 
     // 趋势类型
-    let mut trend_type = use_signal(|| {
+    let trend_type = use_signal(|| {
         if let Ok(Some(storage)) = web_sys::window().unwrap().local_storage() {
             if let Ok(Some(saved)) = storage.get_item("financial-trend-granularity") {
                 return serde_json::from_str::<TrendGranularity>(&saved)
@@ -84,7 +84,7 @@ pub fn StatsTab(props: StatsTabProps) -> Element {
     });
 
     // 处理显示收入变化
-    let handle_show_income_change = {
+    let mut handle_show_income_change = {
         let mut show_income = show_income.clone();
         move |checked: bool| {
             show_income.set(checked);
@@ -95,7 +95,7 @@ pub fn StatsTab(props: StatsTabProps) -> Element {
     };
 
     // 处理显示支出变化
-    let handle_show_expense_change = {
+    let mut handle_show_expense_change = {
         let mut show_expense = show_expense.clone();
         move |checked: bool| {
             show_expense.set(checked);
@@ -106,7 +106,7 @@ pub fn StatsTab(props: StatsTabProps) -> Element {
     };
 
     // 处理趋势类型变化
-    let handle_trend_type_change = {
+    let mut handle_trend_type_change = {
         let mut trend_type = trend_type.clone();
         move |new_type: TrendGranularity| {
             trend_type.set(new_type);

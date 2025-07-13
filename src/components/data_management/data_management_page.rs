@@ -368,7 +368,7 @@ pub fn DataManagementPage(props: DataManagementPageProps) -> Element {
                                     class: "p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-600 dark:hover:border-blue-400 transition-all duration-200 text-left group shadow-lg hover:shadow-xl",
                                     onclick: {
                                         let feature_id = feature.id.clone();
-                                        let handle_click = handle_feature_click.clone();
+                                        let mut handle_click = handle_feature_click.clone();
                                         move |_| handle_click(feature_id.clone())
                                     },
 

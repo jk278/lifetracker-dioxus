@@ -4,7 +4,6 @@
 
 use crate::errors::{AppError, Result};
 use crate::storage::{TransactionCategory, TransactionType};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// 分类管理器

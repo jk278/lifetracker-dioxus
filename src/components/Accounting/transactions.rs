@@ -12,13 +12,16 @@ pub struct TransactionsTabProps {
     pub transactions: Vec<Transaction>,
     /// 创建交易回调
     pub on_create_transaction: EventHandler<()>,
-    /// 编辑交易回调
-    pub on_edit_transaction: EventHandler<Transaction>,
+    /// 编辑交易回调（传递交易ID）
+    pub on_edit_transaction: EventHandler<uuid::Uuid>,
 }
 
 /// 交易记录标签页组件
 #[component]
 pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
+    // 复制数据的简单方法避免生命周期问题
+    let transactions = props.transactions.clone();
+    
     /// 格式化金额显示
     fn format_amount(amount: f64, currency: &str) -> String {
         match currency {
@@ -110,7 +113,7 @@ pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
                             }
                         }
                         tbody { class: "divide-y divide-gray-200 dark:divide-gray-700",
-                            for transaction in &props.transactions {
+                            for transaction in &transactions {
                                 tr {
                                     key: "{transaction.id}",
                                     class: "hover:bg-gray-50 dark:hover:bg-gray-800",
@@ -157,7 +160,10 @@ pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
                                     td { class: "px-6 py-4 whitespace-nowrap text-right",
                                         button {
                                             class: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors",
-                                            onclick: move |_| props.on_edit_transaction.call(transaction.clone()),
+                                            onclick: {
+                                                let id = transaction.id;
+                                                move |_| props.on_edit_transaction.call(id)
+                                            },
                                             "编辑"
                                         }
                                     }
@@ -170,7 +176,7 @@ pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
 
             // 小屏卡片布局
             div { class: "md:hidden space-y-4",
-                for transaction in &props.transactions {
+                for transaction in &transactions {
                     div {
                         key: "{transaction.id}",
                         class: "bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-gray-700/20 p-4",
@@ -187,7 +193,10 @@ pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
                             }
                             button {
                                 class: "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm transition-colors px-3 py-1 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20",
-                                onclick: move |_| props.on_edit_transaction.call(transaction.clone()),
+                                onclick: {
+                                    let id = transaction.id;
+                                    move |_| props.on_edit_transaction.call(id)
+                                },
                                 "编辑"
                             }
                         }
@@ -217,7 +226,7 @@ pub fn TransactionsTab(props: TransactionsTabProps) -> Element {
             }
 
             // 无数据状态
-            if props.transactions.is_empty() {
+            if transactions.is_empty() {
                 div { class: "text-center py-12",
                     div { class: "text-gray-400 text-6xl mb-4", "📊" }
                     h4 { class: "text-lg font-medium text-gray-900 dark:text-gray-100 mb-2", "暂无交易记录" }

@@ -643,7 +643,7 @@ impl DataMerger {
         &self,
         local_data: &serde_json::Value,
         remote_data: &serde_json::Value,
-        merge_config: &MergeConfig,
+        _merge_config: &MergeConfig,
     ) -> Result<serde_json::Value> {
         // 使用现有的标准合并策略
         self.merge_standard_data(local_data, remote_data).await

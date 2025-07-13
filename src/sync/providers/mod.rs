@@ -6,7 +6,6 @@ pub mod webdav;
 
 use crate::errors::{AppError, Result};
 use crate::sync::{SyncConfig, SyncProvider};
-use std::sync::Arc;
 
 /// 同步提供者的动态类型
 pub type SyncProviderBox = Box<dyn SyncProvider>;

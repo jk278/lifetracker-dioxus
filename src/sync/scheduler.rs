@@ -7,7 +7,7 @@ use crate::sync::SyncConfig;
 use chrono::{DateTime, Local};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tokio::time::{interval, sleep};
+use tokio::time::interval;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 /// 同步调度器

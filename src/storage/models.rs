@@ -632,6 +632,62 @@ impl Default for CategorySortBy {
     }
 }
 
+// ==================== 记账模型 ====================
+
+/// 账户模型
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Account {
+    /// 唯一标识符
+    pub id: Uuid,
+    /// 账户名称
+    pub name: String,
+    /// 账户类型
+    pub account_type: String,
+    /// 银行名称
+    pub bank_name: Option<String>,
+    /// 账户号码
+    pub account_number: Option<String>,
+    /// 路由号码
+    pub routing_number: Option<String>,
+    /// 当前余额
+    pub balance: f64,
+    /// 货币类型
+    pub currency: String,
+    /// 是否激活
+    pub is_active: bool,
+    /// 创建时间
+    pub created_at: DateTime<Local>,
+    /// 更新时间
+    pub updated_at: Option<DateTime<Local>>,
+}
+
+/// 交易记录模型
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Transaction {
+    /// 唯一标识符
+    pub id: Uuid,
+    /// 账户ID
+    pub account_id: Uuid,
+    /// 交易金额
+    pub amount: f64,
+    /// 交易描述
+    pub description: String,
+    /// 收款人/付款人
+    pub payee: Option<String>,
+    /// 分类ID
+    pub category_id: Option<Uuid>,
+    /// 交易日期
+    pub transaction_date: DateTime<Local>,
+    /// 交易类型（收入/支出）
+    pub transaction_type: String,
+    /// 标签
+    pub tags: Vec<String>,
+    /// 创建时间
+    pub created_at: DateTime<Local>,
+    /// 更新时间
+    pub updated_at: Option<DateTime<Local>>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
