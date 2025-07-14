@@ -28,7 +28,6 @@ pub mod accounting; // 现在是模块化的 accounting/ 目录
 pub mod animation;
 // 声明 `app` 模块，通常包含主应用组件 (`App`)，是整个应用的根组件和路由入口。
 pub mod app;
-pub mod simple_working_app;
 // 声明 `common` 模块，包含通用的、可复用的 UI 组件，如按钮、输入框、卡片等。
 pub mod common;
 // 声明 `dashboard` 模块，包含仪表盘页面或其子组件。

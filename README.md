@@ -60,95 +60,47 @@ LifeTracker 是一个功能强大的综合生活追踪工具，帮助您管理�
 - **CMake** - 构建系统依赖
 - **Git** - 版本控制
 
-### Windows 环境搭建
+### 环境搭建
 
 #### 1. 安装 Rust
+
+- Windows 环境
 ```powershell
-# 下载并安装 Rust
-# 访问 https://rustup.rs/ 或使用 winget
 winget install Rustlang.Rustup
 ```
 
-#### 2. 安装 CMake
+- macOS 环境 (Homebrew 为例)
+```bash
+brew install rustup
+```
+
+- Linux 环境 (Debian 为例)
+```bash
+apt install rustup
+```
+
+#### 2. 安装 cargo-binstall
 ```powershell
-# 使用 winget 安装 CMake (安装后重启终端以更新 PATH)
-winget install Kitware.CMake
+cargo install cargo-binstall
 ```
 
 #### 3. 安装 Dioxus CLI
 ```powershell
-# 安装 Dioxus 命令行工具
-cargo install dioxus-cli
-```
-
-### macOS 环境搭建
-
-#### 1. 安装 Rust
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-#### 2. 安装 CMake
-```bash
-# 使用 Homebrew
-brew install cmake
-
-# 或者使用 MacPorts
-sudo port install cmake
-```
-
-#### 3. 安装 Dioxus CLI
-```bash
-cargo install dioxus-cli
-```
-
-### Linux 环境搭建
-
-#### 1. 安装 Rust
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-#### 2. 安装 CMake
-```bash
-# Ubuntu/Debian
-sudo apt update
-# cmake dependencies
-sudo apt install -y cmake pkg-config libssl-dev
-# dioxus-cli dependency
-sudo apt install -y libglib2.0-dev
-# cargo check using dependencies
-sudo apt install -y libgtk-3-dev libcairo2-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev
-# cargo build using dependencies
-sudo apt install -y libxdo-dev
-
-# CentOS/RHEL
-sudo yum install cmake
-
-# Arch Linux
-sudo pacman -S cmake
-```
-
-#### 3. 安装 Dioxus CLI
-```bash
-cargo install dioxus-cli
+cargo binstall dioxus-cli
 ```
 
 ### 克隆和运行项目
 
 ```bash
-# 克隆项目
+# 克隆
 git clone https://github.com/username/lifetracker-dioxus.git
 cd lifetracker-dioxus
 
-# 构建项目
+# 构建
 cargo build
 
-# 开发模式（桌面应用）
-dx serve
-
-# 开发模式（Web版本）
-dx serve --platform web
+# 开发（桌面应用为例）
+dx serve --platform desktop
 ```
 
 ## 📁 项目结构

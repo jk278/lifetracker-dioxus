@@ -17,8 +17,6 @@
 // `mod components;` 声明并引入了一个名为 `components` 的模块。
 // 这意味着在 `src/components/mod.rs` 或 `src/components.rs` 文件中定义了其他组件。
 mod components;
-mod simple_app;
-mod minimal_app;
 // `use components::App;` 从 `components` 模块中引入了 `App` 这个项。
 // `App` 通常是 Dioxus 应用的根组件。
 use components::App;

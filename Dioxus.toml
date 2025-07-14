@@ -1,6 +1,9 @@
 [application]
 name = "LifeTracker"
 
+[desktop.app]
+title = "LifeTracker - 生活追踪应用"
+
 [web.app]
 title = "LifeTracker - 生活追踪应用"
 
