@@ -14,82 +14,73 @@ categories = ["gui", "web-programming"]
 name = "life_tracker"
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "lifetracker"
+path = "src/main.rs"
+
+[features]
+default = ["desktop"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
+
 [dependencies]
-# Dioxus 核心依赖
-dioxus = { version = "0.6", features = ["desktop", "router"] }
+# 核心框架 - Dioxus
+dioxus = { version = "0.6" }
 dioxus-desktop = "0.6"
-dioxus-web = "0.6"
 dioxus-router = "0.6"
+dioxus-web = "0.6"
+dioxus-free-icons = { version = "0.9", features = ["font-awesome-brands"] }
 
-# Dioxus 图标库
-dioxus-free-icons = { version = "0.8", features = ["bootstrap"] }
-
-# 异步支持
+# 异步运行时
 tokio = { version = "1.38.0", features = ["full"] }
+async-trait = "0.1"
 futures = "0.3"
 gloo = { version = "0.11", features = ["timers", "futures"] }
 
-# Web API 支持
-web-sys = "0.3"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
+tokio-cron-scheduler = "0.10"
 
-# 全局状态管理
-once_cell = "1.19"
-
-# 数据库
+# 数据存储与处理
 rusqlite = { version = "0.31.0", features = ["backup", "bundled"] }
 
-# 序列化
+# 序列化与格式处理
+csv = "1.0"
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 toml = "0.8.13"
-csv = "1.0"
 
-# 时间处理  
+# 工具类依赖
+anyhow = "1.0"
 chrono = { version = "0.4.38", features = ["serde"] }
-
-# UUID
+dirs = "5.0"
+env_logger = "0.11.3"
+log = "0.4.21"
+once_cell = "1.19"
+rand = "0.8"
+regex = "1.0"
+thiserror = "1.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
-# 日志
-log = "0.4.21"
-env_logger = "0.11.3"
-
-# 错误处理
-anyhow = "1.0"
-thiserror = "1.0"
-
-# 异步trait
-async-trait = "0.1"
-
-# 系统目录
-dirs = "5.0"
-
-# 正则表达式
-regex = "1.0"
-
-# 随机数
-rand = "0.8"
-
-# HTTP客户端和网络请求
+# 网络与HTTP
 reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
 
-# 加密和编码
-ring = "0.17"
+# 加密与安全
 base64 = "0.22"
 hex = "0.4"
 md5 = "0.7"
+ring = "0.17"
 
-# 定时任务
-tokio-cron-scheduler = "0.10"
+# WebAssembly支持
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3"
 
 [dev-dependencies]
 tempfile = "3.0"
 
-[[bin]]
-name = "lifetracker"
-path = "src/main.rs"
+[profile.dev]
+opt-level = 0
+debug = true
 
 [profile.release]
 opt-level = 3
@@ -97,16 +88,12 @@ lto = true
 codegen-units = 1
 panic = "abort"
 
-[profile.dev]
-opt-level = 0
-debug = true
-
-[profile.wasm-dev]
+[profile.android-dev]
 inherits = "dev"
-opt-level = 1
 
 [profile.server-dev]
 inherits = "dev"
 
-[profile.android-dev]
+[profile.wasm-dev]
 inherits = "dev"
+opt-level = 1
