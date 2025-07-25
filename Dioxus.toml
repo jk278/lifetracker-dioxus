@@ -1,23 +1,21 @@
 [application]
-name = "LifeTracker"
-
-[desktop.app]
-title = "LifeTracker - 生活追踪应用"
 
 [web.app]
-title = "LifeTracker - 生活追踪应用"
 
-[web.watcher]
-index_on_404 = true
+# HTML title tag content
+title = "life-tracker"
+
+# include `assets` in web platform
+[web.resource]
+
+# Additional CSS style files
+style = []
+
+# Additional JavaScript files
+script = []
 
 [web.resource.dev]
-# CSS 样式文件 - 使用构建后的Tailwind CSS
-style = ["assets/tailwind.css"]
 
-[web.resource]
-# 生产环境资源配置
-style = ["assets/tailwind.css"]
-
-[bundle]
-identifier = "com.lifetracker.app"
-publisher = "LifeTracker Team"
+# Javascript code file
+# serve: [dev-server] only
+script = []
