@@ -90,6 +90,12 @@ pub fn ThemeProvider(children: Element) -> Element {
     // 提供主题状态到上下文
     use_context_provider(|| theme_state);
     
+    // 应用主题到document根元素（Tailwind dark mode需要）
+    use_effect(move || {
+        let css_class = theme_state.read().css_class;
+        apply_theme_to_document(css_class);
+    });
+    
     // 系统主题变化监听（仅在System模式下）
     use_effect(move || {
         let mut theme_state = theme_state.clone();
@@ -103,12 +109,13 @@ pub fn ThemeProvider(children: Element) -> Element {
                     let old_css = state.css_class;
                     state.refresh_system_theme();
                     
-                    // 如果主题发生变化，记录日志
+                    // 如果主题发生变化，记录日志并应用到document
                     if state.css_class != old_css {
                         log::info!("系统主题变化检测: {} -> {}", 
                             if old_css == "dark" { "dark" } else { "light" },
                             if state.css_class == "dark" { "dark" } else { "light" }
                         );
+                        apply_theme_to_document(state.css_class);
                     }
                 }
             }
@@ -120,9 +127,73 @@ pub fn ThemeProvider(children: Element) -> Element {
     
     rsx! {
         div { 
-            class: format!("theme-root {}", css_class),
+            // 应用主题类到根容器，确保Tailwind dark:前缀生效
+            class: format!("theme-root min-h-screen {}", css_class),
             {children}
         }
+    }
+}
+
+/// 应用主题到document根元素
+/// Tailwind CSS dark mode 需要在html根元素上有dark类名
+fn apply_theme_to_document(css_class: &str) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::prelude::*;
+        
+        // 使用web-sys直接操作DOM
+        if let Some(window) = web_sys::window() {
+            if let Some(document) = window.document() {
+                if let Some(html) = document.document_element() {
+                    // 移除现有主题类
+                    let _ = html.class_list().remove_1("dark");
+                    let _ = html.class_list().remove_1("light");
+                    
+                    // 添加新主题类（如果不为空）
+                    if !css_class.is_empty() {
+                        let _ = html.class_list().add_1(css_class);
+                        
+                        // 设置 color-scheme 属性以支持系统组件样式
+                        if css_class == "dark" {
+                            let _ = html.set_attribute("style", "color-scheme: dark");
+                        } else {
+                            let _ = html.set_attribute("style", "color-scheme: light");
+                        }
+                        
+                        log::info!("✅ 已将主题类 '{}' 应用到 document.documentElement", css_class);
+                        
+                        // 触发自定义事件，通知页面主题已更改
+                        if let Ok(event) = document.create_event("CustomEvent") {
+                            let _ = event.init_custom_event_with_can_bubble_and_cancelable(
+                                "themeChanged", 
+                                true, 
+                                false
+                            );
+                            let _ = html.dispatch_event(&event);
+                        }
+                    } else {
+                        let _ = html.remove_attribute("style");
+                        log::info!("✅ 已清除主题类");
+                    }
+                }
+                
+                // 同时在 body 上设置，以防某些样式需要
+                if let Some(body) = document.body() {
+                    let _ = body.class_list().remove_1("dark");
+                    let _ = body.class_list().remove_1("light");
+                    
+                    if !css_class.is_empty() {
+                        let _ = body.class_list().add_1(css_class);
+                    }
+                }
+            }
+        }
+    }
+    
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // 桌面应用版本 - 这里可以通过webview的API来操作
+        log::info!("桌面模式：应用主题 {}", css_class);
     }
 }
 
@@ -162,6 +233,8 @@ pub fn use_theme_setter() -> impl FnMut(ThemeMode) {
         }
         
         theme_state.write().update(new_theme);
+        let css_class = theme_state.read().css_class;
+        apply_theme_to_document(css_class);
         log::info!("主题已设置为: {:?}", new_theme);
     }
 }

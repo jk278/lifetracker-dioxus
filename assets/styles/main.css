@@ -1,7 +1,7 @@
 /* LifeTracker 主样式文件 */
 
 /* Tailwind CSS 基础样式 */
-@import url('https://cdn.tailwindcss.com/3.4.0/tailwind.min.css');
+@tailwind utilities;
 
 /* 自定义CSS变量 */
 :root {

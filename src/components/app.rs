@@ -3,7 +3,7 @@
 //! 定义应用的页面导航和基础布局，是整个 Dioxus 应用的入口点。
 
 use dioxus::prelude::*;
-use super::theme_provider::{ThemeProvider, get_theme_class_signal};
+use super::theme_provider::ThemeProvider;
 use super::app_state_provider::AppStateProvider;
 
 /// 页面枚举定义
@@ -38,6 +38,9 @@ pub fn App() -> Element {
 
     // 使用Provider层级包装应用
     rsx! {
+        // 引入Tailwind CSS
+        document::Stylesheet { href: "assets/tailwind.css" }
+        
         AppStateProvider {
             ThemeProvider {
                 AppContent { current_page }
@@ -49,11 +52,9 @@ pub fn App() -> Element {
 /// 应用内容组件 - 分离出来以便ThemeProvider包装
 #[component]
 fn AppContent(current_page: Signal<Page>) -> Element {
-    let theme_class = get_theme_class_signal();
-    
     rsx! {
         div { 
-            class: format!("min-h-screen bg-gray-50 dark:bg-gray-900 {}", theme_class()),
+            class: "min-h-screen bg-gray-50 dark:bg-gray-900",
             // 导航栏
             nav { 
                 class: "bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50",

@@ -8,6 +8,10 @@ LifeTracker is a comprehensive life tracking application built with **Dioxus 0.6
 
 **Migration Status**: Currently migrating from Tauri + React to Dioxus. Time tracking module is complete, accounting module is in progress. Legacy React components are archived in `_tauri_archive/`.
 
+## Documentation
+
+The Dioxus documentation is available in `docs\dioxus_0.6` directory.
+
 ## Development Commands
 
 ### Core Development
