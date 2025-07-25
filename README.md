@@ -118,6 +118,13 @@ brew install rustup
 apt install rustup
 ```
 
+Once installed, make sure you add the stable toolchain and the wasm32-unknown-unknown target for web development:
+
+```bash
+rustup toolchain install stable
+rustup target add wasm32-unknown-unknown
+```
+
 #### 2. 安装 cargo-binstall
 ```powershell
 cargo install cargo-binstall
