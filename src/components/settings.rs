@@ -3,11 +3,12 @@
 //! 包含应用配置、主题设置等功能
 
 use super::common::{
-    Button, ButtonVariant, Card, ErrorBoundary, ErrorInfo, ErrorType, Input, Loading,
+    Button, ButtonVariant, Card, Loading,
 };
+use super::theme_provider::{use_theme_state, use_theme_setter};
 use dioxus::prelude::*;
 use life_tracker::config::{get_default_config_path, AppConfig, ConfigManager};
-use life_tracker::{get_theme_mode, set_theme_mode, ThemeMode};
+use life_tracker::ThemeMode;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct SettingsPageProps {
@@ -23,8 +24,8 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
     let saving = use_signal(|| false);
     let error_message = use_signal(|| None::<String>);
 
-    // 主题状态 - 使用全局主题状态
-    let theme_mode = use_signal(|| get_theme_mode().to_string());
+    // 主题状态 - 使用新的主题系统
+    let theme_state = use_theme_state();
     let theme_color = use_signal(|| "blue".to_string());
 
     // 加载配置
@@ -32,7 +33,6 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
         let mut config = config.clone();
         let mut loading = loading.clone();
         let mut error_message = error_message.clone();
-        let mut theme_mode = theme_mode.clone();
 
         move || {
             spawn(async move {
@@ -42,16 +42,6 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                 match load_app_config().await {
                     Ok(app_config) => {
                         config.set(app_config.clone());
-
-                        // 设置主题状态
-                        if app_config.ui.dark_mode {
-                            theme_mode.set("dark".to_string());
-                        } else if app_config.ui.theme == "system" {
-                            theme_mode.set("system".to_string());
-                        } else {
-                            theme_mode.set("light".to_string());
-                        }
-
                         log::info!("Configuration loaded successfully");
                     }
                     Err(e) => {
@@ -97,42 +87,6 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
         load_config();
     });
 
-    // 主题切换处理
-    let mut handle_theme_change = {
-        let mut config = config.clone();
-        let mut theme_mode = theme_mode.clone();
-
-        move |new_theme: String| {
-            theme_mode.set(new_theme.clone());
-            
-            // 更新全局主题状态
-            let theme_mode_enum = ThemeMode::from_string(&new_theme);
-            if let Err(e) = set_theme_mode(theme_mode_enum.clone()) {
-                log::error!("设置主题模式失败: {}", e);
-            }
-            
-            // 更新配置
-            let mut current_config = config.read().clone();
-            match new_theme.as_str() {
-                "dark" => {
-                    current_config.ui.dark_mode = true;
-                    current_config.ui.theme = "dark".to_string();
-                }
-                "light" => {
-                    current_config.ui.dark_mode = false;
-                    current_config.ui.theme = "light".to_string();
-                }
-                "system" => {
-                    current_config.ui.theme = "system".to_string();
-                    // 根据系统检测设置dark_mode
-                    current_config.ui.dark_mode = theme_mode_enum.is_dark();
-                }
-                _ => {}
-            }
-
-            config.set(current_config);
-        }
-    };
 
     // 主题颜色变化处理
     let mut handle_theme_color_change = {
@@ -280,12 +234,23 @@ pub fn SettingsPage(props: SettingsPageProps) -> Element {
                                     ("dark", "深色", "🌙"),
                                 ] {
                                     button {
-                                        class: if *theme_mode.read() == value {
+                                        class: if theme_state.read().mode == ThemeMode::from_string(value) {
                                             "flex flex-col items-center p-3 rounded-lg border-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-gray-900 dark:text-white transition-all"
                                         } else {
                                             "flex flex-col items-center p-3 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500 text-gray-900 dark:text-gray-100 transition-all"
                                         },
-                                        onclick: move |_| handle_theme_change(value.to_string()),
+                                        onclick: {
+                                            let value = value.to_string();
+                                            let mut config = config.clone();
+                                            let mut theme_setter = use_theme_setter();
+                                            move |_| {
+                                                let theme_mode_enum = ThemeMode::from_string(&value);
+                                                theme_setter(theme_mode_enum);
+                                                let mut current_config = config.read().clone();
+                                                current_config.ui.theme = value.clone();
+                                                config.set(current_config);
+                                            }
+                                        },
                                         span { class: "text-xl mb-1", "{icon}" }
                                         span { class: "text-sm font-medium", "{label}" }
                                     }

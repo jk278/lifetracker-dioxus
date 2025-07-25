@@ -26,7 +26,20 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-/* 暗色主题变量 */
+/* 暗色主题变量 - 使用class选择器与Dioxus保持一致 */
+.dark {
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-tertiary: #374151;
+  
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-tertiary: #9ca3af;
+  
+  --border-color: #374151;
+}
+
+/* 为了兼容，也保留data-theme选择器 */
 [data-theme="dark"] {
   --bg-primary: #111827;
   --bg-secondary: #1f2937;
