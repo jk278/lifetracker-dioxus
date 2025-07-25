@@ -3,8 +3,8 @@
 //! 定义应用的页面导航和基础布局，是整个 Dioxus 应用的入口点。
 
 use dioxus::prelude::*;
-use super::common::{Card, Loading};
-use life_tracker::{get_app_state_sync, initialize_app_sync, AppState, get_theme_mode};
+use super::theme_provider::{ThemeProvider, get_theme_class_signal};
+use super::app_state_provider::AppStateProvider;
 
 /// 页面枚举定义
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -33,65 +33,27 @@ impl Page {
 /// 主应用组件
 #[component]
 pub fn App() -> Element {
-    // 应用状态初始化
-    let app_state = use_signal(|| {
-        log::info!("开始同步初始化应用...");
-        match initialize_app_sync() {
-            Ok(_) => {
-                log::info!("应用初始化成功");
-                get_app_state_sync()
-            }
-            Err(e) => {
-                log::error!("应用初始化失败: {}", e);
-                AppState::default()
+    // 当前页面状态
+    let current_page = use_signal(|| Page::Dashboard);
+
+    // 使用Provider层级包装应用
+    rsx! {
+        AppStateProvider {
+            ThemeProvider {
+                AppContent { current_page }
             }
         }
-    });
-
-    // 当前页面状态
-    let mut current_page = use_signal(|| Page::Dashboard);
-    
-    // 主题状态 - 使用signal和定时器来响应主题变化
-    let mut theme_class = use_signal(|| {
-        let theme_mode = get_theme_mode();
-        if theme_mode.is_dark() { "dark" } else { "" }
-    });
-    
-    // 定期更新主题状态以响应变化
-    use_effect(move || {
-        spawn(async move {
-            loop {
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                let theme_mode = get_theme_mode();
-                let new_class = if theme_mode.is_dark() { "dark" } else { "" };
-                if *theme_class.read() != new_class {
-                    theme_class.set(new_class);
-                }
-            }
-        });
-    });
-
-    // 检查初始化状态
-    if !app_state.read().initialized {
-        return rsx! {
-            div {
-                class: "min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center",
-                Card { shadow: true, class: "p-8 text-center",
-                    Loading { text: "应用初始化失败" }
-                    p {
-                        class: "text-gray-500 dark:text-gray-400 mt-4",
-                        "请检查日志获取详细信息"
-                    }
-                }
-            }
-        };
     }
+}
 
-    // 主界面
+/// 应用内容组件 - 分离出来以便ThemeProvider包装
+#[component]
+fn AppContent(current_page: Signal<Page>) -> Element {
+    let theme_class = get_theme_class_signal();
+    
     rsx! {
         div { 
-            class: format!("min-h-screen bg-gray-50 dark:bg-gray-900 {}", 
-                *theme_class.read()),
+            class: format!("min-h-screen bg-gray-50 dark:bg-gray-900 {}", theme_class()),
             // 导航栏
             nav { 
                 class: "bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50",
@@ -100,7 +62,7 @@ pub fn App() -> Element {
                         // Logo
                         div { class: "flex items-center",
                             button {
-                                onclick: move |_| current_page.set(Page::Dashboard),
+                                onclick: move |_| { current_page.set(Page::Dashboard); },
                                 class: "text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors",
                                 "📊 LifeTracker"
                             }
@@ -110,7 +72,7 @@ pub fn App() -> Element {
                         div { class: "flex space-x-1",
                             for page in [Page::Dashboard, Page::Tasks, Page::Financial, Page::Diary, Page::Habits, Page::Settings] {
                                 button {
-                                    onclick: move |_| current_page.set(page),
+                                    onclick: move |_| { current_page.set(page); },
                                     class: if *current_page.read() == page {
                                         "px-3 py-2 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50"
                                     } else {
@@ -126,7 +88,7 @@ pub fn App() -> Element {
             
             // 主内容区域
             main { class: "flex-1",
-                match *current_page.read() {
+                match current_page() {
                     Page::Dashboard => rsx! { Dashboard {} },
                     Page::Tasks => rsx! { TaskManagement {} },
                     Page::Financial => rsx! { Financial {} },

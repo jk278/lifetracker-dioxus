@@ -33,7 +33,7 @@ pub use errors::{AppError, Result};
 pub use storage::database::Database;
 
 /// 主题模式枚举
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum ThemeMode {
     /// 浅色模式
     Light,

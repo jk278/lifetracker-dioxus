@@ -28,6 +28,10 @@ pub mod accounting; // 现在是模块化的 accounting/ 目录
 pub mod animation;
 // 声明 `app` 模块，通常包含主应用组件 (`App`)，是整个应用的根组件和路由入口。
 pub mod app;
+// 声明 `app_state_provider` 模块，提供统一的全局状态管理。
+pub mod app_state_provider;
+// 声明 `async_utils` 模块，提供统一的异步处理工具。
+pub mod async_utils;
 // 声明 `common` 模块，包含通用的、可复用的 UI 组件，如按钮、输入框、卡片等。
 pub mod common;
 // 声明 `dashboard` 模块，包含仪表盘页面或其子组件。
@@ -49,6 +53,8 @@ pub mod system_page;
 pub mod timing; // 现在是模块化的 timing/ 目录
                 // 声明 `title_bar` 模块，包含应用标题栏组件。
 pub mod title_bar;
+// 声明 `theme_provider` 模块，提供响应式主题管理系统。
+pub mod theme_provider;
 
 // 重新导出主要组件
 // `pub use` 语句的目的是简化其他模块导入组件的方式。
