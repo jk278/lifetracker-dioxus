@@ -96,31 +96,8 @@ pub fn ThemeProvider(children: Element) -> Element {
         apply_theme_to_document(css_class);
     });
     
-    // 系统主题变化监听（仅在System模式下）
-    use_effect(move || {
-        let mut theme_state = theme_state.clone();
-        spawn(async move {
-            loop {
-                // 每5秒检查一次系统主题变化
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                
-                let mut state = theme_state.write();
-                if state.mode == ThemeMode::System {
-                    let old_css = state.css_class;
-                    state.refresh_system_theme();
-                    
-                    // 如果主题发生变化，记录日志并应用到document
-                    if state.css_class != old_css {
-                        log::info!("系统主题变化检测: {} -> {}", 
-                            if old_css == "dark" { "dark" } else { "light" },
-                            if state.css_class == "dark" { "dark" } else { "light" }
-                        );
-                        apply_theme_to_document(state.css_class);
-                    }
-                }
-            }
-        });
-    });
+    // 系统主题变化监听 - 移除轮询机制，只在主题切换时检查
+    // 注意：Dioxus目前没有跨平台的系统主题变化事件监听，建议用户手动刷新或重启应用
     
     // 响应式主题类名
     let css_class = theme_state.read().css_class;

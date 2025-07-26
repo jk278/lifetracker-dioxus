@@ -931,9 +931,11 @@ dependencies = [
  "dioxus-html",
  "dioxus-logger",
  "dioxus-mobile",
+ "dioxus-router",
  "dioxus-signals",
  "dioxus-web",
  "manganis",
+ "serde",
  "warnings",
 ]
 
@@ -2945,10 +2947,7 @@ dependencies = [
  "chrono",
  "csv",
  "dioxus",
- "dioxus-desktop",
  "dioxus-free-icons",
- "dioxus-router",
- "dioxus-web",
  "dirs 5.0.1",
  "env_logger",
  "futures",

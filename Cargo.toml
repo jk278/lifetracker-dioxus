@@ -1,35 +1,18 @@
 [package]
 name = "life_tracker"
 version = "0.1.0"
+authors = ["jk278 <g1169861954@gmail.com>"]
 edition = "2021"
-authors = ["LifeTracker Team"]
 description = "A comprehensive life tracking and management application built with Dioxus and Rust"
 license = "MIT"
-repository = "https://github.com/user/lifetracker-dioxus"
+repository = "https://github.com/jk278/lifetracker-dioxus"
 readme = "README.md"
 keywords = ["life", "tracker", "productivity", "finance", "diary", "rust", "dioxus", "gui"]
 categories = ["gui", "web-programming"]
 
-[lib]
-name = "life_tracker"
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "lifetracker"
-path = "src/main.rs"
-
-[features]
-default = ["desktop"]
-web = ["dioxus/web"]
-desktop = ["dioxus/desktop"]
-mobile = ["dioxus/mobile"]
-
 [dependencies]
 # 核心框架 - Dioxus
-dioxus = { version = "0.6" }
-dioxus-desktop = "0.6"
-dioxus-router = "0.6"
-dioxus-web = "0.6"
+dioxus = { version = "0.6.0", features = ["router", "fullstack"] }
 dioxus-free-icons = { version = "0.9", features = ["font-awesome-brands"] }
 
 # 异步运行时
@@ -78,22 +61,20 @@ web-sys = "0.3"
 [dev-dependencies]
 tempfile = "3.0"
 
-[profile.dev]
-opt-level = 0
-debug = true
+[features]
+default = ["desktop"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-panic = "abort"
-
-[profile.android-dev]
-inherits = "dev"
-
-[profile.server-dev]
-inherits = "dev"
+[profile]
 
 [profile.wasm-dev]
 inherits = "dev"
 opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
