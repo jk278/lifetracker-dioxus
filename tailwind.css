@@ -1,3 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/preflight";
+@import "tailwindcss";
+
+@layer base {
+  /* 基础样式 */
+}
+
+@layer components {
+  /* 组件样式 */
+}
+
+@layer utilities {
+  /* 工具样式 */
+}
