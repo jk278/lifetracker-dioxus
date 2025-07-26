@@ -6,6 +6,9 @@ use super::app_state_provider::AppStateProvider;
 use super::theme_provider::ThemeProvider;
 use dioxus::prelude::*;
 
+// Tailwind CSS asset
+const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+
 /// 页面枚举定义
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Page {
@@ -39,7 +42,7 @@ pub fn App() -> Element {
     // 使用Provider层级包装应用
     rsx! {
         // 引入Tailwind CSS
-        document::Stylesheet { href: "/assets/tailwind.css" }
+        document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
         AppStateProvider {
             ThemeProvider {
