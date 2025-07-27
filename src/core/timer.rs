@@ -70,7 +70,7 @@ impl Timer {
                     start_time: Local::now(),
                     paused_duration: Duration::zero(),
                 };
-                log::debug!("计时器启动");
+                log::debug!("Timer started");
                 Ok(())
             }
             _ => Err(AppError::TimerState(
@@ -96,7 +96,7 @@ impl Timer {
                     pause_start: Local::now(),
                     paused_duration,
                 };
-                log::debug!("计时器暂停");
+                log::debug!("Timer paused");
                 Ok(())
             }
             _ => Err(AppError::TimerState("计时器不在运行状态".to_string())),
@@ -121,7 +121,7 @@ impl Timer {
                     start_time,
                     paused_duration: paused_duration + additional_pause,
                 };
-                log::debug!("计时器恢复");
+                log::debug!("Timer resumed");
                 Ok(())
             }
             _ => Err(AppError::TimerState("计时器不在暂停状态".to_string())),
@@ -157,7 +157,7 @@ impl Timer {
         };
 
         self.state = TimerState::Stopped;
-        log::debug!("计时器停止，总时长: {:?}", duration);
+        log::debug!("Timer stopped, total duration: {:?}", duration);
         Ok(duration)
     }
 
@@ -214,7 +214,7 @@ impl Timer {
     /// 重置计时器到初始状态
     pub fn reset(&mut self) {
         self.state = TimerState::Stopped;
-        log::debug!("计时器重置");
+        log::debug!("Timer reset");
     }
 }
 

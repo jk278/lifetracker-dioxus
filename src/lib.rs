@@ -58,7 +58,7 @@ impl ThemeMode {
             ThemeMode::System => "system".to_string(),
         }
     }
-    
+
     /// 从字符串创建
     pub fn from_string(s: &str) -> Self {
         match s {
@@ -68,7 +68,7 @@ impl ThemeMode {
             _ => ThemeMode::System,
         }
     }
-    
+
     /// 判断是否为深色模式
     pub fn is_dark(&self) -> bool {
         match self {
@@ -114,7 +114,7 @@ impl AppState {
 
     /// 同步初始化应用状态（避免runtime嵌套）
     pub fn initialize_sync(&mut self) -> Result<()> {
-        log::info!("开始同步初始化应用状态");
+        log::info!("Starting synchronous application state initialization");
 
         // 初始化数据库（同步方式）
         let database = Database::new("./data/lifetracker.db")?;
@@ -124,7 +124,7 @@ impl AppState {
         if let Ok(config_path) = config::get_default_config_path() {
             if let Ok(config_manager) = config::ConfigManager::new(config_path) {
                 self.config = config_manager.config().clone();
-                
+
                 // 根据配置设置主题模式
                 self.theme_mode = if self.config.ui.theme == "system" {
                     ThemeMode::System
@@ -133,15 +133,15 @@ impl AppState {
                 } else {
                     ThemeMode::Light
                 };
-                
-                log::info!("已加载配置，主题模式: {:?}", self.theme_mode);
+
+                log::info!("Configuration loaded, theme mode: {:?}", self.theme_mode);
             }
         }
 
         self.database = Some(Arc::new(database));
         self.initialized = true;
 
-        log::info!("应用状态同步初始化完成");
+        log::info!("Application state synchronous initialization completed");
         Ok(())
     }
 
@@ -174,7 +174,7 @@ pub fn get_app_state_sync() -> AppState {
     match APP_STATE.try_read() {
         Ok(state) => state.clone(),
         Err(_) => {
-            log::warn!("无法获取应用状态读锁，返回默认状态");
+            log::warn!("Cannot acquire application state read lock, returning default state");
             AppState::default()
         }
     }
@@ -221,16 +221,16 @@ pub fn toggle_theme() -> Result<ThemeMode> {
             }
         }
     };
-    
+
     set_theme_mode(new_theme.clone())?;
     Ok(new_theme)
 }
 
 /// 关闭应用
 pub async fn shutdown_app(_app_state: &AppState) -> Result<()> {
-    log::info!("开始关闭应用");
+    log::info!("Starting application shutdown");
 
     // 这里可以添加清理逻辑
-    log::info!("应用关闭完成");
+    log::info!("Application shutdown completed");
     Ok(())
 }

@@ -18,17 +18,17 @@ pub struct AppContext {
 impl AppContext {
     /// 创建新的应用上下文
     pub fn new() -> Self {
-        log::info!("初始化应用上下文...");
+        log::info!("Initializing application context...");
         
         // 同步初始化应用
         let (app_state, initialized) = match initialize_app_sync() {
             Ok(_) => {
-                log::info!("应用初始化成功");
+                log::info!("Application initialization successful");
                 let state = get_app_state_sync();
                 (state.clone(), state.initialized)
             }
             Err(e) => {
-                log::error!("应用初始化失败: {}", e);
+                log::error!("Application initialization failed: {}", e);
                 (AppState::default(), false)
             }
         };

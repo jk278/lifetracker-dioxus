@@ -80,7 +80,7 @@ impl AppCore {
         self.timer.start()?;
         self.current_task_id = Some(task_id);
 
-        log::info!("开始任务: {}", task_id);
+        log::info!("Starting task: {}", task_id);
         Ok(task_id)
     }
 
@@ -91,7 +91,7 @@ impl AppCore {
         }
 
         self.timer.pause()?;
-        log::info!("暂停当前任务");
+        log::info!("Pausing current task");
         Ok(())
     }
 
@@ -102,7 +102,7 @@ impl AppCore {
         }
 
         self.timer.resume()?;
-        log::info!("恢复当前任务");
+        log::info!("Resuming current task");
         Ok(())
     }
 
@@ -119,7 +119,7 @@ impl AppCore {
         self.task_manager.complete_task(task_id, duration)?;
 
         self.current_task_id = None;
-        log::info!("停止任务: {}, 用时: {:?}", task_id, duration);
+        log::info!("Stopping task: {}, duration: {:?}", task_id, duration);
         Ok(duration)
     }
 
@@ -211,11 +211,11 @@ impl AppCore {
 
         // 记录工作提醒设置
         if let Some(work_interval) = config.general.work_reminder_interval {
-            log::info!("应用工作提醒设置: {} 分钟", work_interval);
+            log::info!("Applying work reminder settings: {} minutes", work_interval);
         }
 
         if let Some(break_interval) = config.general.break_reminder_interval {
-            log::info!("应用休息提醒设置: {} 分钟", break_interval);
+            log::info!("Applying break reminder settings: {} minutes", break_interval);
         }
 
         // 如果有通知设置，记录通知配置
@@ -265,7 +265,7 @@ impl AppCore {
         let task_id = task.id;
         self.task_manager.add_task(task)?;
 
-        log::info!("创建任务: {}, 截止日期: {:?}", task_id, due_date);
+        log::info!("Creating task: {}, due date: {:?}", task_id, due_date);
         Ok(task_id)
     }
 
@@ -317,7 +317,7 @@ impl AppCore {
                 .push(format!("截止日期:{}", due_date.format("%Y-%m-%d")));
         }
 
-        log::info!("更新任务: {}, 截止日期: {:?}", task_id, due_date);
+        log::info!("Updating task: {}, due date: {:?}", task_id, due_date);
         Ok(())
     }
 
@@ -331,7 +331,7 @@ impl AppCore {
             self.timer.stop()?;
         }
 
-        log::info!("删除任务: {}", task_id);
+        log::info!("Deleting task: {}", task_id);
         Ok(())
     }
 
@@ -355,7 +355,7 @@ impl AppCore {
         self.timer.start()?;
         self.current_task_id = Some(task_id);
 
-        log::info!("开始任务: {}", task_id);
+        log::info!("Starting task: {}", task_id);
         Ok(())
     }
 
@@ -376,7 +376,7 @@ impl AppCore {
             self.task_manager.complete_task(task_id, Duration::zero())?;
         }
 
-        log::info!("完成任务: {}", task_id);
+        log::info!("Completing task: {}", task_id);
         Ok(())
     }
 

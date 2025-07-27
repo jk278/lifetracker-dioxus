@@ -54,7 +54,7 @@ impl<'a> TimeEntriesRepository<'a> {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入时间记录: {}", entry.id);
+        log::debug!("Inserting time entry: {}", entry.id);
         Ok(row_id)
     }
 
@@ -117,7 +117,7 @@ impl<'a> TimeEntriesRepository<'a> {
             ORDER BY start_time DESC
         "#;
 
-        log::debug!("查询时间记录SQL: {} 到 {}", start_date, end_date);
+        log::debug!("Querying time entries SQL: {} to {}", start_date, end_date);
 
         let conn = self.connection.get_raw_connection();
         let conn = conn.lock().unwrap();
@@ -247,7 +247,7 @@ impl<'a> TimeEntriesRepository<'a> {
             return Err(AppError::TaskNotFound(id.to_string()));
         }
 
-        log::debug!("更新时间记录: {}", id);
+        log::debug!("Updating time entry: {}", id);
         Ok(())
     }
 
@@ -261,7 +261,7 @@ impl<'a> TimeEntriesRepository<'a> {
             return Err(AppError::TaskNotFound(id.to_string()));
         }
 
-        log::debug!("删除时间记录: {}", id);
+        log::debug!("Deleting time entry: {}", id);
         Ok(())
     }
 }

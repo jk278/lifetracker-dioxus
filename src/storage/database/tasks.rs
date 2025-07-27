@@ -57,7 +57,7 @@ impl<'a> TasksRepository<'a> {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入任务: {}", task.name);
+        log::debug!("Inserting task: {}", task.name);
         Ok(row_id)
     }
 
@@ -113,7 +113,7 @@ impl<'a> TasksRepository<'a> {
                 tasks.push(task_result?);
             }
 
-            log::debug!("获取到 {} 个任务", tasks.len());
+            log::debug!("Retrieved {} tasks", tasks.len());
             Ok(tasks)
         })
     }
@@ -247,7 +247,7 @@ impl<'a> TasksRepository<'a> {
             return Err(AppError::System(format!("任务未找到: {}", id)));
         }
 
-        log::debug!("更新任务: {}", id);
+        log::debug!("Updating task: {}", id);
         Ok(())
     }
 
@@ -260,7 +260,7 @@ impl<'a> TasksRepository<'a> {
             return Err(AppError::System(format!("任务未找到: {}", id)));
         }
 
-        log::debug!("删除任务: {}", id);
+        log::debug!("Deleting task: {}", id);
         Ok(())
     }
 

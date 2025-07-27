@@ -137,7 +137,7 @@ fn apply_theme_to_document(css_class: &str) {
                             let _ = html.set_attribute("style", "color-scheme: light");
                         }
                         
-                        log::info!("✅ 已将主题类 '{}' 应用到 document.documentElement", css_class);
+                        log::info!("✅ Applied theme class '{}' to document.documentElement", css_class);
                         
                         // 触发自定义事件，通知页面主题已更改
                         if let Ok(event) = document.create_event("CustomEvent") {
@@ -150,7 +150,7 @@ fn apply_theme_to_document(css_class: &str) {
                         }
                     } else {
                         let _ = html.remove_attribute("style");
-                        log::info!("✅ 已清除主题类");
+                        log::info!("✅ Theme class cleared");
                     }
                 }
                 
@@ -170,7 +170,7 @@ fn apply_theme_to_document(css_class: &str) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         // 桌面应用版本 - 这里可以通过webview的API来操作
-        log::info!("桌面模式：应用主题 {}", css_class);
+        log::info!("Desktop mode: applying theme {}", css_class);
     }
 }
 
@@ -192,9 +192,9 @@ pub fn use_theme_toggle() -> impl FnMut() {
     move || {
         if let Ok(new_theme) = life_tracker::toggle_theme() {
             theme_state.write().update(new_theme);
-            log::info!("主题已切换到: {:?}", new_theme);
+            log::info!("Theme switched to: {:?}", new_theme);
         } else {
-            log::error!("主题切换失败");
+            log::error!("Theme switch failed");
         }
     }
 }
@@ -205,14 +205,14 @@ pub fn use_theme_setter() -> impl FnMut(ThemeMode) {
     
     move |new_theme: ThemeMode| {
         if let Err(e) = life_tracker::set_theme_mode(new_theme) {
-            log::error!("设置主题模式失败: {}", e);
+            log::error!("Failed to set theme mode: {}", e);
             return;
         }
         
         theme_state.write().update(new_theme);
         let css_class = theme_state.read().css_class;
         apply_theme_to_document(css_class);
-        log::info!("主题已设置为: {:?}", new_theme);
+        log::info!("Theme set to: {:?}", new_theme);
     }
 }
 

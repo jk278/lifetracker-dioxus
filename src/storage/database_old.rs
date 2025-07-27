@@ -162,7 +162,7 @@ impl Database {
         self.connection.write(|conn| {
             let mut migration_manager = MigrationManager::new_with_connection(conn);
             migration_manager.run_migrations()?;
-            log::info!("数据库迁移完成");
+            log::info!("Database migration completed");
             Ok(())
         })
     }
@@ -175,7 +175,7 @@ impl Database {
     /// 关闭数据库连接
     pub fn close(self) -> Result<()> {
         // 连接会在Drop时自动关闭
-        log::debug!("数据库连接已关闭: {}", self.database_path);
+        log::debug!("Database connection closed: {}", self.database_path);
         Ok(())
     }
 
@@ -214,7 +214,7 @@ impl Database {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入时间记录: {}", entry.id);
+        log::debug!("Inserting time entry: {}", entry.id);
         Ok(row_id)
     }
 
@@ -277,7 +277,7 @@ impl Database {
             ORDER BY start_time DESC
         "#;
 
-        log::debug!("查询时间记录SQL: {} 到 {}", start_date, end_date);
+        log::debug!("Querying time entries SQL: {} to {}", start_date, end_date);
 
         let conn = self.connection.get_raw_connection();
         let conn = conn.lock().unwrap();
@@ -407,7 +407,7 @@ impl Database {
             return Err(AppError::TaskNotFound(id.to_string()));
         }
 
-        log::debug!("更新时间记录: {}", id);
+        log::debug!("Updating time entry: {}", id);
         Ok(())
     }
 
@@ -421,7 +421,7 @@ impl Database {
             return Err(AppError::TaskNotFound(id.to_string()));
         }
 
-        log::debug!("删除时间记录: {}", id);
+        log::debug!("Deleting time entry: {}", id);
         Ok(())
     }
 
@@ -463,7 +463,7 @@ impl Database {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入任务: {}", task.name);
+        log::debug!("Inserting task: {}", task.name);
         Ok(row_id)
     }
 
@@ -519,7 +519,7 @@ impl Database {
                 tasks.push(task_result?);
             }
 
-            log::debug!("获取到 {} 个任务", tasks.len());
+            log::debug!("Retrieved {} tasks", tasks.len());
             Ok(tasks)
         })
     }
@@ -653,7 +653,7 @@ impl Database {
             return Err(AppError::System(format!("任务未找到: {}", id)));
         }
 
-        log::debug!("更新任务: {}", id);
+        log::debug!("Updating task: {}", id);
         Ok(())
     }
 
@@ -666,7 +666,7 @@ impl Database {
             return Err(AppError::System(format!("任务未找到: {}", id)));
         }
 
-        log::debug!("删除任务: {}", id);
+        log::debug!("Deleting task: {}", id);
         Ok(())
     }
 
@@ -762,7 +762,7 @@ impl Database {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入分类: {}", category.name);
+        log::debug!("Inserting category: {}", category.name);
         Ok(row_id)
     }
 
@@ -885,7 +885,7 @@ impl Database {
             return Err(AppError::CategoryNotFound(id.to_string()));
         }
 
-        log::debug!("更新分类: {}", category.name);
+        log::debug!("Updating category: {}", category.name);
         Ok(())
     }
 
@@ -894,7 +894,7 @@ impl Database {
         let sql = "DELETE FROM categories WHERE id = ?1";
         self.connection.execute(sql, &[&id.to_string()])?;
 
-        log::debug!("删除分类: {}", id);
+        log::debug!("Deleting category: {}", id);
         Ok(())
     }
 
@@ -1094,7 +1094,7 @@ impl Database {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入账户: {}", account.id);
+        log::debug!("Inserting account: {}", account.id);
         Ok(row_id)
     }
 
@@ -1135,7 +1135,7 @@ impl Database {
                 accounts.push(account_result?);
             }
 
-            log::debug!("获取到 {} 个账户", accounts.len());
+            log::debug!("Retrieved {} accounts", accounts.len());
             Ok(accounts)
         })
     }
@@ -1262,7 +1262,7 @@ impl Database {
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
         self.connection.execute(&sql, &param_refs)?;
 
-        log::debug!("更新账户: {}", id);
+        log::debug!("Updating account: {}", id);
         Ok(())
     }
 
@@ -1271,7 +1271,7 @@ impl Database {
         let sql = "UPDATE accounts SET is_active = false, updated_at = ?1 WHERE id = ?2";
         self.connection
             .execute(sql, &[&Local::now().to_rfc3339(), &id.to_string()])?;
-        log::debug!("删除账户: {}", id);
+        log::debug!("Deleting account: {}", id);
         Ok(())
     }
 
@@ -1282,7 +1282,7 @@ impl Database {
             sql,
             &[&new_balance, &Local::now().to_rfc3339(), &id.to_string()],
         )?;
-        log::debug!("更新账户余额: {} = {}", id, new_balance);
+        log::debug!("Updating account balance: {} = {}", id, new_balance);
         Ok(())
     }
 
@@ -1328,7 +1328,7 @@ impl Database {
                 row.get::<_, i64>(0)
             })?;
 
-        log::debug!("插入交易: {}", transaction.id);
+        log::debug!("Inserting transaction: {}", transaction.id);
         Ok(row_id)
     }
 
@@ -1667,7 +1667,7 @@ impl Database {
         let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
         self.connection.execute(&sql, &param_refs)?;
 
-        log::debug!("更新交易: {}", id);
+        log::debug!("Updating transaction: {}", id);
         Ok(())
     }
 
@@ -1675,7 +1675,7 @@ impl Database {
     pub fn delete_transaction(&self, id: Uuid) -> Result<()> {
         let sql = "DELETE FROM transactions WHERE id = ?1";
         self.connection.execute(sql, &[&id.to_string()])?;
-        log::debug!("删除交易: {}", id);
+        log::debug!("Deleting transaction: {}", id);
         Ok(())
     }
 

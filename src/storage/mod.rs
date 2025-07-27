@@ -103,7 +103,7 @@ impl StorageManager {
 
         let storage_manager = Self { database, config };
 
-        log::info!("存储管理器初始化完成");
+        log::info!("Storage manager initialization completed");
         Ok(storage_manager)
     }
 
@@ -121,7 +121,7 @@ impl StorageManager {
         // 配置数据库优化参数
         self.configure_database()?;
 
-        log::info!("存储系统初始化完成");
+        log::info!("Storage system initialization completed");
         Ok(())
     }
 
@@ -139,7 +139,7 @@ impl StorageManager {
                 conn.query_row("PRAGMA journal_mode = WAL", rusqlite::params![], |row| {
                     row.get(0)
                 })?;
-            log::debug!("数据库日志模式设置为: {}", journal_mode);
+            log::debug!("Database journal mode set to: {}", journal_mode);
         }
 
         // 设置同步模式
@@ -151,7 +151,7 @@ impl StorageManager {
         // 设置临时存储
         conn.execute("PRAGMA temp_store = MEMORY", rusqlite::params![])?;
 
-        log::debug!("数据库配置完成");
+        log::debug!("Database configuration completed");
         Ok(())
     }
 
@@ -178,7 +178,7 @@ impl StorageManager {
         let backup = rusqlite::backup::Backup::new(&*source_conn, &mut backup_conn)?;
         backup.run_to_completion(5, std::time::Duration::from_millis(250), None)?;
 
-        log::info!("数据库备份完成");
+        log::info!("Database backup completed");
         Ok(())
     }
 
@@ -193,7 +193,7 @@ impl StorageManager {
         backup_path: P,
     ) -> crate::errors::Result<()> {
         let backup_path = backup_path.as_ref();
-        log::info!("开始恢复数据库从备份文件: {}", backup_path.display());
+        log::info!("Starting database restore from backup file: {}", backup_path.display());
 
         if !backup_path.exists() {
             let error_msg = format!("备份文件不存在: {}", backup_path.display());
@@ -206,17 +206,17 @@ impl StorageManager {
             .map_err(|e| AppError::Storage(format!("无法读取备份文件信息: {}", e)))?
             .len();
 
-        log::info!("备份文件大小: {} bytes", backup_file_size);
+        log::info!("Backup file size: {} bytes", backup_file_size);
 
         if backup_file_size == 0 {
             return Err(AppError::Storage("备份文件为空".to_string()));
         }
 
-        log::info!("正在打开备份文件连接...");
+        log::info!("Opening backup file connection...");
         let backup_conn = Connection::open(backup_path)
             .map_err(|e| AppError::Storage(format!("无法打开备份文件: {}", e)))?;
 
-        log::info!("正在验证备份文件的完整性...");
+        log::info!("Validating backup file integrity...");
         // 检查备份文件的完整性
         let integrity_check: String = backup_conn
             .query_row("PRAGMA integrity_check", rusqlite::params![], |row| {
@@ -226,40 +226,40 @@ impl StorageManager {
 
         if integrity_check != "ok" {
             return Err(AppError::Storage(format!(
-                "备份文件已损坏: {}",
+                "Backup file is corrupted: {}",
                 integrity_check
             )));
         }
 
-        log::info!("备份文件完整性验证通过");
+        log::info!("Backup file integrity validation passed");
 
         // 获取目标数据库连接
-        log::info!("正在获取目标数据库连接...");
+        log::info!("Acquiring target database connection...");
         let target_conn = self
             .database
             .get_connection()
             .map_err(|e| AppError::Storage(format!("无法获取目标数据库连接: {}", e)))?
             .get_raw_connection();
 
-        log::info!("正在获取数据库写锁...");
+        log::info!("Acquiring database write lock...");
         let mut target_conn_guard = target_conn
             .lock()
             .map_err(|_| AppError::Storage("无法获取数据库写锁".to_string()))?;
 
-        log::info!("开始执行数据库恢复...");
+        log::info!("Starting database restore execution...");
         // 使用 rusqlite 的 backup API 进行恢复
         // 从备份文件(source)恢复到当前数据库(destination)
         {
             let backup = rusqlite::backup::Backup::new(&backup_conn, &mut *target_conn_guard)
                 .map_err(|e| AppError::Storage(format!("创建备份对象失败: {}", e)))?;
 
-            log::info!("正在执行数据恢复...");
+            log::info!("Executing data restore...");
             backup
                 .run_to_completion(5, std::time::Duration::from_millis(250), None)
                 .map_err(|e| AppError::Storage(format!("数据恢复执行失败: {}", e)))?;
         } // backup 在这里被释放，结束可变借用
 
-        log::info!("数据库恢复完成，正在验证恢复结果...");
+        log::info!("Database restore completed, validating restore results...");
 
         // 验证恢复后的数据库完整性
         let restored_integrity: String = target_conn_guard
@@ -270,12 +270,12 @@ impl StorageManager {
 
         if restored_integrity != "ok" {
             return Err(AppError::Storage(format!(
-                "恢复后数据库完整性验证失败: {}",
+                "Post-restore data integrity check failed: {}",
                 restored_integrity
             )));
         }
 
-        log::info!("数据库恢复完成并验证通过");
+        log::info!("Database restore completed and validated successfully");
         Ok(())
     }
 
@@ -302,7 +302,7 @@ impl StorageManager {
         conn.execute("VACUUM", rusqlite::params![])?;
         conn.execute("PRAGMA optimize", rusqlite::params![])?;
 
-        log::info!("数据库优化完成");
+        log::info!("Database optimization completed");
         Ok(())
     }
 
@@ -357,7 +357,7 @@ impl StorageManager {
 
         let is_ok = result == "ok";
         if !is_ok {
-            log::warn!("数据库完整性检查失败: {}", result);
+            log::warn!("Database integrity check failed: {}", result);
         }
 
         Ok(is_ok)
@@ -366,7 +366,7 @@ impl StorageManager {
     /// 关闭数据库连接
     pub fn close(self) -> crate::errors::Result<()> {
         self.database.close()?;
-        log::info!("数据库连接已关闭");
+        log::info!("Database connection closed");
         Ok(())
     }
 
@@ -421,7 +421,7 @@ impl StorageManager {
         import_path: P,
     ) -> crate::errors::Result<()> {
         let import_path = import_path.as_ref();
-        log::info!("开始从文件导入数据: {}", import_path.display());
+        log::info!("Starting data import from file: {}", import_path.display());
 
         // 从JSON文件导入
         let import_data = crate::utils::import::import_from_json(import_path)?;
@@ -450,7 +450,7 @@ impl StorageManager {
                     category_model.weekly_target_seconds,
                 ]
             ) {
-                log::warn!("导入分类失败: {}", e);
+                log::warn!("Failed to import category: {}", e);
             }
         }
 
@@ -472,11 +472,11 @@ impl StorageManager {
                     entry_model.updated_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()).unwrap_or_else(|| entry_model.created_at.format("%Y-%m-%d %H:%M:%S%.3f").to_string()),
                 ]
             ) {
-                log::warn!("导入时间条目失败: {}", e);
+                log::warn!("Failed to import time entry: {}", e);
             }
         }
 
-        log::info!("数据导入完成");
+        log::info!("Data import completed");
         Ok(())
     }
 
@@ -499,10 +499,10 @@ impl StorageManager {
 
         // 重置自增ID（如果存在的话）
         if let Err(e) = conn.execute("DELETE FROM sqlite_sequence", rusqlite::params![]) {
-            log::debug!("清理sqlite_sequence表失败（可能不存在）: {}", e);
+            log::debug!("Failed to clean sqlite_sequence table (may not exist): {}", e);
         }
 
-        log::info!("所有数据已清空");
+        log::info!("All data cleared");
         Ok(())
     }
 
@@ -629,10 +629,10 @@ impl StorageManager {
             .get_connection()?
             .execute("INSERT INTO notes_fts(notes_fts) VALUES('rebuild')", &[])
         {
-            log::debug!("FTS索引重建完成");
+            log::debug!("FTS index rebuild completed");
         }
 
-        log::info!("数据库维护完成");
+        log::info!("Database maintenance completed");
         Ok(())
     }
 }

@@ -27,6 +27,17 @@ fn main() {
     // `env_logger` 是一个用于配置日志输出的 crate。
     // `Builder::from_default_env()` 会尝试从环境变量（如 `RUST_LOG`）中读取日志配置。
     // 例如，设置 `RUST_LOG=info` 会让程序输出所有信息级别及以上的日志。
+
+    // ! IMPORTANT: Log initialization workaround for dx serve Chinese character display issue
+    // 
+    // Issue: dx serve adds extra spaces after each Chinese character in logs, causing text truncation
+    // Root cause: The terminal width calculation in dx serve misinterprets CJK character widths
+    // 
+    // Workarounds applied: Using English log messages only (avoiding CJK characters entirely)
+    //
+    // This prevents the "each Chinese character + space but same length" problem
+    // where visible text gets truncated due to invisible space padding
+    
     let mut builder = env_logger::Builder::from_default_env();
     // `.filter_level(log::LevelFilter::Info)` 设置默认的日志过滤级别为 `Info`。
     // 这意味着只有 `Info`、`Warn`、`Error` 级别的日志会被打印出来。
@@ -36,7 +47,7 @@ fn main() {
 
     // `log::info!` 是一个宏，用于打印信息级别的日志消息。
     // 这些消息在开发和调试时非常有用，可以追踪程序的执行流程。
-    log::info!("LifeTracker Dioxus 应用启动");
+    log::info!("LifeTracker Dioxus application started successfully");
 
     // `dioxus::launch(App)` 是 Dioxus 框架的核心函数之一。
     // 它负责启动 Dioxus 应用，并将 `App` 组件作为应用的根组件进行渲染。

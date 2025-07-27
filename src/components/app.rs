@@ -56,37 +56,38 @@ pub fn App() -> Element {
 #[component]
 fn AppContent(current_page: Signal<Page>) -> Element {
     rsx! {
-        div {
-            class: "min-h-screen bg-gray-50 dark:bg-gray-900",
+        div { class: "min-h-screen bg-gray-50 dark:bg-gray-900",
             // 导航栏
-            nav {
-                class: "bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50",
+            nav { class: "bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50",
                 div { class: "max-w-7xl mx-auto px-4",
                     div { class: "flex justify-between items-center h-16",
                         // Logo
                         div { class: "flex items-center",
                             button {
-                                onclick: move |_| { current_page.set(Page::Dashboard); },
+                                onclick: move |_| {
+                                    current_page.set(Page::Dashboard);
+                                },
                                 class: "text-xl font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors",
                                 "📊 LifeTracker"
-                            }
-                            // Tailwind CSS 测试指示器
-                            div { 
-                                class: "ml-2 px-2 py-1 bg-green-500 text-white text-xs rounded-full",
-                                "CSS✓"
                             }
                         }
 
                         // 导航菜单
                         div { class: "flex space-x-1",
-                            for page in [Page::Dashboard, Page::Tasks, Page::Financial, Page::Diary, Page::Habits, Page::Settings] {
+                            for page in [
+                                Page::Dashboard,
+                                Page::Tasks,
+                                Page::Financial,
+                                Page::Diary,
+                                Page::Habits,
+                                Page::Settings,
+                            ]
+                            {
                                 button {
-                                    onclick: move |_| { current_page.set(page); },
-                                    class: if *current_page.read() == page {
-                                        "px-3 py-2 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50"
-                                    } else {
-                                        "px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    onclick: move |_| {
+                                        current_page.set(page);
                                     },
+                                    class: if *current_page.read() == page { "px-3 py-2 rounded-md text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50" } else { "px-3 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" },
                                     "{page.title()}"
                                 }
                             }
@@ -98,12 +99,24 @@ fn AppContent(current_page: Signal<Page>) -> Element {
             // 主内容区域
             main { class: "flex-1",
                 match current_page() {
-                    Page::Dashboard => rsx! { Dashboard {} },
-                    Page::Tasks => rsx! { TaskManagement {} },
-                    Page::Financial => rsx! { Financial {} },
-                    Page::Diary => rsx! { Diary {} },
-                    Page::Habits => rsx! { Habits {} },
-                    Page::Settings => rsx! { Settings {} },
+                    Page::Dashboard => rsx! {
+                        Dashboard {}
+                    },
+                    Page::Tasks => rsx! {
+                        TaskManagement {}
+                    },
+                    Page::Financial => rsx! {
+                        Financial {}
+                    },
+                    Page::Diary => rsx! {
+                        Diary {}
+                    },
+                    Page::Habits => rsx! {
+                        Habits {}
+                    },
+                    Page::Settings => rsx! {
+                        Settings {}
+                    },
                 }
             }
         }
@@ -156,8 +169,6 @@ fn Habits() -> Element {
 #[component]
 fn Settings() -> Element {
     rsx! {
-        super::settings::SettingsPage {
-            show_back_button: false,
-        }
+        super::settings::SettingsPage { show_back_button: false }
     }
 }

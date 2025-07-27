@@ -460,6 +460,9 @@ button, input:where([type='button'], [type='reset'], [type='submit']), ::file-se
   .pointer-events-none {
     pointer-events: none;
   }
+  .invisible {
+    visibility: hidden;
+  }
   .visible {
     visibility: visible;
   }

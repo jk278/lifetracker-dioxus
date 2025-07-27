@@ -60,7 +60,7 @@ impl ThemeConfig {
             // Windows 注册表检查
             match Self::detect_windows_theme() {
                 Some(theme) => return theme,
-                None => log::warn!("无法从Windows注册表检测主题，使用默认值"),
+                None => log::warn!("Failed to detect theme from Windows registry, using default"),
             }
         }
 
@@ -69,7 +69,7 @@ impl ThemeConfig {
             // macOS 系统偏好检查
             match Self::detect_macos_theme() {
                 Some(theme) => return theme,
-                None => log::warn!("无法从macOS系统偏好检测主题，使用默认值"),
+                None => log::warn!("Failed to detect theme from macOS system preferences, using default"),
             }
         }
 
@@ -78,7 +78,7 @@ impl ThemeConfig {
             // Linux 桌面环境检查
             match Self::detect_linux_theme() {
                 Some(theme) => return theme,
-                None => log::warn!("无法从Linux桌面环境检测主题，使用默认值"),
+                None => log::warn!("Failed to detect theme from Linux desktop environment, using default"),
             }
         }
 
@@ -204,7 +204,7 @@ impl ThemeConfig {
     /// 根据检测到的系统主题返回对应的CSS类名
     pub fn get_initial_theme_class() -> String {
         let detected_theme = Self::detect_system_theme();
-        log::info!("检测到系统主题: {}", detected_theme);
+        log::info!("Detected system theme: {}", detected_theme);
         detected_theme
     }
 

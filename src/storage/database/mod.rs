@@ -49,7 +49,7 @@ impl Database {
         self.connection.write(|conn| {
             let mut migration_manager = MigrationManager::new_with_connection(conn);
             migration_manager.run_migrations()?;
-            log::info!("数据库迁移完成");
+            log::info!("Database migration completed");
             Ok(())
         })
     }
@@ -62,7 +62,7 @@ impl Database {
     /// 关闭数据库连接
     pub fn close(self) -> Result<()> {
         // 连接会在Drop时自动关闭
-        log::debug!("数据库连接已关闭: {}", self.database_path);
+        log::debug!("Database connection closed: {}", self.database_path);
         Ok(())
     }
 

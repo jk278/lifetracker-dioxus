@@ -34,23 +34,23 @@ impl<'conn> MigrationManager<'conn> {
     ///
     /// 检查当前数据库版本，并运行所有必要的迁移脚本
     pub fn run_migrations(&mut self) -> Result<()> {
-        info!("开始数据库迁移检查...");
+        info!("Starting database migration check...");
 
         // 创建版本表（如果不存在）
         self.create_version_table()?;
 
         // 获取当前数据库版本
         let current_version = self.get_current_version()?;
-        debug!("当前数据库版本: {}", current_version);
+        debug!("Current database version: {}", current_version);
 
         // 运行必要的迁移
         for version in (current_version + 1)..=CURRENT_DB_VERSION {
-            info!("运行迁移到版本 {}", version);
+            info!("Running migration to version {}", version);
             self.run_migration_to_version(version)?;
             self.update_version(version)?;
         }
 
-        info!("数据库迁移完成，当前版本: {}", CURRENT_DB_VERSION);
+        info!("Database migration completed, current version: {}", CURRENT_DB_VERSION);
         Ok(())
     }
 
@@ -64,7 +64,7 @@ impl<'conn> MigrationManager<'conn> {
         "#;
 
         self.connection.execute(sql, [])?;
-        debug!("版本表已创建或已存在");
+        debug!("Version table created or already exists");
         Ok(())
     }
 
@@ -92,7 +92,7 @@ impl<'conn> MigrationManager<'conn> {
             "INSERT INTO schema_version (version) VALUES (?1)",
             [version],
         )?;
-        debug!("版本已更新到: {}", version);
+        debug!("Version updated to: {}", version);
         Ok(())
     }
 
@@ -105,7 +105,7 @@ impl<'conn> MigrationManager<'conn> {
             4 => self.migration_v4(),
             5 => self.migration_v5(),
             _ => {
-                warn!("未知的迁移版本: {}", version);
+                warn!("Unknown migration version: {}", version);
                 Err(AppError::InvalidInput(format!(
                     "未知的迁移版本: {}",
                     version
@@ -116,7 +116,7 @@ impl<'conn> MigrationManager<'conn> {
 
     /// 迁移到版本1：创建基础表
     fn migration_v1(&self) -> Result<()> {
-        info!("运行迁移 v1: 创建基础表");
+        info!("Running migration v1: Creating basic tables");
 
         // 开始事务
         let tx = self.connection.unchecked_transaction()?;
@@ -196,13 +196,13 @@ impl<'conn> MigrationManager<'conn> {
         // 提交事务
         tx.commit()?;
 
-        info!("迁移 v1 完成");
+        info!("Migration v1 completed");
         Ok(())
     }
 
     /// 迁移到版本2：更新分类图标为emoji
     fn migration_v2(&self) -> Result<()> {
-        info!("运行迁移 v2: 更新分类图标");
+        info!("Running migration v2: Updating category icons");
 
         // 图标映射：从旧的图标名称映射到新的emoji
         let icon_mapping = vec![
@@ -237,13 +237,13 @@ impl<'conn> MigrationManager<'conn> {
         // 提交事务
         tx.commit()?;
 
-        info!("迁移 v2 完成");
+        info!("Migration v2 completed");
         Ok(())
     }
 
     /// 迁移到版本3：添加记账功能表
     fn migration_v3(&self) -> Result<()> {
-        info!("运行迁移 v3: 添加记账功能表");
+        info!("Running migration v3: Adding accounting feature tables");
 
         // 开始事务
         let tx = self.connection.unchecked_transaction()?;
@@ -346,13 +346,13 @@ impl<'conn> MigrationManager<'conn> {
         // 提交事务
         tx.commit()?;
 
-        info!("迁移 v3 完成");
+        info!("Migration v3 completed");
         Ok(())
     }
 
     /// 迁移到版本4：添加设置表
     fn migration_v4(&self) -> Result<()> {
-        info!("运行迁移 v4: 添加设置表");
+        info!("Running migration v4: Adding settings table");
 
         // 开始事务
         let tx = self.connection.unchecked_transaction()?;
@@ -397,13 +397,13 @@ impl<'conn> MigrationManager<'conn> {
         // 提交事务
         tx.commit()?;
 
-        info!("迁移 v4 完成");
+        info!("Migration v4 completed");
         Ok(())
     }
 
     /// 迁移到版本5：创建笔记表
     fn migration_v5(&self) -> Result<()> {
-        info!("运行迁移 v5: 创建笔记表");
+        info!("Running migration v5: Creating notes table");
 
         // 开始事务
         let tx = self.connection.unchecked_transaction()?;
@@ -501,7 +501,7 @@ impl<'conn> MigrationManager<'conn> {
         // 提交事务
         tx.commit()?;
 
-        info!("迁移 v5 完成");
+        info!("Migration v5 completed");
         Ok(())
     }
 
@@ -567,7 +567,7 @@ impl<'conn> MigrationManager<'conn> {
             [],
         )?;
 
-        debug!("数据库索引创建完成");
+        debug!("Database indexes created successfully");
         Ok(())
     }
 
@@ -606,13 +606,13 @@ impl<'conn> MigrationManager<'conn> {
             )?;
         }
 
-        debug!("默认分类插入完成");
+        debug!("Default categories inserted successfully");
         Ok(())
     }
 
     /// 创建记账功能相关索引
     fn create_accounting_indexes(&self, tx: &rusqlite::Transaction) -> Result<()> {
-        info!("创建记账功能索引");
+        info!("Creating accounting feature indexes");
 
         // 账户索引
         tx.execute(
